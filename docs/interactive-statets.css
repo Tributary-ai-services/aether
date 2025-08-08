@@ -1,0 +1,20 @@
+/* Hover effects */
+.hover:bg-gray-50
+.hover:bg-gray-200
+.hover:bg-blue-700
+.hover:bg-green-700
+.hover:bg-purple-700
+.hover:border-gray-300
+.hover:text-blue-600, .hover:text-blue-800
+.hover:text-gray-600, .hover:text-gray-800
+.hover:text-green-600
+.hover:text-red-800
+.hover:shadow-md
+
+/* Cursor */
+.cursor-pointer
+
+/* Transitions */
+.transition-all
+.transition-colors
+.transition-shadow

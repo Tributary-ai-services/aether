@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aether Auth Test</title>
+</head>
+<body>
+    <h1>Aether Authentication Test</h1>
+    <button onclick="testAuth()">Test Authentication</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAuth() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing authentication...\n';
+
+            try {
+                // Step 1: Get token from Keycloak
+                output.textContent += '\n1. Getting token from Keycloak...\n';
+                const tokenResponse = await fetch('/realms/aether/protocol/openid-connect/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'password',
+                        client_id: 'admin-cli',
+                        username: 'test',
+                        password: 'test',
+                        scope: 'openid profile email',
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    throw new Error(`Token request failed: ${tokenResponse.status}`);
+                }
+
+                const tokenData = await tokenResponse.json();
+                output.textContent += `✅ Got ID token: ${tokenData.id_token.substring(0, 50)}...\n`;
+
+                // Step 2: Call backend API with token
+                output.textContent += '\n2. Calling backend API with token...\n';
+                const apiResponse = await fetch('/api/v1/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${tokenData.id_token}`,
+                    },
+                });
+
+                if (!apiResponse.ok) {
+                    throw new Error(`API request failed: ${apiResponse.status}`);
+                }
+
+                const userData = await apiResponse.json();
+                output.textContent += `✅ API call successful!\n`;
+                output.textContent += `User data: ${JSON.stringify(userData, null, 2)}\n`;
+
+                // Step 3: Test notebooks endpoint
+                output.textContent += '\n3. Testing notebooks endpoint...\n';
+                const notebooksResponse = await fetch('/api/v1/notebooks', {
+                    headers: {
+                        'Authorization': `Bearer ${tokenData.id_token}`,
+                    },
+                });
+
+                if (!notebooksResponse.ok) {
+                    throw new Error(`Notebooks request failed: ${notebooksResponse.status}`);
+                }
+
+                const notebooksData = await notebooksResponse.json();
+                output.textContent += `✅ Notebooks call successful!\n`;
+                output.textContent += `Notebooks data: ${JSON.stringify(notebooksData, null, 2)}\n`;
+
+                output.textContent += '\n🎉 All tests passed! Authentication is working correctly.\n';
+
+            } catch (error) {
+                output.textContent += `\n❌ Error: ${error.message}\n`;
+                console.error('Test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

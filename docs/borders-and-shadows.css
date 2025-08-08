@@ -1,0 +1,19 @@
+/* Borders */
+.border
+.border-2
+.border-gray-100, .border-gray-200, .border-gray-300
+.border-blue-200, .border-blue-500
+.border-green-200
+.border-yellow-200
+.border-red-200
+.border-b, .border-l, .border-r
+
+/* Border radius */
+.rounded
+.rounded-lg
+.rounded-xl
+.rounded-full
+
+/* Shadows */
+.shadow-sm
+.shadow-lg

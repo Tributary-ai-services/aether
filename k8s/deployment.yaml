@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aether-frontend
+  labels:
+    app: aether-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aether-frontend
+  template:
+    metadata:
+      labels:
+        app: aether-frontend
+    spec:
+      containers:
+      - name: aether-frontend
+        image: aether-frontend:latest
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: PORT
+          value: "80"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: aether-config
+              key: node-env
+        - name: REACT_APP_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: aether-config
+              key: api-url
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
