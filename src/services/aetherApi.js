@@ -360,6 +360,20 @@ class AetherApiService {
     delete: (id) => this.request(`/notebooks/${id}`, {
       method: 'DELETE',
     }),
+    
+    // Team sharing operations
+    shareWithTeam: (notebookId, data) => this.request(`/notebooks/${notebookId}/teams`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    unshareFromTeam: (notebookId, teamId) => this.request(`/notebooks/${notebookId}/teams/${teamId}`, {
+      method: 'DELETE',
+    }),
+    getTeams: (notebookId) => this.request(`/notebooks/${notebookId}/teams`),
+    updateTeamPermission: (notebookId, teamId, data) => this.request(`/notebooks/${notebookId}/teams/${teamId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   };
 
   // Users API
@@ -383,6 +397,100 @@ class AetherApiService {
       headers: {}, // Let browser set content-type for FormData
     }),
     getByNotebook: (notebookId) => this.request(`/notebooks/${notebookId}/documents`),
+  };
+
+  // Teams API
+  teams = {
+    getAll: () => this.request('/teams'),
+    get: (id) => this.request(`/teams/${id}`),
+    create: (data) => this.request('/teams', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => this.request(`/teams/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => this.request(`/teams/${id}`, {
+      method: 'DELETE',
+    }),
+    
+    // Team member operations
+    getMembers: (teamId) => this.request(`/teams/${teamId}/members`),
+    inviteMember: (teamId, data) => this.request(`/teams/${teamId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateMemberRole: (teamId, userId, data) => this.request(`/teams/${teamId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    removeMember: (teamId, userId) => this.request(`/teams/${teamId}/members/${userId}`, {
+      method: 'DELETE',
+    }),
+    
+    // Team invitations
+    getInvitations: (teamId) => this.request(`/teams/${teamId}/invitations`),
+    acceptInvitation: (invitationId) => this.request(`/invitations/${invitationId}/accept`, {
+      method: 'POST',
+    }),
+    declineInvitation: (invitationId) => this.request(`/invitations/${invitationId}/decline`, {
+      method: 'POST',
+    }),
+  };
+
+  // Organizations API
+  organizations = {
+    getAll: () => this.request('/organizations'),
+    get: (id) => this.request(`/organizations/${id}`),
+    create: (data) => this.request('/organizations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => this.request(`/organizations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => this.request(`/organizations/${id}`, {
+      method: 'DELETE',
+    }),
+    
+    // Organization member operations
+    getMembers: (orgId) => this.request(`/organizations/${orgId}/members`),
+    inviteMember: (orgId, data) => this.request(`/organizations/${orgId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateMemberRole: (orgId, userId, data) => this.request(`/organizations/${orgId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    removeMember: (orgId, userId) => this.request(`/organizations/${orgId}/members/${userId}`, {
+      method: 'DELETE',
+    }),
+    
+    // Organization settings
+    getSettings: (orgId) => this.request(`/organizations/${orgId}/settings`),
+    updateSettings: (orgId, data) => this.request(`/organizations/${orgId}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    
+    // Organization billing
+    getBilling: (orgId) => this.request(`/organizations/${orgId}/billing`),
+    updateBilling: (orgId, data) => this.request(`/organizations/${orgId}/billing`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    
+    // Organization invitations
+    getInvitations: (orgId) => this.request(`/organizations/${orgId}/invitations`),
+    acceptInvitation: (invitationId) => this.request(`/organization-invitations/${invitationId}/accept`, {
+      method: 'POST',
+    }),
+    declineInvitation: (invitationId) => this.request(`/organization-invitations/${invitationId}/decline`, {
+      method: 'POST',
+    }),
   };
 }
 

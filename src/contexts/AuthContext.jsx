@@ -83,8 +83,64 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Login with email and password
+  const login = async (email, password, rememberMe = false) => {
+    try {
+      setIsLoading(true);
+      setAuthError(null);
+      
+      // TODO: Implement Keycloak authentication
+      // For now, simulate authentication
+      console.log('Attempting login with:', { email, rememberMe });
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Simulate authentication success/failure
+      if (email === 'admin@example.com' && password === 'password') {
+        // Mock successful authentication
+        const mockTokens = {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+          expiresIn: 3600,
+          refreshExpiresIn: 86400
+        };
+        
+        aetherApi.setTokens(
+          mockTokens.accessToken, 
+          mockTokens.refreshToken, 
+          mockTokens.expiresIn, 
+          mockTokens.refreshExpiresIn
+        );
+        
+        // Mock user data
+        const mockUser = {
+          id: '1',
+          email: email,
+          name: 'Admin User',
+          roles: ['admin']
+        };
+        
+        setUser(mockUser);
+        setIsAuthenticated(true);
+        
+        return { success: true };
+      } else {
+        throw new Error('Invalid email or password');
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      setAuthError(error.message);
+      setIsAuthenticated(false);
+      setUser(null);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Login with tokens (after successful Keycloak authentication)
-  const login = async (accessToken, refreshToken, expiresIn, refreshExpiresIn) => {
+  const loginWithTokens = async (accessToken, refreshToken, expiresIn, refreshExpiresIn) => {
     try {
       setIsLoading(true);
       
@@ -98,7 +154,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Token login failed:', error);
       aetherApi.clearTokens();
       setIsAuthenticated(false);
       setUser(null);
@@ -162,6 +218,116 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
   };
 
+  // Sign up new user
+  const signup = async (userData) => {
+    try {
+      setIsLoading(true);
+      setAuthError(null);
+      
+      // TODO: Implement Keycloak user registration
+      console.log('Attempting signup with:', userData);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate registration success
+      const mockUser = {
+        id: Date.now().toString(),
+        email: userData.email,
+        name: `${userData.firstName} ${userData.lastName}`,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        roles: ['user']
+      };
+      
+      // Auto-login after successful registration
+      const mockTokens = {
+        accessToken: 'mock-access-token-new-user',
+        refreshToken: 'mock-refresh-token-new-user',
+        expiresIn: 3600,
+        refreshExpiresIn: 86400
+      };
+      
+      aetherApi.setTokens(
+        mockTokens.accessToken,
+        mockTokens.refreshToken,
+        mockTokens.expiresIn,
+        mockTokens.refreshExpiresIn
+      );
+      
+      setUser(mockUser);
+      setIsAuthenticated(true);
+      
+      return { success: true, user: mockUser };
+    } catch (error) {
+      console.error('Signup failed:', error);
+      setAuthError(error.message);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Login with social provider
+  const loginWithProvider = async (provider) => {
+    try {
+      setIsLoading(true);
+      setAuthError(null);
+      
+      // TODO: Implement Keycloak social authentication
+      console.log('Attempting social login with:', provider);
+      
+      // For now, redirect to Keycloak social login URL
+      // In production, this would redirect to Keycloak
+      const keycloakUrl = process.env.REACT_APP_KEYCLOAK_URL || 'http://localhost:8080';
+      const realm = process.env.REACT_APP_KEYCLOAK_REALM || 'aether';
+      const clientId = process.env.REACT_APP_KEYCLOAK_CLIENT_ID || 'aether-frontend';
+      
+      const socialLoginUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(window.location.origin)}/auth/callback&` +
+        `response_type=code&` +
+        `scope=openid%20profile%20email&` +
+        `kc_idp_hint=${provider}`;
+      
+      // For demo purposes, simulate success
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser = {
+        id: Date.now().toString(),
+        email: `user@${provider}.com`,
+        name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
+        provider: provider,
+        roles: ['user']
+      };
+      
+      const mockTokens = {
+        accessToken: `mock-${provider}-access-token`,
+        refreshToken: `mock-${provider}-refresh-token`,
+        expiresIn: 3600,
+        refreshExpiresIn: 86400
+      };
+      
+      aetherApi.setTokens(
+        mockTokens.accessToken,
+        mockTokens.refreshToken,
+        mockTokens.expiresIn,
+        mockTokens.refreshExpiresIn
+      );
+      
+      setUser(mockUser);
+      setIsAuthenticated(true);
+      
+      return { success: true, user: mockUser };
+    } catch (error) {
+      console.error(`${provider} login failed:`, error);
+      setAuthError(`${provider} authentication failed`);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Manual token refresh (for testing/debugging)
   const manualRefresh = async () => {
     try {
@@ -188,6 +354,9 @@ export const AuthProvider = ({ children }) => {
     
     // Actions
     login,
+    loginWithTokens,
+    signup,
+    loginWithProvider,
     logout,
     refreshUser,
     checkAuthStatus,

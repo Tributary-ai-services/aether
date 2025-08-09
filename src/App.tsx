@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { FilterProvider } from './context/FilterContext.jsx';
 import { useTheme } from './context/ThemeContext.jsx';
 import { useNavigation } from './context/NavigationContext.jsx';
+import { useAuth } from './contexts/AuthContext.jsx';
 import TabButton from './components/ui/TabButton.jsx';
 import Logo from './components/ui/Logo.jsx';
 import ThemeCustomizer from './components/ui/ThemeCustomizer.jsx';
@@ -17,6 +18,11 @@ import WorkflowsPage from './pages/WorkflowsPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import CommunityPage from './pages/CommunityPage.jsx';
 import StreamingPage from './pages/StreamingPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import SignupPage from './pages/SignupPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import TeamsPage from './pages/TeamsPage.jsx';
+import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import { 
   BookOpen, 
   Users, 
@@ -47,11 +53,25 @@ const App = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { visibleTabs } = useNavigation();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const [selectedNotebook, setSelectedNotebook] = useState(null);
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(true);
   const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowUserMenu(false);
+    };
+    
+    if (showUserMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showUserMenu]);
 
   // Get current tab from URL
   const getCurrentTab = () => {
@@ -112,6 +132,37 @@ const App = () => {
       window.dispatchEvent(new CustomEvent('resetToListView'));
     }
   };
+  
+  const handleLogout = async () => {
+    await logout();
+    setShowUserMenu(false);
+    navigate('/login');
+  };
+  
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Logo size="large" />
+          <div className="mt-4 text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show login/signup pages if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </div>
+    );
+  }
 
   return (
     <FilterProvider>
@@ -152,16 +203,48 @@ const App = () => {
               <SettingsIcon size={20} />
             </button>
             
-            {/* Profile/Login */}
-            <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <User size={16} className="text-white" />
+            {/* Profile/Logout */}
+            <div className="relative">
+              <div 
+                className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+                <div className="hidden md:block">
+                  <div className="text-sm font-medium text-gray-900">{user?.name || user?.email || 'User'}</div>
+                  <div className="text-xs text-gray-500">{user?.roles?.[0] || 'User'}</div>
+                </div>
+                <ChevronDown size={16} className="text-gray-400 hidden md:block" />
               </div>
-              <div className="hidden md:block">
-                <div className="text-sm font-medium text-gray-900">John Doe</div>
-                <div className="text-xs text-gray-500">Admin</div>
-              </div>
-              <ChevronDown size={16} className="text-gray-400 hidden md:block" />
+              
+              {/* User Menu Dropdown */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="py-1">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <div className="text-sm font-medium text-gray-900">{user?.name || user?.email}</div>
+                      <div className="text-xs text-gray-500">{user?.email}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setSettingsOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -237,6 +320,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<NotebooksPage />} />
             <Route path="/notebooks" element={<NotebooksPage />} />
+            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/organizations" element={<OrganizationsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />

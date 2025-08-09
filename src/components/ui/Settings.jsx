@@ -13,13 +13,18 @@ import {
   Shield,
   Globe,
   User,
+  Users,
   Database,
   Download,
   HelpCircle,
-  Layout
+  Layout,
+  UserCircle,
+  Building
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
+  const navigate = useNavigate();
   const { theme, updateBranding, setThemeMode } = useTheme();
   const { visibleTabs, setTabVisibility, resetToDefaults } = useNavigation();
   const { notificationsPaused, togglePauseNotifications } = useNotifications();
@@ -47,6 +52,9 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
 
   const settingsTabs = [
     { id: 'general', label: 'General', icon: SettingsIcon },
+    { id: 'profile', label: 'User Profile', icon: UserCircle },
+    { id: 'teams', label: 'Teams', icon: Users },
+    { id: 'organizations', label: 'Organizations', icon: Building },
     { id: 'navigation', label: 'Navigation', icon: Layout },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -96,6 +104,173 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
 
           {/* Main content */}
           <div className="flex-1 p-6 overflow-y-auto">
+            {activeTab === 'profile' && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">User Profile</h3>
+                <div className="space-y-6">
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <User size={24} className="text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">John Doe</h4>
+                        <p className="text-gray-600">john.doe@example.com</p>
+                        <p className="text-sm text-gray-500">Administrator</p>
+                      </div>
+                    </div>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      Edit Profile
+                    </button>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Team Memberships</h4>
+                    <div className="space-y-2">
+                      <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <Users size={16} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">Engineering Team</div>
+                            <div className="text-sm text-gray-500">Admin</div>
+                          </div>
+                        </div>
+                        <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <Users size={16} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">Data Science</div>
+                            <div className="text-sm text-gray-500">Member</div>
+                          </div>
+                        </div>
+                        <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Organization</h4>
+                    <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                          <Globe size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">Acme Corporation</div>
+                          <div className="text-sm text-gray-500">Member since Jan 2024</div>
+                        </div>
+                      </div>
+                      <button className="text-blue-600 hover:text-blue-700 text-sm">Manage</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'teams' && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Team Management</h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-gray-600">Manage your teams, create new ones, and handle member invitations.</p>
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate('/teams');
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Go to Teams
+                    </button>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="text-blue-600" size={20} />
+                      <h4 className="font-medium text-blue-900">Quick Team Actions</h4>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Access your teams, create new ones, manage members, and configure team settings.
+                    </p>
+                    <div className="flex gap-3">
+                      <button className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                        Create Team
+                      </button>
+                      <button className="px-3 py-2 border border-blue-300 text-blue-700 text-sm rounded hover:bg-blue-100">
+                        View All Teams
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'organizations' && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Organization Management</h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-gray-600">Manage your organizations, create new ones, and handle enterprise settings.</p>
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate('/organizations');
+                      }}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      Go to Organizations
+                    </button>
+                  </div>
+                  
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building className="text-purple-600" size={20} />
+                      <h4 className="font-medium text-purple-900">Quick Organization Actions</h4>
+                    </div>
+                    <p className="text-sm text-purple-700 mb-3">
+                      Access your organizations, create new ones, manage members, billing, and enterprise features.
+                    </p>
+                    <div className="flex gap-3">
+                      <button className="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                        Create Organization
+                      </button>
+                      <button className="px-3 py-2 border border-purple-300 text-purple-700 text-sm rounded hover:bg-purple-100">
+                        View All Organizations
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Organization Features</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Team management across organization</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Centralized billing and subscriptions</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Organization-wide policies</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Advanced security controls</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'general' && (
               <div>
                 <h3 className="text-lg font-semibold mb-4">General Settings</h3>
@@ -441,6 +616,20 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       defaultValue="john.doe@example.com"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-6">
+                    <h4 className="font-medium text-gray-900 mb-3">Account Management</h4>
+                    <div className="space-y-3">
+                      <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div className="font-medium text-gray-900">Download Account Data</div>
+                        <div className="text-sm text-gray-500">Export all your account information</div>
+                      </button>
+                      <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div className="font-medium text-gray-900">Account Preferences</div>
+                        <div className="text-sm text-gray-500">Manage privacy and communication settings</div>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

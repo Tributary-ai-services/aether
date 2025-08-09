@@ -40,16 +40,17 @@ const Modal = ({
   if (!isOpen) return null;
 
   const sizeClasses = {
-    small: 'max-w-md',
-    default: 'max-w-2xl',
-    large: 'max-w-4xl',
-    xlarge: 'max-w-6xl'
+    small: 'max-w-md w-full',
+    default: 'max-w-2xl w-full',
+    md: 'max-w-lg w-full',
+    large: 'max-w-4xl w-full',
+    xlarge: 'max-w-6xl w-full'
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div 
-        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden`}
+        className={`bg-white rounded-xl shadow-2xl ${sizeClasses[size] || sizeClasses.default} max-h-[90vh] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -70,7 +71,7 @@ const Modal = ({
         )}
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
           {children}
         </div>
       </div>

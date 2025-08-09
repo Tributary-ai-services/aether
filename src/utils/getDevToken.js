@@ -1,7 +1,7 @@
 // Helper to get a real development token from Keycloak
 export async function getDevToken() {
-  // Use relative URL to work with nginx proxy in production
-  const KEYCLOAK_URL = window.location.origin;
+  // Use the actual Keycloak URL
+  const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
   const REALM = 'aether';
   const CLIENT_ID = 'admin-cli';  // Changed to admin-cli to match backend
   // admin-cli doesn't need a client secret

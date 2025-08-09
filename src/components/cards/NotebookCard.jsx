@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Heart, Share2, Shield, Globe, Lock, Users, Tag, Calendar, FileText, Upload, Eye, AlertTriangle, Settings, ShieldCheck, UserCheck, CreditCard, CheckCircle, Database, Trash2 } from 'lucide-react';
-import ShareDialog from '../collaboration/ShareDialog.jsx';
+import ShareNotebookModal from '../notebooks/ShareNotebookModal.jsx';
 
 const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSettings, onDelete }) => {
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [dragOverDocuments, setDragOverDocuments] = useState(false);
   
@@ -133,7 +133,7 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
           className="text-gray-400 cursor-pointer hover:text-blue-600" 
           onClick={(e) => {
             e.stopPropagation();
-            setShareDialogOpen(true);
+            setShareModalOpen(true);
           }}
           title="Share notebook"
         />
@@ -315,12 +315,10 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
       </div>
     </div>
 
-    <ShareDialog
-      isOpen={shareDialogOpen}
-      onClose={() => setShareDialogOpen(false)}
-      resourceId={notebook.id || '1'}
-      resourceType="notebook"
-      resourceName={notebook.name}
+    <ShareNotebookModal
+      isOpen={shareModalOpen}
+      onClose={() => setShareModalOpen(false)}
+      notebook={notebook}
     />
   </div>
   );

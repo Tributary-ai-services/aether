@@ -24,6 +24,7 @@ import DocumentUploadModal from '../components/notebooks/DocumentUploadModal.jsx
 import NotebookSettingsModal from '../components/notebooks/NotebookSettingsModal.jsx';
 import NotebookManager from '../components/notebooks/NotebookManager.jsx';
 import ShareDialog from '../components/collaboration/ShareDialog.jsx';
+import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
 import { LoadingWrapper, NotebookCardSkeleton } from '../components/skeletons/index.js';
 import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText } from 'lucide-react';
 
@@ -54,6 +55,8 @@ const NotebooksPage = () => {
   const [exportNotebook, setExportNotebook] = useState(null);
   const [contentsNotebook, setContentsNotebook] = useState(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareNotebookModalOpen, setShareNotebookModalOpen] = useState(false);
+  const [shareNotebook, setShareNotebook] = useState(null);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(320);
@@ -194,7 +197,8 @@ const NotebooksPage = () => {
   };
 
   const handleShare = (notebook) => {
-    setShareDialogOpen(true);
+    setShareNotebook(notebook);
+    setShareNotebookModalOpen(true);
   };
 
 
@@ -732,6 +736,15 @@ const NotebooksPage = () => {
         resourceId={selectedNotebook?.id}
         resourceType="notebook"
         resourceName={selectedNotebook?.name}
+      />
+      
+      <ShareNotebookModal
+        isOpen={shareNotebookModalOpen}
+        onClose={() => {
+          setShareNotebookModalOpen(false);
+          setShareNotebook(null);
+        }}
+        notebook={shareNotebook}
       />
     </div>
   );

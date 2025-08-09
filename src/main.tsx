@@ -8,6 +8,7 @@ import { NotificationProvider } from './context/NotificationContext.jsx'
 import { AuditProvider } from './context/AuditContext.jsx'
 import { CollaborationProvider } from './context/CollaborationContext.jsx'
 import { NavigationProvider } from './context/NavigationContext.jsx'
+import { AuthProvider } from './contexts/AuthContext.jsx'
 import App from './App.tsx'
 import './index.css'
 
@@ -32,17 +33,19 @@ if (!root) {
       <React.StrictMode>
         <Provider store={store}>
           <BrowserRouter>
-            <ThemeProvider>
-              <NavigationProvider>
-                <NotificationProvider>
-                  <AuditProvider>
-                    <CollaborationProvider>
-                      <App />
-                    </CollaborationProvider>
-                  </AuditProvider>
-                </NotificationProvider>
-              </NavigationProvider>
-            </ThemeProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <NavigationProvider>
+                  <NotificationProvider>
+                    <AuditProvider>
+                      <CollaborationProvider>
+                        <App />
+                      </CollaborationProvider>
+                    </AuditProvider>
+                  </NotificationProvider>
+                </NavigationProvider>
+              </ThemeProvider>
+            </AuthProvider>
           </BrowserRouter>
         </Provider>
       </React.StrictMode>,
