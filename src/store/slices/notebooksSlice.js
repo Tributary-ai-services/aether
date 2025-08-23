@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { aetherApi } from '../../services/aetherApi.js';
 import { PERMISSIONS } from '../../utils/permissions.js';
 
@@ -511,7 +511,13 @@ export const selectNotebookTree = (state) => state.notebooks.tree;
 export const selectSelectedNotebook = (state) => state.notebooks.selectedNotebook;
 export const selectNotebooksLoading = (state) => state.notebooks.loading;
 export const selectNotebooksError = (state) => state.notebooks.error;
-export const selectNotebookTeams = (notebookId) => (state) => state.notebooks.notebookTeams[notebookId] || [];
+export const selectNotebookTeams = createSelector(
+  [
+    (state) => state.notebooks.notebookTeams,
+    (state, notebookId) => notebookId
+  ],
+  (notebookTeams, notebookId) => notebookTeams[notebookId] || []
+);
 export const selectSharingLoading = (state) => state.notebooks.sharingLoading;
 export const selectSharingError = (state) => state.notebooks.sharingError;
 export default notebooksSlice.reducer;

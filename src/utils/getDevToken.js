@@ -2,8 +2,8 @@
 export async function getDevToken() {
   // Use the actual Keycloak URL
   const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
-  const REALM = 'aether';
-  const CLIENT_ID = 'admin-cli';  // Changed to admin-cli to match backend
+  const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+  const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
   // admin-cli doesn't need a client secret
   
   // admin-cli client doesn't support client credentials, skip directly to password grant
@@ -20,8 +20,8 @@ export async function getDevToken() {
         grant_type: 'password',
         client_id: CLIENT_ID,
         // No client_secret needed for admin-cli
-        username: 'test',
-        password: 'test',
+        username: 'john@scharber.com',
+        password: 'test123',
         scope: 'openid profile email', // Request ID token with proper scopes
       }),
     });
@@ -59,8 +59,26 @@ export async function getDevToken() {
   return null;
 }
 
+// Logout helper function
+export function devLogout() {
+  // Clear all stored tokens
+  sessionStorage.removeItem('aether_access_token');
+  sessionStorage.removeItem('aether_refresh_token');
+  sessionStorage.removeItem('aether_token_type');
+  sessionStorage.removeItem('aether_token_expiry');
+  sessionStorage.removeItem('aether_refresh_expiry');
+  localStorage.clear();
+  
+  console.log('🚪 Logged out - all tokens cleared');
+  
+  // Reload page to reset authentication state
+  window.location.reload();
+}
+
 // Make it available globally in dev mode
 if (import.meta.env.VITE_DEV_MODE === 'true' && typeof window !== 'undefined') {
   window.getDevToken = getDevToken;
+  window.devLogout = devLogout;
   console.log('🔑 Dev token helper available. Run window.getDevToken() to get a fresh token.');
+  console.log('🚪 Dev logout helper available. Run window.devLogout() to clear all tokens.');
 }

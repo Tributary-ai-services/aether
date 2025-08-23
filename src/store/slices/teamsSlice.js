@@ -2,15 +2,15 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { aetherApi } from '../../services/aetherApi.js';
 import { PERMISSIONS } from '../../utils/permissions.js';
 
-// Mock data for development with proper relationships
+// Mock data for development with proper relationships - matches Neo4j data
 const mockTeams = [
   {
     id: '1',
     name: 'Engineering Team',
     description: 'Core engineering and development team',
-    organizationId: '1', // Added organization reference
+    organizationId: '1',
     visibility: 'private',
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER, // Standardized role
+    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
     memberCount: 5,
     notebookCount: 12,
     icon: null,
@@ -21,15 +21,15 @@ const mockTeams = [
     },
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-08-08T15:30:00Z',
-    createdBy: '1' // Added creator reference
+    createdBy: '1'
   },
   {
     id: '2',
     name: 'Data Science',
     description: 'ML and data analysis team',
-    organizationId: '1', // Added organization reference
+    organizationId: '1',
     visibility: 'organization',
-    userRole: PERMISSIONS.ENTITY_ROLES.ADMIN, // Standardized role
+    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
     memberCount: 8,
     notebookCount: 24,
     icon: null,
@@ -40,15 +40,15 @@ const mockTeams = [
     },
     createdAt: '2024-02-20T14:00:00Z',
     updatedAt: '2024-08-07T09:15:00Z',
-    createdBy: '1' // Added creator reference
+    createdBy: '1'
   },
   {
     id: '3',
     name: 'Research Team',
     description: 'Research and development initiatives',
-    organizationId: '1', // Added organization reference
+    organizationId: '1',
     visibility: 'private',
-    userRole: PERMISSIONS.ENTITY_ROLES.MEMBER, // Standardized role
+    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
     memberCount: 3,
     notebookCount: 7,
     icon: null,
@@ -59,7 +59,26 @@ const mockTeams = [
     },
     createdAt: '2024-03-10T11:30:00Z',
     updatedAt: '2024-08-06T16:45:00Z',
-    createdBy: '2' // Added creator reference
+    createdBy: '1'
+  },
+  {
+    id: '4',
+    name: 'ML Research',
+    description: 'Machine learning research and experiments',
+    organizationId: '1',
+    visibility: 'private',
+    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
+    memberCount: 4,
+    notebookCount: 15,
+    icon: null,
+    settings: {
+      allowExternalSharing: false,
+      requireApprovalForJoining: true,
+      defaultNotebookVisibility: 'team'
+    },
+    createdAt: '2024-03-05T14:00:00Z',
+    updatedAt: '2024-08-05T12:00:00Z',
+    createdBy: '1'
   }
 ];
 
@@ -78,9 +97,15 @@ const mockMembers = {
     { userId: '6', name: 'David Lee', email: 'david@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-01T10:00:00Z', invitedBy: '2' }
   ],
   '3': [
-    { userId: '2', name: 'Jane Smith', email: 'jane@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-03-10T11:30:00Z', invitedBy: null },
-    { userId: '3', name: 'Bob Wilson', email: 'bob@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-15T09:00:00Z', invitedBy: '2' },
-    { userId: '7', name: 'Sarah Johnson', email: 'sarah@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-04-01T14:00:00Z', invitedBy: '2' }
+    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-03-10T11:30:00Z', invitedBy: null },
+    { userId: '3', name: 'Bob Wilson', email: 'bob@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-15T09:00:00Z', invitedBy: '1' },
+    { userId: '7', name: 'Sarah Johnson', email: 'sarah@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-04-01T14:00:00Z', invitedBy: '1' }
+  ],
+  '4': [
+    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-03-05T14:00:00Z', invitedBy: null },
+    { userId: '2', name: 'Jane Smith', email: 'jane@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-06T10:00:00Z', invitedBy: '1' },
+    { userId: '8', name: 'Alex Chen', email: 'alex@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-10T15:00:00Z', invitedBy: '1' },
+    { userId: '9', name: 'Maria Rodriguez', email: 'maria@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-03-20T11:00:00Z', invitedBy: '2' }
   ]
 };
 
@@ -89,15 +114,10 @@ export const fetchTeams = createAsyncThunk(
   'teams/fetchTeams',
   async (_, { rejectWithValue }) => {
     try {
-      // Use mock data if API fails
-      const response = await aetherApi.teams.getAll().catch(() => {
-        console.log('Using mock teams data');
-        return { data: mockTeams };
-      });
+      const response = await aetherApi.teams.getAll();
       return response.data;
     } catch (error) {
-      console.log('Using mock teams data due to error');
-      return mockTeams;
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -180,14 +200,24 @@ export const fetchTeamMembers = createAsyncThunk(
   'teams/fetchTeamMembers',
   async (teamId, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.teams.getMembers(teamId).catch(() => {
-        console.log('Using mock team members data');
-        return { data: mockMembers[teamId] || [] };
-      });
+      const response = await aetherApi.teams.getMembers(teamId);
       return { teamId, members: response.data };
     } catch (error) {
-      console.log('Using mock team members data due to error');
-      return { teamId, members: mockMembers[teamId] || [] };
+      const errorData = error.response?.data || error.message;
+      const status = error.response?.status;
+      
+      // For development/testing, fall back to mock data for certain errors
+      if (status === 404 || status === 500) {
+        console.log(`API error ${status}, using mock team members data`);
+        return { teamId, members: mockMembers[teamId] || [] };
+      }
+      
+      // For permission errors (403) and other critical errors, propagate them
+      return rejectWithValue({
+        message: errorData,
+        status: status,
+        teamId: teamId
+      });
     }
   }
 );
@@ -365,7 +395,12 @@ const teamsSlice = createSlice({
       })
       .addCase(fetchTeamMembers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        // Ensure error is serializable
+        state.error = action.payload ? {
+          message: action.payload.message || 'Unknown error',
+          status: action.payload.status || null,
+          teamId: action.payload.teamId || null
+        } : 'Failed to fetch team members';
       })
       
       // Invite team member

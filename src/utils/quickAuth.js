@@ -3,16 +3,18 @@ export async function quickAuth() {
   console.log('🔐 Attempting to authenticate with Keycloak...');
   
   try {
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    
     // Try with the test user from the backend logs - using relative URL to go through Vite proxy
-    const response = await fetch('/realms/aether/protocol/openid-connect/token', {
+    const response = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         grant_type: 'password',
-        client_id: 'aether-backend',
-        client_secret: 'e78dEfml7xy6YKyHyiQWMMmw7fDs6Kz8',
+        client_id: 'admin-cli',
+        // client_secret: 'not needed for admin-cli',
         username: 'test',
         password: 'test',
       }),
@@ -24,15 +26,15 @@ export async function quickAuth() {
       
       // Try client credentials as fallback
       console.log('🔄 Trying client credentials grant...');
-      const clientResponse = await fetch('/realms/aether/protocol/openid-connect/token', {
+      const clientResponse = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
           grant_type: 'client_credentials',
-          client_id: 'aether-backend',
-          client_secret: 'e78dEfml7xy6YKyHyiQWMMmw7fDs6Kz8',
+          client_id: 'admin-cli',
+          // client_secret: 'not needed for admin-cli',
         }),
       });
       
@@ -47,7 +49,7 @@ export async function quickAuth() {
         console.log('💡 You may need to create a user in Keycloak:');
         console.log('   1. Go to http://localhost:8081/admin');
         console.log('   2. Login with admin/admin');
-        console.log('   3. Select "aether" realm');
+        console.log('   3. Select "master" realm');
         console.log('   4. Create a user with username "test" and password "test"');
         return null;
       }

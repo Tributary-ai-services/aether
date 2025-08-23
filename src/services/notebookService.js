@@ -434,11 +434,9 @@ class NotebookService {
         // Build tree structure from flat list
         const buildTree = (parentId = null) => {
           return notebooks
-            .filter(nb => (nb.parent_id || nb.parentId) === parentId)
+            .filter(nb => nb.parentId === parentId)
             .map(notebook => ({
               ...notebook,
-              // Normalize parent_id field (backend uses parent_id, frontend expects parentId)
-              parentId: notebook.parent_id || notebook.parentId,
               children: buildTree(notebook.id)
             }));
         };

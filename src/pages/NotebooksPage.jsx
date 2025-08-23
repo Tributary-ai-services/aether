@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
+import audiModalService from '../services/audiModalService.js';
 import { 
   useAppDispatch, 
   useAppSelector,
@@ -25,8 +26,10 @@ import NotebookSettingsModal from '../components/notebooks/NotebookSettingsModal
 import NotebookManager from '../components/notebooks/NotebookManager.jsx';
 import ShareDialog from '../components/collaboration/ShareDialog.jsx';
 import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
+import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
+import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
 import { LoadingWrapper, NotebookCardSkeleton } from '../components/skeletons/index.js';
-import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText } from 'lucide-react';
+import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder } from 'lucide-react';
 
 const NotebooksPage = () => {
   // Redux selectors
@@ -62,10 +65,113 @@ const NotebooksPage = () => {
   const [leftPanelWidth, setLeftPanelWidth] = useState(320);
   const [rightPanelWidth, setRightPanelWidth] = useState(320);
   
+  // Document-related state
+  const [notebookDocumentCounts, setNotebookDocumentCounts] = useState({});
+  const [notebookDocuments, setNotebookDocuments] = useState({});
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  
+  // Analysis modal state
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [analysisDocument, setAnalysisDocument] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
+  
+  // Data source modal state
+  const [dataSourceModalOpen, setDataSourceModalOpen] = useState(false);
+  const [dataSourceNotebook, setDataSourceNotebook] = useState(null);
+  const [pendingRefreshAfterUpload, setPendingRefreshAfterUpload] = useState(false);
+  
   // Initialize data on component mount
   useEffect(() => {
     dispatch(fetchNotebooks());
   }, [dispatch]);
+  
+  // Fetch document counts for notebooks after notebooks are loaded
+  useEffect(() => {
+    if (notebooks.length > 0) {
+      fetchNotebookDocumentCounts();
+    }
+  }, [notebooks]);
+  
+  // Fetch document counts from audimodal service
+  const fetchNotebookDocumentCounts = async () => {
+    const counts = {};
+    
+    try {
+      // Get all data sources to map notebook names to data source IDs
+      const dataSources = await audiModalService.getDataSources();
+      
+      for (const notebook of notebooks) {
+        try {
+          // Find data source for this notebook
+          const dataSourceName = `Notebook: ${notebook.name}`;
+          const dataSource = dataSources.find(ds => ds.name === dataSourceName);
+          
+          if (dataSource) {
+            // Get files for this data source
+            const filesResponse = await audiModalService.getNotebookFiles(dataSource.id, { limit: 1000 });
+            const files = filesResponse.data?.files || filesResponse.files || [];
+            counts[notebook.id] = files.length;
+            console.log(`Document count for ${notebook.name}: ${files.length} files`);
+          } else {
+            counts[notebook.id] = 0;
+            console.log(`No data source found for ${notebook.name}, count = 0`);
+          }
+        } catch (error) {
+          console.warn(`Failed to get document count for notebook ${notebook.name}:`, error);
+          counts[notebook.id] = 0;
+        }
+      }
+      
+      setNotebookDocumentCounts(counts);
+    } catch (error) {
+      console.error('Failed to fetch document counts:', error);
+    }
+  };
+  
+  // Fetch documents for a specific notebook
+  const fetchNotebookDocuments = async (notebook, forceRefresh = false) => {
+    if (!forceRefresh && notebookDocuments[notebook.id] && notebookDocuments[notebook.id].length > 0) {
+      console.log(`Documents already loaded for notebook ${notebook.name}:`, notebookDocuments[notebook.id].length);
+      return notebookDocuments[notebook.id]; // Already loaded
+    }
+    
+    console.log(`Fetching documents for notebook: ${notebook.name} (ID: ${notebook.id})`);
+    setLoadingDocuments(true);
+    try {
+      // Get all data sources to find the one for this notebook
+      const dataSources = await audiModalService.getDataSources();
+      const dataSourceName = `Notebook: ${notebook.name}`;
+      const dataSource = dataSources.find(ds => ds.name === dataSourceName);
+      
+      console.log(`Looking for data source: "${dataSourceName}"`);
+      console.log(`Available data sources:`, dataSources.map(ds => ds.name));
+      
+      if (dataSource) {
+        console.log(`Found data source:`, dataSource.id);
+        const filesResponse = await audiModalService.getNotebookFiles(dataSource.id, { limit: 1000 });
+        const files = filesResponse.data?.files || filesResponse.files || [];
+        
+        console.log(`Fetched ${files.length} files for notebook ${notebook.name}`);
+        console.log(`Sample files:`, files.slice(0, 3).map(f => ({ id: f.id, filename: f.filename, original_name: f.metadata?.original_name })));
+        
+        setNotebookDocuments(prev => ({
+          ...prev,
+          [notebook.id]: files
+        }));
+        
+        return files;
+      } else {
+        console.warn(`No data source found for notebook: ${notebook.name}`);
+        console.warn(`Available data sources:`, dataSources.map(ds => ({ id: ds.id, name: ds.name })));
+        return [];
+      }
+    } catch (error) {
+      console.error('Failed to fetch notebook documents:', error);
+      return [];
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
 
   // Listen for reset to list view event from top nav
   useEffect(() => {
@@ -78,22 +184,45 @@ const NotebooksPage = () => {
     return () => window.removeEventListener('resetToListView', handleResetToListView);
   }, [dispatch]);
 
+  // Additional refresh when upload modal closes and we had a pending refresh
+  useEffect(() => {
+    if (!modals.uploadDocument && pendingRefreshAfterUpload) {
+      console.log('Upload modal closed with pending refresh - performing additional refresh');
+      // Small delay to ensure any background processes complete
+      const timeoutId = setTimeout(() => {
+        if (notebooks.length > 0) {
+          fetchNotebookDocumentCounts();
+          if (selectedNotebook) {
+            fetchNotebookDocuments(selectedNotebook, true);
+          }
+        }
+        setPendingRefreshAfterUpload(false);
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [modals.uploadDocument, pendingRefreshAfterUpload, notebooks.length, selectedNotebook, fetchNotebookDocumentCounts, fetchNotebookDocuments]);
+
   // Apply filters to notebooks
   const allFilteredNotebooks = filterNotebooks(notebooks);
   
-  // For card view, only show root notebooks (no parent_id) but include children count
+  // For card view, only show root notebooks (no parent_id) but include children count and document count
   const filteredNotebooks = currentViewMode === 'cards' 
     ? allFilteredNotebooks.filter(notebook => {
         const parentId = notebook.parent_id || notebook.parentId;
         return !parentId || parentId === '' || parentId === null || parentId === undefined;
       }).map(rootNotebook => ({
         ...rootNotebook,
+        documentCount: notebookDocumentCounts[rootNotebook.id] || 0,
         children: allFilteredNotebooks.filter(nb => {
           const parent = nb.parent_id || nb.parentId;
           return parent === rootNotebook.id;
         })
       }))
-    : allFilteredNotebooks;
+    : allFilteredNotebooks.map(notebook => ({
+        ...notebook,
+        documentCount: notebookDocumentCounts[notebook.id] || 0
+      }));
 
   const handleCreateNotebook = async () => {
     dispatch(openModal('createNotebook'));
@@ -104,19 +233,30 @@ const NotebooksPage = () => {
     dispatch(openModal('createNotebook'));
   };
 
-  const handleSelectNotebook = (notebook) => {
-    // Ensure the selected notebook includes its children
+  const handleSelectNotebook = async (notebook) => {
+    console.log(`🔍 handleSelectNotebook called for: ${notebook.name} (ID: ${notebook.id})`);
+    
+    // Ensure the selected notebook includes its children and document count
     const notebookWithChildren = {
       ...notebook,
+      documentCount: notebookDocumentCounts[notebook.id] || 0,
       children: notebooks.filter(nb => {
         const parent = nb.parent_id || nb.parentId;
         return parent === notebook.id;
       })
     };
+    
+    console.log(`📋 Setting selected notebook with document count: ${notebookWithChildren.documentCount}`);
     dispatch(setSelectedNotebook(notebookWithChildren));
-    if (currentViewMode === 'tree') {
-      dispatch(setViewMode('detail'));
-    }
+    
+    // Always switch to detail view when selecting a notebook
+    console.log(`🔄 Switching to detail view (current mode: ${currentViewMode})`);
+    dispatch(setViewMode('detail'));
+    
+    // Fetch documents for the selected notebook (force refresh to ensure latest data)
+    console.log(`📂 About to fetch documents for: ${notebook.name}`);
+    await fetchNotebookDocuments(notebook, true);
+    console.log(`✅ Finished fetching documents for: ${notebook.name}`);
   };
 
   const handleUploadDocuments = (notebook, files = null) => {
@@ -138,6 +278,85 @@ const NotebooksPage = () => {
   const handleViewContents = (notebook) => {
     setContentsNotebook(notebook);
     dispatch(openModal('contentsView'));
+  };
+
+  const handleDeleteDocument = async (document, notebookId) => {
+    if (!confirm(`Are you sure you want to delete "${document.filename || document.metadata?.original_name || 'Unknown file'}"?`)) {
+      return;
+    }
+    
+    try {
+      // Call the audimodal API to delete the document
+      await audiModalService.deleteDocument(document.id);
+      
+      // Refresh the documents list
+      const notebook = notebooks.find(nb => nb.id === notebookId);
+      if (notebook) {
+        await fetchNotebookDocuments(notebook, true);
+        await fetchNotebookDocumentCounts();
+      }
+      
+      dispatch(addNotification({
+        type: 'success',
+        title: 'Document Deleted',
+        message: `Document has been deleted successfully.`
+      }));
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete document. Please try again.'
+      }));
+    }
+  };
+
+  const handleShowMLStats = async (document) => {
+    try {
+      setAnalysisDocument(document);
+      setAnalysisData(null);
+      setAnalysisModalOpen(true);
+      
+      // Fetch ML analysis for this specific document
+      const analysis = await audiModalService.getDocumentAnalysis(document.id);
+      setAnalysisData(analysis);
+      
+    } catch (error) {
+      console.error('Failed to fetch ML stats:', error);
+      setAnalysisModalOpen(false);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Analysis Unavailable',
+        message: 'Unable to fetch ML analysis for this document.'
+      }));
+    }
+  };
+
+  const handleCloseAnalysisModal = () => {
+    setAnalysisModalOpen(false);
+    setAnalysisDocument(null);
+    setAnalysisData(null);
+  };
+
+  const handleOpenDataSource = (notebook) => {
+    setDataSourceNotebook(notebook);
+    setDataSourceModalOpen(true);
+  };
+
+  const handleCloseDataSource = () => {
+    setDataSourceModalOpen(false);
+    setDataSourceNotebook(null);
+    // Don't refresh here - let the upload modal handle it
+  };
+
+  const handleSelectFileUpload = () => {
+    if (dataSourceNotebook) {
+      // Set flag to indicate we expect uploads
+      setPendingRefreshAfterUpload(true);
+      handleUploadDocuments(dataSourceNotebook);
+      // Close the data source modal immediately since user is proceeding to upload
+      setDataSourceModalOpen(false);
+    }
   };
 
   const handleDeleteNotebook = async (notebook) => {
@@ -319,10 +538,7 @@ const NotebooksPage = () => {
                   <NotebookCard 
                     key={notebook.id} 
                     notebook={notebook} 
-                    onOpenDetail={() => {
-                      dispatch(setSelectedNotebook(notebook));
-                      dispatch(setViewMode('detail'));
-                    }}
+                    onOpenDetail={() => handleSelectNotebook(notebook)}
                     onUploadDocuments={handleUploadDocuments}
                     onOpenSettings={handleOpenSettings}
                     onDelete={handleDeleteNotebook}
@@ -367,11 +583,20 @@ const NotebooksPage = () => {
                     <h3 className="font-medium text-gray-900">Documents</h3>
                     <div className="flex items-center gap-1">
                       <button 
-                        onClick={handleCreateNotebook}
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm"
+                        onClick={() => handleCreateSubNotebook(selectedNotebook)}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                        title="Create sub-notebook"
                       >
-                        <Plus size={14} />
-                        New
+                        <Folder size={12} />
+                        <span>Folder</span>
+                      </button>
+                      <button 
+                        onClick={() => handleOpenDataSource(selectedNotebook)}
+                        className="flex items-center gap-1 text-green-600 hover:text-green-700 text-xs px-2 py-1 rounded hover:bg-green-50 border border-green-200 hover:border-green-300"
+                        title="Add documents from various sources"
+                      >
+                        <Upload size={12} />
+                        <span>Add Data</span>
                       </button>
                       <button 
                         onClick={() => setLeftPanelCollapsed(true)}
@@ -414,17 +639,91 @@ const NotebooksPage = () => {
                       <div className={selectedNotebook.children && selectedNotebook.children.length > 0 ? 'border-t border-gray-200 pt-4' : ''}>
                         <h4 className="font-medium text-gray-900 text-sm mb-2 flex items-center gap-2">
                           <FileText size={14} />
-                          Documents (0)
+                          Documents ({selectedNotebook.documentCount || 0})
                         </h4>
-                        <div className="text-center py-4 text-gray-500">
-                          <div className="text-sm">No documents uploaded</div>
-                          <button 
-                            onClick={() => handleUploadDocuments(selectedNotebook)}
-                            className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
-                          >
-                            Upload documents
-                          </button>
-                        </div>
+                        {loadingDocuments ? (
+                          <div className="text-center py-4 text-gray-500">
+                            <div className="text-sm">Loading documents...</div>
+                          </div>
+                        ) : (notebookDocuments[selectedNotebook.id] && notebookDocuments[selectedNotebook.id].length > 0) ? (
+                          // Debug: log what we're about to display
+                          console.log(`Displaying ${notebookDocuments[selectedNotebook.id].length} documents for ${selectedNotebook.name}`, notebookDocuments[selectedNotebook.id]) || (
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {notebookDocuments[selectedNotebook.id].map(document => (
+                              <div 
+                                key={document.id} 
+                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded group"
+                                title={`${document.filename || document.metadata?.original_name || 'Unknown file'} - ${document.size ? audiModalService.formatFileSize(document.size) : 'Unknown size'}`}
+                              >
+                                <div className="w-4 h-4 bg-green-100 rounded flex items-center justify-center">
+                                  <FileText size={10} className="text-green-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-gray-700 truncate">
+                                    {document.filename || document.metadata?.original_name || 'Unknown file'}
+                                  </div>
+                                  {document.size && document.size > 0 && (
+                                    <div className="text-xs text-gray-500">
+                                      {audiModalService.formatFileSize(document.size)}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-400">
+                                    {new Date(document.created_at || document.updated_at).toLocaleString()}
+                                  </div>
+                                </div>
+                                
+                                {/* Action buttons - always visible */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleShowMLStats(document);
+                                    }}
+                                    className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
+                                    title="View ML Analysis"
+                                  >
+                                    <BarChart3 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteDocument(document, selectedNotebook.id);
+                                    }}
+                                    className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
+                                    title="Delete Document"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                                
+                                {document.status && (
+                                  <div className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                                    document.status === 'completed' || document.status === 'discovered' || document.status === 'ready'
+                                      ? 'bg-green-100 text-green-700' 
+                                      : document.status === 'processing' || document.status === 'indexing'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : document.status === 'failed' || document.status === 'error'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {document.status === 'discovered' || document.status === 'ready' ? 'completed' : document.status}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          ) // Close the console.log expression
+                        ) : (
+                          <div className="text-center py-4 text-gray-500">
+                            <div className="text-sm">No documents uploaded</div>
+                            <button 
+                              onClick={() => handleUploadDocuments(selectedNotebook)}
+                              className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
+                            >
+                              Upload documents
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -686,6 +985,18 @@ const NotebooksPage = () => {
           dispatch(closeModal('uploadDocument'));
           setUploadNotebook(null);
           setUploadFiles(null);
+          
+          // Refresh document counts when upload modal closes
+          if (notebooks.length > 0) {
+            fetchNotebookDocumentCounts();
+            // Refresh documents for selected notebook if any
+            if (selectedNotebook) {
+              fetchNotebookDocuments(selectedNotebook, true); // Force refresh
+            }
+          }
+          
+          // Clear the pending refresh flag
+          setPendingRefreshAfterUpload(false);
         }}
         notebook={uploadNotebook}
         preSelectedFiles={uploadFiles}
@@ -745,6 +1056,32 @@ const NotebooksPage = () => {
           setShareNotebook(null);
         }}
         notebook={shareNotebook}
+      />
+
+      <DocumentAnalysisModal
+        isOpen={analysisModalOpen}
+        onClose={handleCloseAnalysisModal}
+        document={analysisDocument}
+        analysis={analysisData}
+      />
+
+      <DataSourceModal
+        isOpen={dataSourceModalOpen}
+        onClose={handleCloseDataSource}
+        notebook={dataSourceNotebook}
+        onSelectFileUpload={handleSelectFileUpload}
+        onSelectGoogleDrive={() => {
+          // Future implementation for Google Drive integration
+          console.log('Google Drive integration coming soon');
+        }}
+        onSelectWebScraping={() => {
+          // Future implementation for web scraping
+          console.log('Web scraping integration coming soon');
+        }}
+        onSelectDatabase={() => {
+          // Future implementation for database integration
+          console.log('Database integration coming soon');
+        }}
       />
     </div>
   );

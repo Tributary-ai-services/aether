@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useNavigation } from '../../context/NavigationContext.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import { 
   Settings as SettingsIcon,
   X,
@@ -19,15 +21,29 @@ import {
   HelpCircle,
   Layout,
   UserCircle,
-  Building
+  Building,
+  Plus,
+  ExternalLink,
+  Crown,
+  UserCheck,
+  Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import EditProfileModal from '../modals/EditProfileModal';
+import { fetchTeams, selectAllTeams, selectTeamsLoading } from '../../store/slices/teamsSlice';
 
 const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { theme, updateBranding, setThemeMode } = useTheme();
   const { visibleTabs, setTabVisibility, resetToDefaults } = useNavigation();
   const { notificationsPaused, togglePauseNotifications } = useNotifications();
+  const { user, updateUser } = useAuth();
+  
+  // Redux state
+  const teams = useSelector(selectAllTeams);
+  const teamsLoading = useSelector(selectTeamsLoading);
+  
   const [activeTab, setActiveTab] = useState('general');
   const [currentMode, setCurrentMode] = useState(theme.mode || 'light');
   const [notifications, setNotifications] = useState({
@@ -35,6 +51,14 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
     push: false,
     desktop: true
   });
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
+  // Load teams when component mounts or when switching to teams tab
+  useEffect(() => {
+    if (isOpen && activeTab === 'teams' && teams.length === 0) {
+      dispatch(fetchTeams());
+    }
+  }, [isOpen, activeTab, dispatch, teams.length]);
 
   if (!isOpen) return null;
 
@@ -48,6 +72,17 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
       ...prev,
       [type]: !prev[type]
     }));
+  };
+
+  const handleSaveProfile = async (profileData) => {
+    try {
+      // Call API to update user profile
+      await updateUser(profileData);
+      // Show success notification
+      console.log('Profile updated successfully', profileData);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
   };
 
   const settingsTabs = [
@@ -114,12 +149,15 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                         <User size={24} className="text-white" />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900">John Doe</h4>
-                        <p className="text-gray-600">john.doe@example.com</p>
+                        <h4 className="font-semibold text-gray-900">{user?.full_name || user?.fullName || 'Unknown User'}</h4>
+                        <p className="text-gray-600">{user?.email || 'No email'}</p>
                         <p className="text-sm text-gray-500">Administrator</p>
                       </div>
                     </div>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button 
+                      onClick={() => setShowEditProfileModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
                       Edit Profile
                     </button>
                   </div>
@@ -175,36 +213,142 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
 
             {activeTab === 'teams' && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">Team Management</h3>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <p className="text-gray-600">Manage your teams, create new ones, and handle member invitations.</p>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Your Teams</h3>
+                    <p className="text-sm text-gray-600">Teams you own or are a member of</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate('/teams/create');
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Create Team
+                    </button>
                     <button 
                       onClick={() => {
                         onClose();
                         navigate('/teams');
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
                     >
-                      Go to Teams
+                      <ExternalLink size={16} />
+                      View All
                     </button>
                   </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="text-blue-600" size={20} />
-                      <h4 className="font-medium text-blue-900">Quick Team Actions</h4>
+                </div>
+
+                {teamsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : teams.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-sm font-medium text-gray-900 mb-2">No Teams Yet</h3>
+                    <p className="text-sm text-gray-500 mb-4">Create your first team to start collaborating with others.</p>
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate('/teams/create');
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
+                    >
+                      <Plus size={16} />
+                      Create Your First Team
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {teams.map((team) => (
+                      <div key={team.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                              <Users size={20} className="text-white" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-gray-900">{team.name}</h4>
+                                {team.userRole === 'owner' && (
+                                  <Crown size={14} className="text-yellow-500" title="Team Owner" />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <span>{team.memberCount} members</span>
+                                <span>{team.notebookCount || 0} notebooks</span>
+                                <span className="flex items-center gap-1">
+                                  {team.visibility === 'private' ? (
+                                    <>
+                                      <Eye size={12} />
+                                      Private
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck size={12} />
+                                      {team.visibility}
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              team.userRole === 'owner' ? 'bg-yellow-100 text-yellow-800' :
+                              team.userRole === 'admin' ? 'bg-blue-100 text-blue-800' :
+                              team.userRole === 'member' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {team.userRole || 'member'}
+                            </span>
+                            <button 
+                              onClick={() => {
+                                onClose();
+                                navigate(`/teams/${team.id}`);
+                              }}
+                              className="px-3 py-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                            >
+                              {team.userRole === 'owner' || team.userRole === 'admin' ? 'Manage' : 'View'}
+                            </button>
+                          </div>
+                        </div>
+                        {team.description && (
+                          <p className="mt-2 text-sm text-gray-600 ml-13">{team.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="text-blue-600" size={20} />
+                    <h4 className="font-medium text-blue-900">Team Management</h4>
+                  </div>
+                  <p className="text-sm text-blue-700 mb-3">
+                    Create teams to organize your work, collaborate with colleagues, and manage shared notebooks.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Shared workspace management</span>
                     </div>
-                    <p className="text-sm text-blue-700 mb-3">
-                      Access your teams, create new ones, manage members, and configure team settings.
-                    </p>
-                    <div className="flex gap-3">
-                      <button className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
-                        Create Team
-                      </button>
-                      <button className="px-3 py-2 border border-blue-300 text-blue-700 text-sm rounded hover:bg-blue-100">
-                        View All Teams
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Member role assignments</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Notebook sharing controls</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Team-specific settings</span>
                     </div>
                   </div>
                 </div>
@@ -602,7 +746,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     </label>
                     <input 
                       type="text" 
-                      defaultValue="John Doe"
+                      defaultValue={user?.full_name || user?.fullName || ''}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -613,7 +757,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     </label>
                     <input 
                       type="email" 
-                      defaultValue="john.doe@example.com"
+                      defaultValue={user?.email || ''}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -681,6 +825,13 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
           </div>
         </div>
       </div>
+      
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+        onSave={handleSaveProfile}
+      />
     </div>
   );
 };

@@ -142,4 +142,12 @@ export const {
   initializeUI
 } = uiSlice.actions;
 
+// Selectors
+export const selectModals = (state) => state.ui.modals;
+export const selectNotifications = (state) => state.ui.notifications;
+export const selectTheme = (state) => state.ui.theme;
+export const selectSidebarCollapsed = (state) => state.ui.sidebarCollapsed;
+export const selectViewMode = (state) => state.ui.viewMode;
+export const selectLoading = (state) => state.ui.loading;
+
 export default uiSlice.reducer;

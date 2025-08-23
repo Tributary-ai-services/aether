@@ -5,7 +5,9 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:8081/realms/aether/protocol/openid-connect/token', {
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -60,7 +62,9 @@ export const refreshToken = createAsyncThunk(
         return rejectWithValue('No refresh token available');
       }
 
-      const response = await fetch('http://localhost:8081/realms/aether/protocol/openid-connect/token', {
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

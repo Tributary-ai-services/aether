@@ -2,23 +2,27 @@
 
 echo "Getting Keycloak token..."
 
+KEYCLOAK_URL=${KEYCLOAK_URL:-http://localhost:8081}
+KEYCLOAK_REALM=${KEYCLOAK_REALM:-master}
+
 # First, get admin token
-ADMIN_TOKEN=$(curl -s -X POST http://localhost:8081/realms/master/protocol/openid-connect/token \
+ADMIN_TOKEN=$(curl -s -X POST ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
   -d "client_id=admin-cli" \
   -d "username=admin" \
-  -d "password=admin" | jq -r '.access_token')
+  -d "password=admin123" | jq -r '.access_token')
 
 if [ "$ADMIN_TOKEN" == "null" ] || [ -z "$ADMIN_TOKEN" ]; then
     echo "Failed to get admin token. Trying with client credentials..."
     
     # Try client credentials grant
-    TOKEN_RESPONSE=$(curl -s -X POST http://localhost:8081/realms/aether/protocol/openid-connect/token \
+    TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token \
       -H "Content-Type: application/x-www-form-urlencoded" \
-      -d "grant_type=client_credentials" \
-      -d "client_id=aether-backend" \
-      -d "client_secret=e78dEfml7xy6YKyHyiQWMMmw7fDs6Kz8")
+      -d "grant_type=password" \
+      -d "client_id=admin-cli" \
+      -d "username=john@scharber.com" \
+      -d "password=test123")
     
     ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access_token')
     
@@ -39,7 +43,7 @@ else
     echo "✅ Got admin token, creating test user..."
     
     # Create test user
-    curl -s -X POST "http://localhost:8081/admin/realms/aether/users" \
+    curl -s -X POST "http://localhost:8081/admin/realms/master/users" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
       -d '{
@@ -57,11 +61,10 @@ else
       }'
     
     # Get token for test user
-    TOKEN_RESPONSE=$(curl -s -X POST http://localhost:8081/realms/aether/protocol/openid-connect/token \
+    TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token \
       -H "Content-Type: application/x-www-form-urlencoded" \
       -d "grant_type=password" \
-      -d "client_id=aether-backend" \
-      -d "client_secret=e78dEfml7xy6YKyHyiQWMMmw7fDs6Kz8" \
+      -d "client_id=admin-cli" \
       -d "username=testuser" \
       -d "password=testpass")
     

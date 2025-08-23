@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
 import Modal from '../ui/Modal.jsx';
 import audiModalService from '../../services/audiModalService.js';
+import UploadSummaryModal from './UploadSummaryModal';
+import { useAppDispatch } from '../../store/index.js';
+import { fetchNotebooks } from '../../store/slices/notebooksSlice.js';
 import { 
   Upload,
   File,
@@ -21,11 +24,23 @@ import {
 } from 'lucide-react';
 
 const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = null }) => {
+  const dispatch = useAppDispatch();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [dragActive, setDragActive] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [uploadResults, setUploadResults] = useState([]);
   const fileInputRef = useRef(null);
+
+  // Helper function to format file sizes
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   // Handle pre-selected files when modal opens
   React.useEffect(() => {
@@ -47,6 +62,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   };
 
   const maxFileSize = 100 * 1024 * 1024; // 100MB
+  const directUploadThreshold = 10 * 1024 * 1024; // 10MB - files larger than this use S3
   const maxFiles = 50;
 
   const getFileIcon = (type) => {
@@ -64,13 +80,6 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       return <Music size={20} className="text-purple-600" />;
     }
     return <Archive size={20} className="text-gray-600" />;
-  };
-
-  const formatFileSize = (bytes) => {
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 B';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i];
   };
 
   const validateFile = (file) => {
@@ -234,16 +243,74 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             metadata,
             [`notebook:${notebook.name}`, `tier:${fileData.processingTier.tier}`],
             (progressData) => {
-              // Update progress for this specific file
-              const progress = progressData.processing_status === 'completed' ? 100 : 
-                             progressData.processing_status === 'processing' ? 50 : 25;
+              // Enhanced progress tracking for different upload methods
+              let progress = 0;
+              let statusText = 'Uploading...';
+              
+              switch (progressData.processing_status) {
+                case 'requesting_upload_url':
+                  progress = 5;
+                  statusText = 'Getting upload URL...';
+                  break;
+                case 'uploading_to_s3':
+                  progress = progressData.progress || 10;
+                  // Show byte-level progress for S3 uploads if available
+                  if (progressData.bytes_uploaded && progressData.bytes_total) {
+                    const uploadedMB = (progressData.bytes_uploaded / (1024 * 1024)).toFixed(1);
+                    const totalMB = (progressData.bytes_total / (1024 * 1024)).toFixed(1);
+                    statusText = `Uploading to S3: ${uploadedMB}MB / ${totalMB}MB`;
+                  } else {
+                    statusText = `Uploading to cloud (${progressData.upload_method || 'S3'})...`;
+                  }
+                  break;
+                case 's3_upload_complete':
+                  progress = 80;
+                  statusText = 'S3 upload complete, creating file record...';
+                  break;
+                case 'creating_file_record':
+                  progress = 90;
+                  statusText = 'Creating file record...';
+                  break;
+                case 'uploaded':
+                  progress = progressData.progress || 100;
+                  statusText = `Uploaded via ${progressData.upload_method || 'multipart'}`;
+                  break;
+                case 'completed':
+                  progress = 100;
+                  statusText = `Upload complete (${progressData.upload_method || 'unknown'})`;
+                  break;
+                case 'processing':
+                  progress = 50;
+                  statusText = 'Processing...';
+                  break;
+                case 'failed':
+                  progress = 0;
+                  statusText = `Failed: ${progressData.error || 'Unknown error'}`;
+                  break;
+                default:
+                  progress = progressData.progress || 25;
+                  statusText = progressData.processing_status || 'Uploading...';
+              }
               
               setUploadProgress(prev => ({
                 ...prev,
                 [fileData.id]: progress
               }));
               
-              // Update file status based on progress
+              // Update file status and status text
+              setFiles(prev => prev.map(f => 
+                f.id === fileData.id 
+                  ? { 
+                      ...f, 
+                      status: progressData.processing_status === 'completed' ? 'completed' : 
+                             progressData.processing_status === 'failed' ? 'failed' : 'uploading',
+                      statusText: statusText,
+                      uploadMethod: progressData.upload_method
+                    }
+                  : f
+              ));
+              
+              // Update file status based on completion
               if (progressData.processing_status === 'completed') {
                 setFiles(prev => prev.map(f => 
                   f.id === fileData.id 
@@ -302,20 +369,14 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         }
       }
 
-      // Show success message
+      // Store results and show summary modal
       setTimeout(() => {
-        const successCount = successfulUploads.length;
-        const totalCount = validFiles.length;
+        setUploadResults(uploadResults);
+        setShowSummaryModal(true);
+        setUploading(false);
         
-        if (successCount === totalCount) {
-          alert(`Successfully processed ${successCount} files in ${notebook.name}!\n\nFiles are now available for semantic search and AI analysis.`);
-        } else {
-          alert(`Processed ${successCount} of ${totalCount} files in ${notebook.name}.\n\nCheck individual file status for details.`);
-        }
-        
-        onClose();
-        setFiles([]);
-        setUploadProgress({});
+        // Refresh notebook data to update document counts
+        dispatch(fetchNotebooks());
       }, 1000);
 
     } catch (error) {
@@ -356,6 +417,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   const errorFiles = files.filter(f => f.status === 'error');
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} title={`Upload Documents to ${notebook?.name}`} size="large">
       <div className="p-6">
         {/* Upload Area */}
@@ -553,11 +615,32 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                             {fileData.formatInfo.category}
                           </span>
                         )}
+                        {fileData.status === 'pending' && (
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            fileData.size > directUploadThreshold 
+                              ? 'bg-purple-100 text-purple-700' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {fileData.size > directUploadThreshold ? '☁️ S3 Upload' : '🔽 Direct Upload'}
+                          </span>
+                        )}
                       </div>
                       {fileData.status === 'uploading' && (
-                        <p className="text-xs text-blue-600 font-medium">
-                          {Math.round(uploadProgress[fileData.id] || 0)}%
-                        </p>
+                        <div className="text-xs text-blue-600 font-medium">
+                          <div className="flex items-center justify-between">
+                            <span>{Math.round(uploadProgress[fileData.id] || 0)}%</span>
+                            {fileData.uploadMethod && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                {fileData.uploadMethod === 'multipart' ? '🔽 Direct' : '☁️ S3'}
+                              </span>
+                            )}
+                          </div>
+                          {fileData.statusText && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {fileData.statusText}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -595,14 +678,28 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             <div className="text-sm text-gray-600">
               <div className="flex justify-between items-center mb-2">
                 <p>Ready to upload: <strong>{validFiles.length}</strong> files</p>
-                {validFiles.length > 0 && (
-                  <div className="text-xs text-blue-600">
-                    Processing tiers: {[1,2,3].map(tier => {
-                      const count = validFiles.filter(f => f.processingTier?.tier === tier).length;
-                      return count > 0 ? `T${tier}: ${count}` : null;
-                    }).filter(Boolean).join(', ')}
-                  </div>
-                )}
+                <div className="flex flex-col items-end text-xs">
+                  {validFiles.length > 0 && (
+                    <div className="text-blue-600 mb-1">
+                      Processing tiers: {[1,2,3].map(tier => {
+                        const count = validFiles.filter(f => f.processingTier?.tier === tier).length;
+                        return count > 0 ? `T${tier}: ${count}` : null;
+                      }).filter(Boolean).join(', ')}
+                    </div>
+                  )}
+                  {validFiles.length > 0 && (
+                    <div className="text-purple-600">
+                      Upload methods: {(() => {
+                        const directCount = validFiles.filter(f => f.size <= directUploadThreshold).length;
+                        const s3Count = validFiles.filter(f => f.size > directUploadThreshold).length;
+                        const methods = [];
+                        if (directCount > 0) methods.push(`🔽 Direct: ${directCount}`);
+                        if (s3Count > 0) methods.push(`☁️ S3: ${s3Count}`);
+                        return methods.join(', ');
+                      })()}
+                    </div>
+                  )}
+                </div>
               </div>
               {errorFiles.length > 0 && (
                 <p className="text-red-600">Files with errors: <strong>{errorFiles.length}</strong></p>
@@ -657,6 +754,23 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         </div>
       </div>
     </Modal>
+
+    {/* Upload Summary Modal */}
+    <UploadSummaryModal
+      isOpen={showSummaryModal}
+      onClose={() => {
+        setShowSummaryModal(false);
+        setUploadResults([]);
+        onClose();
+        setFiles([]);
+        setUploadProgress({});
+        // Refresh notebook data again when summary modal closes
+        dispatch(fetchNotebooks());
+      }}
+      uploadResults={uploadResults}
+      notebookName={notebook?.name || 'Unknown'}
+    />
+    </>
   );
 };
 

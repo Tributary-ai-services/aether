@@ -2,14 +2,18 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { aetherApi } from '../../services/aetherApi.js';
 import { PERMISSIONS } from '../../utils/permissions.js';
 
-// Mock user data with proper relationships
+// Mock user data with proper relationships - matches backend UserResponse structure
 const mockUsers = [
   {
     id: '1',
-    name: 'John Doe',
     email: 'john@acme.com',
-    avatar: null,
-    systemRole: null, // 'admin' for system administrators
+    username: 'john.doe',
+    fullName: 'John Doe', // Backend field name
+    avatarUrl: null, // Backend field name
+    status: 'active',
+    createdAt: '2023-06-15T10:00:00Z',
+    updatedAt: '2024-08-08T14:30:00Z',
+    // Extended profile data (not part of backend UserResponse)
     profile: {
       title: 'Senior Engineer',
       department: 'Engineering',
@@ -26,18 +30,17 @@ const mockUsers = [
         },
         language: 'en-US'
       }
-    },
-    createdAt: '2023-06-15T10:00:00Z',
-    updatedAt: '2024-08-08T14:30:00Z',
-    lastLoginAt: '2024-08-08T10:00:00Z',
-    isActive: true
+    }
   },
   {
     id: '2',
-    name: 'Jane Smith',
     email: 'jane@acme.com',
-    avatar: null,
-    systemRole: null,
+    username: 'jane.smith',
+    fullName: 'Jane Smith',
+    avatarUrl: null,
+    status: 'active',
+    createdAt: '2023-06-16T09:00:00Z',
+    updatedAt: '2024-08-07T16:45:00Z',
     profile: {
       title: 'Data Scientist',
       department: 'Data Science',
@@ -54,18 +57,17 @@ const mockUsers = [
         },
         language: 'en-US'
       }
-    },
-    createdAt: '2023-06-16T09:00:00Z',
-    updatedAt: '2024-08-07T16:45:00Z',
-    lastLoginAt: '2024-08-07T14:30:00Z',
-    isActive: true
+    }
   },
   {
     id: '3',
-    name: 'Bob Wilson',
     email: 'bob@acme.com',
-    avatar: null,
-    systemRole: null,
+    username: 'bob.wilson',
+    fullName: 'Bob Wilson',
+    avatarUrl: null,
+    status: 'active',
+    createdAt: '2023-07-01T14:00:00Z',
+    updatedAt: '2024-08-06T11:20:00Z',
     profile: {
       title: 'Product Manager',
       department: 'Product',
@@ -82,11 +84,7 @@ const mockUsers = [
         },
         language: 'en-US'
       }
-    },
-    createdAt: '2023-07-01T14:00:00Z',
-    updatedAt: '2024-08-06T11:20:00Z',
-    lastLoginAt: '2024-08-06T09:15:00Z',
-    isActive: true
+    }
   }
 ];
 

@@ -3,8 +3,10 @@ export async function fixKeycloakCors() {
   console.log('🔧 Attempting to configure Keycloak CORS settings...');
   
   try {
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    
     // First get admin token
-    const adminResponse = await fetch('/realms/master/protocol/openid-connect/token', {
+    const adminResponse = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -25,7 +27,7 @@ export async function fixKeycloakCors() {
     const adminToken = adminData.access_token;
 
     // Update the aether-backend client to allow CORS
-    const clientUpdateResponse = await fetch('/admin/realms/aether/clients', {
+    const clientUpdateResponse = await fetch(`/admin/realms/${KEYCLOAK_REALM}/clients`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${adminToken}`,
@@ -38,7 +40,7 @@ export async function fixKeycloakCors() {
 
     if (aetherClient) {
       // Update client with CORS settings
-      const updateResponse = await fetch(`/admin/realms/aether/clients/${aetherClient.id}`, {
+      const updateResponse = await fetch(`/admin/realms/${KEYCLOAK_REALM}/clients/${aetherClient.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -79,7 +81,8 @@ export async function quickAuthWithAdminCli() {
   console.log('🔐 Attempting authentication with admin-cli...');
   
   try {
-    const response = await fetch('/realms/aether/protocol/openid-connect/token', {
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    const response = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

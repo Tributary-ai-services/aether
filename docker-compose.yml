@@ -7,18 +7,32 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - VITE_AETHER_API_BASE=http://localhost:8080
-        - VITE_AETHER_API_URL=http://localhost:8080/api/v1
-        - VITE_KEYCLOAK_URL=http://localhost:8081
+        - VITE_AETHER_API_BASE=http://localhost:3001
+        - VITE_AETHER_API_URL=http://localhost:3001/api/v1
+        - VITE_KEYCLOAK_URL=http://localhost:3001
+        - VITE_KEYCLOAK_REALM=master
+        - VITE_KEYCLOAK_CLIENT_ID=aether-frontend
         - VITE_DEV_MODE=true
+        - VITE_AUDIMODAL_API_URL=http://localhost:8084/api/v1
+        - VITE_AUDIMODAL_API_KEY=dev-api-key
+        - VITE_AUDIMODAL_TENANT_ID=9855e094-36a6-4d3a-a4f5-d77da4614439
+        - VITE_DEEPLAKE_API_URL=http://localhost:8000/api/v1
+        - VITE_DEEPLAKE_API_KEY=dev-api-key
     ports:
       - "3001:80"
     environment:
       - NODE_ENV=production
-      - VITE_AETHER_API_BASE=http://localhost:8080
-      - VITE_AETHER_API_URL=http://localhost:8080/api/v1
-      - VITE_KEYCLOAK_URL=http://localhost:8081
+      - VITE_AETHER_API_BASE=http://localhost:3001
+      - VITE_AETHER_API_URL=http://localhost:3001/api/v1
+      - VITE_KEYCLOAK_URL=http://localhost:3001
+      - VITE_KEYCLOAK_REALM=master
+      - VITE_KEYCLOAK_CLIENT_ID=admin-cli
       - VITE_DEV_MODE=true
+      - VITE_AUDIMODAL_API_URL=http://localhost:8084/api/v1
+      - VITE_AUDIMODAL_API_KEY=dev-api-key
+      - VITE_AUDIMODAL_TENANT_ID=test-tenant-001
+      - VITE_DEEPLAKE_API_URL=http://localhost:8000/api/v1
+      - VITE_DEEPLAKE_API_KEY=dev-api-key
       - PORT=80
       - HOST=0.0.0.0
     restart: unless-stopped
@@ -47,9 +61,9 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_AETHER_API_BASE=http://localhost:8080
-      - VITE_AETHER_API_URL=http://localhost:8080/api/v1
-      - VITE_KEYCLOAK_URL=http://localhost:8081
+      - VITE_AETHER_API_BASE=http://localhost:3001
+      - VITE_AETHER_API_URL=http://localhost:3001/api/v1
+      - VITE_KEYCLOAK_URL=http://localhost:3001
       - VITE_DEV_MODE=true
     profiles:
       - dev

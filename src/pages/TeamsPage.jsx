@@ -215,9 +215,16 @@ const TeamsPage = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(team.userRole || 'member')}`}>
-                        {team.userRole || 'Member'}
-                      </span>
+                      <div className="flex gap-2">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(team.userRole || 'member')}`}>
+                          {team.userRole || 'Member'}
+                        </span>
+                        {team.ownerName && (
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                            Owner: {team.ownerName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -284,13 +291,13 @@ const TeamsPage = () => {
                   </div>
                 </div>
 
-                {/* View Team Button */}
+                {/* Manage Team Button */}
                 <button
                   onClick={() => handleViewTeamDetails(team)}
                   className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  View Team
-                  <ChevronRight size={16} />
+                  Manage Team
+                  <Settings size={16} />
                 </button>
               </div>
             </div>

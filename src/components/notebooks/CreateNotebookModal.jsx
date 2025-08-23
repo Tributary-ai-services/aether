@@ -81,6 +81,8 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
       };
 
       console.log('Creating notebook:', notebookData);
+      console.log('Form compliance settings before stringify:', formData.complianceSettings);
+      console.log('Stringified compliance settings:', JSON.stringify(formData.complianceSettings || {}));
       
       if (onCreateNotebook) {
         await onCreateNotebook(notebookData);

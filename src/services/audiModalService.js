@@ -13,10 +13,10 @@
  */
 
 class AudiModalService {
-  constructor(baseURL = import.meta.env.VITE_AUDIMODAL_API_URL || 'https://api.audimodal.ai/v1') {
+  constructor(baseURL = import.meta.env.VITE_AUDIMODAL_API_URL || 'http://localhost:8084/api/v1') {
     this.baseURL = baseURL;
     this.apiKey = import.meta.env.VITE_AUDIMODAL_API_KEY || 'demo-api-key';
-    this.tenantId = import.meta.env.VITE_AUDIMODAL_TENANT_ID || 'demo-tenant-id';
+    this.tenantId = import.meta.env.VITE_AUDIMODAL_TENANT_ID || '9855e094-36a6-4d3a-a4f5-d77da4614439';
     
     // Development warning
     if (this.apiKey === 'demo-api-key' || this.tenantId === 'demo-tenant-id') {
@@ -34,17 +34,43 @@ class AudiModalService {
     };
   }
 
+  // Helper method to format file sizes for display
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
   /**
    * Data Source Management (using notebooks as file_upload data source)
    */
   
-  // Create a data source for a notebook
+  // Create or get existing data source for a notebook
   async createNotebookDataSource(notebookId, notebookName, complianceSettings = {}) {
-    const response = await fetch(`${this.baseURL}/datasources`, {
+    const dataSourceName = `Notebook: ${notebookName}`;
+    
+    // First, check if a data source with this name already exists
+    try {
+      const existingDataSources = await this.getDataSources();
+      const existingDataSource = existingDataSources.find(ds => ds.name === dataSourceName);
+      
+      if (existingDataSource) {
+        console.log(`📋 Data source "${dataSourceName}" already exists, using existing one.`);
+        return existingDataSource;
+      }
+    } catch (error) {
+      console.warn('Could not check existing data sources:', error);
+      // Continue to create new one
+    }
+
+    // Create new data source if none exists
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/data-sources`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({
-        name: `Notebook: ${notebookName}`,
+        name: dataSourceName,
         type: 'file_upload',
         config: {
           notebook_id: notebookId,
@@ -74,12 +100,28 @@ class AudiModalService {
       throw new Error(`Failed to create notebook data source: ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    return result.data || result;
+  }
+
+  // Get all data sources for this tenant
+  async getDataSources() {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/data-sources`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get data sources: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.data || [];
   }
 
   // Get data source status and files
   async getDataSourceStatus(dataSourceId) {
-    const response = await fetch(`${this.baseURL}/datasources/${dataSourceId}`, {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/data-sources/${dataSourceId}`, {
       method: 'GET',
       headers: this.getHeaders()
     });
@@ -103,7 +145,7 @@ class AudiModalService {
     if (options.fileType) queryParams.append('file_type', options.fileType);
     if (options.processingStatus) queryParams.append('processing_status', options.processingStatus);
 
-    const response = await fetch(`${this.baseURL}/files?${queryParams.toString()}`, {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/files?${queryParams.toString()}`, {
       method: 'GET',
       headers: this.getHeaders()
     });
@@ -112,7 +154,16 @@ class AudiModalService {
       throw new Error(`Failed to get notebook files: ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    
+    // Normalize the response structure
+    return {
+      data: {
+        files: result.data || []
+      },
+      files: result.data || [], // For backward compatibility
+      meta: result.meta || {}
+    };
   }
 
   /**
@@ -120,25 +171,44 @@ class AudiModalService {
    */
 
   // Upload file using the standard /files endpoint
+  // TEMPORARY: Creating metadata-only record until backend supports multipart uploads
   async uploadFile(dataSourceId, file, metadata = {}, tags = [], onProgress = null) {
+    const fileSize = file.size;
+    const MAX_MULTIPART_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    console.log(`📁 Uploading file: ${file.name} (${this.formatFileSize(fileSize)})`);
+    
+    if (fileSize <= MAX_MULTIPART_SIZE) {
+      console.log('🔽 Using multipart upload for small file');
+      return await this.uploadFileMultipart(dataSourceId, file, metadata, tags, onProgress);
+    } else {
+      console.log('☁️ Using S3 direct upload for large file');
+      return await this.uploadFileViaS3(dataSourceId, file, metadata, tags, onProgress);
+    }
+  }
+
+  // Multipart upload for files <= 10MB
+  async uploadFileMultipart(dataSourceId, file, metadata = {}, tags = [], onProgress = null) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('datasource_id', dataSourceId);
     
-    if (Object.keys(metadata).length > 0) {
-      formData.append('metadata', JSON.stringify(metadata));
-    }
-    
-    if (tags.length > 0) {
-      tags.forEach(tag => formData.append('tags', tag));
+    // Add metadata as JSON string if provided
+    if (metadata && Object.keys(metadata).length > 0) {
+      formData.append('metadata', JSON.stringify({
+        ...metadata,
+        upload_method: 'multipart',
+        upload_timestamp: new Date().toISOString(),
+        tags: tags
+      }));
     }
 
-    const response = await fetch(`${this.baseURL}/files`, {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/files`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'X-API-Key': this.apiKey
-        // Don't set Content-Type for FormData - browser will set it with boundary
+        // Don't set Content-Type for FormData - browser sets it with boundary
       },
       body: formData
     });
@@ -148,19 +218,180 @@ class AudiModalService {
       throw new Error(`Failed to upload file: ${response.statusText} - ${errorText}`);
     }
 
-    const fileData = await response.json();
+    const result = await response.json();
+    const fileData = result.data || result;
     
-    // Monitor file processing progress
-    if (fileData.id && onProgress) {
-      this.monitorFileProgress(fileData.id, onProgress);
+    // Report upload completion
+    if (onProgress) {
+      onProgress({ processing_status: 'uploaded', progress: 100, upload_method: 'multipart' });
     }
 
     return fileData;
   }
 
+  // S3 upload for files > 10MB with enhanced progress tracking
+  async uploadFileViaS3(dataSourceId, file, metadata = {}, tags = [], onProgress = null) {
+    try {
+      // Step 1: Get presigned URL from backend
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 'requesting_upload_url', 
+          progress: 5,
+          upload_method: 's3_direct'
+        });
+      }
+
+      const bucketName = 'audimodal-uploads'; // Should match backend config
+      const fileName = `${Date.now()}_${file.name}`;
+      const s3Url = `s3://${bucketName}/${fileName}`;
+      
+      const presignedResponse = await fetch(`${this.baseURL}/tenants/${this.tenantId}/storage/presigned`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          url: s3Url,
+          method: 'PUT',
+          expiration: 3600 // 1 hour
+        })
+      });
+
+      if (!presignedResponse.ok) {
+        const errorText = await presignedResponse.text();
+        throw new Error(`Failed to get presigned URL: ${presignedResponse.statusText} - ${errorText}`);
+      }
+
+      const presignedData = await presignedResponse.json();
+      const presignedUrl = presignedData.data?.url || presignedData.url;
+
+      if (!presignedUrl) {
+        throw new Error('No presigned URL received from backend');
+      }
+
+      // Step 2: Upload file directly to S3 with progress tracking
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 'uploading_to_s3', 
+          progress: 10,
+          upload_method: 's3_direct'
+        });
+      }
+
+      // Create XMLHttpRequest for better progress tracking
+      const uploadResult = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable && onProgress) {
+            const uploadProgress = Math.round((event.loaded / event.total) * 70) + 10; // 10-80% range
+            onProgress({
+              processing_status: 'uploading_to_s3',
+              progress: uploadProgress,
+              upload_method: 's3_direct',
+              bytes_uploaded: event.loaded,
+              bytes_total: event.total
+            });
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(xhr.responseText);
+          } else {
+            reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.statusText}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('S3 upload failed due to network error'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('S3 upload was aborted'));
+        });
+
+        xhr.open('PUT', presignedUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.send(file);
+      });
+
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 's3_upload_complete', 
+          progress: 80,
+          upload_method: 's3_direct'
+        });
+      }
+
+      // Step 3: Create file record in backend with S3 URL
+      const fileRecord = {
+        url: s3Url,
+        filename: file.name,
+        extension: file.name.split('.').pop() || '',
+        content_type: file.type,
+        size: file.size,
+        data_source_id: dataSourceId,
+        metadata: {
+          ...metadata,
+          upload_method: 's3_direct',
+          upload_timestamp: new Date().toISOString(),
+          s3_key: fileName,
+          s3_bucket: bucketName,
+          tags: tags
+        },
+        validate_access: false // Skip access validation since we just uploaded
+      };
+
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 'creating_file_record', 
+          progress: 90,
+          upload_method: 's3_direct'
+        });
+      }
+
+      const createResponse = await fetch(`${this.baseURL}/tenants/${this.tenantId}/files`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(fileRecord)
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        throw new Error(`Failed to create file record: ${createResponse.statusText} - ${errorText}`);
+      }
+
+      const result = await createResponse.json();
+      const fileData = result.data || result;
+
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 'completed', 
+          progress: 100, 
+          upload_method: 's3_direct',
+          file_id: fileData.id
+        });
+      }
+
+      console.log(`✅ S3 upload completed: ${file.name} -> ${s3Url}`);
+      return fileData;
+
+    } catch (error) {
+      console.error('S3 upload failed:', error);
+      if (onProgress) {
+        onProgress({ 
+          processing_status: 'failed', 
+          error: error.message, 
+          upload_method: 's3_direct' 
+        });
+      }
+      throw error;
+    }
+  }
+
   // Get file details and processing status
   async getFileDetails(fileId) {
-    const response = await fetch(`${this.baseURL}/files/${fileId}`, {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/files/${fileId}`, {
       method: 'GET',
       headers: this.getHeaders()
     });
@@ -281,7 +512,7 @@ class AudiModalService {
 
   // Generate ML-powered insights
   async generateInsights(timeRange = null) {
-    const response = await fetch(`${this.baseURL}/ml/insights/generate`, {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml/insights/generate`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({
@@ -291,6 +522,96 @@ class AudiModalService {
 
     if (!response.ok) {
       throw new Error(`Failed to generate insights: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // Analyze a specific document/file
+  async analyzeDocument(documentId, options = {}) {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/documents/${documentId}/analyze`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(options)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to analyze document: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // Get analysis results for a specific document
+  async getDocumentAnalysisResults(documentId, chunkId = null) {
+    const queryParams = new URLSearchParams();
+    if (chunkId) queryParams.append('chunk_id', chunkId);
+
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/documents/${documentId}/results?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get document analysis results: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // Get analysis summary for a specific document
+  async getDocumentAnalysisSummary(documentId) {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/documents/${documentId}/summary`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get document analysis summary: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // Analyze multiple documents in batch
+  async analyzeBatch(documentIds, options = {}) {
+    const requests = documentIds.map(docId => ({
+      document_id: docId,
+      options: options
+    }));
+
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/batch`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        requests: requests,
+        options: options
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to analyze documents in batch: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // List all ML analysis results with filtering
+  async listAnalysisResults(options = {}) {
+    const queryParams = new URLSearchParams();
+    if (options.documentId) queryParams.append('document_id', options.documentId);
+    if (options.analysisType) queryParams.append('analysis_type', options.analysisType);
+    if (options.status) queryParams.append('status', options.status);
+    if (options.page) queryParams.append('page', options.page);
+    if (options.pageSize) queryParams.append('page_size', options.pageSize);
+
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/results?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to list analysis results: ${response.statusText}`);
     }
 
     return await response.json();
@@ -483,6 +804,60 @@ class AudiModalService {
     }
 
     return await response.json();
+  }
+
+  // Delete a document
+  async deleteDocument(documentId) {
+    const response = await fetch(`${this.baseURL}/tenants/${this.tenantId}/files/${documentId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete document: ${response.statusText} - ${errorText}`);
+    }
+
+    // Check if there's a response body before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    
+    // Return success indicator if no JSON body (204 No Content is common for DELETE)
+    return { success: true, status: response.status };
+  }
+
+  // Get document analysis (comprehensive stats)
+  async getDocumentAnalysis(documentId) {
+    try {
+      // Try to get the analysis summary first
+      const analysisResponse = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/documents/${documentId}/summary`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (analysisResponse.ok) {
+        return await analysisResponse.json();
+      }
+
+      // If summary is not available, try to get basic analysis results
+      const resultsResponse = await fetch(`${this.baseURL}/tenants/${this.tenantId}/ml-analysis/documents/${documentId}/results`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (resultsResponse.ok) {
+        return await resultsResponse.json();
+      }
+
+      // If no analysis is available, return null
+      return null;
+
+    } catch (error) {
+      console.error('Failed to get document analysis:', error);
+      return null;
+    }
   }
 }
 

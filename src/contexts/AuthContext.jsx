@@ -67,9 +67,10 @@ export const AuthProvider = ({ children }) => {
         // Try to get current user info
         try {
           const response = await aetherApi.users.getCurrentUser();
+          console.log('🔍 User data fetched:', response.data);
           setUser(response.data);
         } catch (error) {
-          console.warn('Failed to fetch user info:', error);
+          console.error('Failed to fetch user info:', error);
           // Don't set authenticated to false here, as the token might still be valid
           // The error could be due to network issues or server problems
         }
@@ -89,45 +90,67 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setAuthError(null);
       
-      // TODO: Implement Keycloak authentication
-      // For now, simulate authentication
       console.log('Attempting login with:', { email, rememberMe });
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use Keycloak authentication
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
       
-      // Simulate authentication success/failure
-      if (email === 'admin@example.com' && password === 'password') {
-        // Mock successful authentication
-        const mockTokens = {
-          accessToken: 'mock-access-token',
-          refreshToken: 'mock-refresh-token',
-          expiresIn: 3600,
-          refreshExpiresIn: 86400
-        };
+      const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'password',
+          client_id: CLIENT_ID,
+          username: email,
+          password: password,
+          scope: 'openid profile email',
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Keycloak authentication failed:', response.status, errorData);
         
-        aetherApi.setTokens(
-          mockTokens.accessToken, 
-          mockTokens.refreshToken, 
-          mockTokens.expiresIn, 
-          mockTokens.refreshExpiresIn
-        );
-        
-        // Mock user data
-        const mockUser = {
-          id: '1',
-          email: email,
-          name: 'Admin User',
-          roles: ['admin']
-        };
-        
-        setUser(mockUser);
-        setIsAuthenticated(true);
-        
-        return { success: true };
-      } else {
-        throw new Error('Invalid email or password');
+        if (response.status === 401) {
+          throw new Error('Invalid email or password');
+        } else {
+          throw new Error('Authentication service error');
+        }
       }
+      
+      const tokenData = await response.json();
+      console.log('Authentication successful!', {
+        hasAccessToken: !!tokenData.access_token,
+        hasIdToken: !!tokenData.id_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+      });
+      
+      // Store tokens using ID token for authentication
+      const authToken = tokenData.id_token || tokenData.access_token;
+      aetherApi.setTokens(
+        authToken,
+        tokenData.refresh_token,
+        tokenData.expires_in,
+        tokenData.refresh_expires_in || 1800
+      );
+      
+      setIsAuthenticated(true);
+      
+      // Try to fetch user info
+      try {
+        const userResponse = await aetherApi.users.getCurrentUser();
+        console.log('User data fetched:', userResponse.data);
+        setUser(userResponse.data);
+      } catch (userError) {
+        console.error('Failed to fetch user info:', userError);
+        // Don't fail login if user fetch fails - user creation might be in progress
+      }
+      
+      return { success: true };
     } catch (error) {
       console.error('Login failed:', error);
       setAuthError(error.message);
@@ -280,7 +303,7 @@ export const AuthProvider = ({ children }) => {
       // For now, redirect to Keycloak social login URL
       // In production, this would redirect to Keycloak
       const keycloakUrl = process.env.REACT_APP_KEYCLOAK_URL || 'http://localhost:8080';
-      const realm = process.env.REACT_APP_KEYCLOAK_REALM || 'aether';
+      const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
       const clientId = process.env.REACT_APP_KEYCLOAK_CLIENT_ID || 'aether-frontend';
       
       const socialLoginUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +

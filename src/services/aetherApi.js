@@ -8,9 +8,9 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 // Keycloak configuration
 // Use relative URL to work with nginx proxy in production
 const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-const KEYCLOAK_REALM = 'aether';
-const KEYCLOAK_CLIENT_ID = 'admin-cli';  // Changed to match backend configuration
-// admin-cli doesn't need client secret
+const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
+// aether-frontend is a public client, doesn't need client secret
 
 
 class AetherApiService {
@@ -489,6 +489,56 @@ class AetherApiService {
       method: 'POST',
     }),
     declineInvitation: (invitationId) => this.request(`/organization-invitations/${invitationId}/decline`, {
+      method: 'POST',
+    }),
+  };
+
+  // Teams API
+  teams = {
+    getAll: (organizationId) => {
+      const params = organizationId ? `?organization_id=${organizationId}` : '';
+      return this.request(`/teams${params}`);
+    },
+    get: (id) => this.request(`/teams/${id}`),
+    create: (data) => this.request('/teams', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => this.request(`/teams/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => this.request(`/teams/${id}`, {
+      method: 'DELETE',
+    }),
+    
+    // Team member operations
+    getMembers: (teamId) => this.request(`/teams/${teamId}/members`),
+    inviteMember: (teamId, data) => this.request(`/teams/${teamId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateMemberRole: (teamId, userId, data) => this.request(`/teams/${teamId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    removeMember: (teamId, userId) => this.request(`/teams/${teamId}/members/${userId}`, {
+      method: 'DELETE',
+    }),
+    
+    // Team settings
+    getSettings: (teamId) => this.request(`/teams/${teamId}/settings`),
+    updateSettings: (teamId, data) => this.request(`/teams/${teamId}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    
+    // Team invitations
+    getInvitations: (teamId) => this.request(`/teams/${teamId}/invitations`),
+    acceptInvitation: (invitationId) => this.request(`/team-invitations/${invitationId}/accept`, {
+      method: 'POST',
+    }),
+    declineInvitation: (invitationId) => this.request(`/team-invitations/${invitationId}/decline`, {
       method: 'POST',
     }),
   };

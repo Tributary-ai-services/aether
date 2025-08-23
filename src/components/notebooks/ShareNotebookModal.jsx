@@ -45,7 +45,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const availableTeams = useSelector(selectAllTeams);
-  const sharedTeams = useSelector(selectNotebookTeams(notebook?.id));
+  const sharedTeams = useSelector(state => selectNotebookTeams(state, notebook?.id));
   const loading = useSelector(selectSharingLoading);
   const error = useSelector(selectSharingError);
   

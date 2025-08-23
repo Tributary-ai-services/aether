@@ -25,7 +25,8 @@ import {
   updateTeamMemberRole,
   removeTeamMember,
   selectTeamMembers,
-  selectTeamsLoading
+  selectTeamsLoading,
+  selectTeamsError
 } from '../../store/slices/teamsSlice.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 
@@ -34,6 +35,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
   const { user } = useAuth();
   const members = useSelector(selectTeamMembers(team?.id));
   const loading = useSelector(selectTeamsLoading);
+  const error = useSelector(selectTeamsError);
   
   const [activeTab, setActiveTab] = useState('members');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -159,6 +161,22 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Loading members...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  {error.status === 403 ? (
+                    <>
+                      <Shield className="mx-auto h-12 w-12 text-red-400 mb-3" />
+                      <p className="text-red-600 font-medium">Access Denied</p>
+                      <p className="text-gray-600 mt-2">You don't have permission to view team members</p>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="mx-auto h-12 w-12 text-red-400 mb-3" />
+                      <p className="text-red-600 font-medium">Failed to Load Members</p>
+                      <p className="text-gray-600 mt-2">{error.message || 'An error occurred while loading team members'}</p>
+                    </>
+                  )}
                 </div>
               ) : members.length === 0 ? (
                 <div className="text-center py-8">

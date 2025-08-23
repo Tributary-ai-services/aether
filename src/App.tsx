@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { useAppSelector } from './store/hooks.js';
 import { FilterProvider } from './context/FilterContext.jsx';
 import { useTheme } from './context/ThemeContext.jsx';
 import { useNavigation } from './context/NavigationContext.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
+import { openModal, closeModal, selectModals } from './store/slices/uiSlice.js';
+import { createNotebook } from './store/slices/notebooksSlice.js';
 import TabButton from './components/ui/TabButton.jsx';
 import Logo from './components/ui/Logo.jsx';
 import ThemeCustomizer from './components/ui/ThemeCustomizer.jsx';
@@ -22,7 +26,9 @@ import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import TeamsPage from './pages/TeamsPage.jsx';
+import TeamPage from './pages/TeamPage.jsx';
 import OrganizationsPage from './pages/OrganizationsPage.jsx';
+import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import { 
   BookOpen, 
   Users, 
@@ -51,9 +57,11 @@ import {
 const App = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { theme } = useTheme();
   const { visibleTabs } = useNavigation();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const modals = useAppSelector(selectModals);
   const [selectedNotebook, setSelectedNotebook] = useState(null);
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(true);
   const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false);
@@ -63,12 +71,23 @@ const App = () => {
   
   // Close user menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
-      setShowUserMenu(false);
+    const handleClickOutside = (e) => {
+      // Check if the click is outside the user menu
+      const userMenuElement = document.getElementById('user-menu-dropdown');
+      const userMenuButton = document.getElementById('user-menu-button');
+      
+      if (userMenuElement && !userMenuElement.contains(e.target) && 
+          userMenuButton && !userMenuButton.contains(e.target)) {
+        setShowUserMenu(false);
+      }
     };
     
     if (showUserMenu) {
-      document.addEventListener('click', handleClickOutside);
+      // Add a small delay to prevent immediate closure
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 0);
+      
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showUserMenu]);
@@ -136,7 +155,31 @@ const App = () => {
   const handleLogout = async () => {
     await logout();
     setShowUserMenu(false);
-    navigate('/login');
+    // Don't navigate - let the auth state change handle the redirect
+  };
+  
+  // Handle Create New button click based on current page
+  const handleCreateNew = () => {
+    const path = location.pathname;
+    if (path === '/' || path === '/notebooks') {
+      dispatch(openModal('createNotebook'));
+    } else if (path === '/teams') {
+      // Navigate to teams page if not already there, the teams page has its own create button
+      navigate('/teams');
+    } else {
+      // Default to creating a notebook for other pages
+      dispatch(openModal('createNotebook'));
+    }
+  };
+  
+  // Handle notebook creation
+  const handleCreateNotebook = async (notebookData) => {
+    try {
+      await dispatch(createNotebook(notebookData)).unwrap();
+      dispatch(closeModal('createNotebook'));
+    } catch (error) {
+      console.error('Failed to create notebook:', error);
+    }
   };
   
   // Show loading screen while checking authentication
@@ -174,6 +217,7 @@ const App = () => {
           </div>
           <div className="flex items-center gap-4">
             <button 
+              onClick={handleCreateNew}
               className="text-white px-4 py-2 rounded-lg transition-colors"
               style={{ backgroundColor: 'var(--color-primary-600)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-700)'}
@@ -194,37 +238,32 @@ const App = () => {
             {/* Notification Center */}
             <NotificationCenter />
             
-            {/* Settings Icon */}
-            <button 
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Settings"
-            >
-              <SettingsIcon size={20} />
-            </button>
-            
             {/* Profile/Logout */}
             <div className="relative">
               <div 
+                id="user-menu-button"
                 className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors"
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowUserMenu(!showUserMenu);
+                }}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <User size={16} className="text-white" />
                 </div>
                 <div className="hidden md:block">
-                  <div className="text-sm font-medium text-gray-900">{user?.name || user?.email || 'User'}</div>
-                  <div className="text-xs text-gray-500">{user?.roles?.[0] || 'User'}</div>
+                  <div className="text-sm font-medium text-gray-900">{user?.full_name || user?.email || 'User'}</div>
+                  <div className="text-xs text-gray-500">{user?.status || 'User'}</div>
                 </div>
                 <ChevronDown size={16} className="text-gray-400 hidden md:block" />
               </div>
               
               {/* User Menu Dropdown */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div id="user-menu-dropdown" className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <div className="px-4 py-2 border-b border-gray-100">
-                      <div className="text-sm font-medium text-gray-900">{user?.name || user?.email}</div>
+                      <div className="text-sm font-medium text-gray-900">{user?.full_name || user?.email}</div>
                       <div className="text-xs text-gray-500">{user?.email}</div>
                     </div>
                     <button
@@ -321,6 +360,7 @@ const App = () => {
             <Route path="/" element={<NotebooksPage />} />
             <Route path="/notebooks" element={<NotebooksPage />} />
             <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/teams/:teamId" element={<TeamPage />} />
             <Route path="/organizations" element={<OrganizationsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
@@ -351,6 +391,13 @@ const App = () => {
       <AuditTrail 
         isOpen={auditTrailOpen}
         onClose={() => setAuditTrailOpen(false)}
+      />
+      
+      {/* Create Notebook Modal */}
+      <CreateNotebookModal
+        isOpen={modals?.createNotebook || false}
+        onClose={() => dispatch(closeModal('createNotebook'))}
+        onCreateNotebook={handleCreateNotebook}
       />
       
       {/* Toast Notifications */}
