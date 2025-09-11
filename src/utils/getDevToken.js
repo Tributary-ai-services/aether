@@ -1,7 +1,7 @@
 // Helper to get a real development token from Keycloak
 export async function getDevToken() {
   // Use the actual Keycloak URL
-  const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+  const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
   const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
   const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
   // admin-cli doesn't need a client secret

@@ -8,7 +8,7 @@ import {
   BarChart3,
   X
 } from 'lucide-react';
-import audiModalService from '../../services/audiModalService';
+// Note: Analysis features will be implemented in Aether backend in the future
 
 export default function UploadSummaryModal({ isOpen, onClose, uploadResults, notebookName }) {
   const [fileAnalyses, setFileAnalyses] = useState({});
@@ -25,8 +25,14 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
   const fetchAnalysisData = async () => {
     setLoading(true);
     try {
-      // Get overall insights
-      const insights = await audiModalService.generateInsights();
+      // Get overall insights (placeholder - will be implemented in Aether backend)
+      const insights = {
+        data: {
+          summary: 'Document analysis features are being migrated to Aether backend',
+          total_files: uploadResults.filter(r => r.status === 'fulfilled').length,
+          insights: ['Upload successful via Aether backend', 'Documents stored in tenant-scoped storage']
+        }
+      };
       setOverallInsights(insights.data);
 
       // Get individual file analyses for all successful uploads
@@ -34,7 +40,8 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
       for (const result of uploadResults) {
         if (result.status === 'fulfilled' && result.value?.id) {
           try {
-            const summary = await audiModalService.getDocumentAnalysisSummary(result.value.id);
+            // Placeholder for document analysis (to be implemented in Aether backend)
+            const summary = { data: { analysis: 'Analysis pending - will be available in future Aether backend update' } };
             analyses[result.value.id] = {
               ...summary.data,
               fileName: result.value.filename || result.value.metadata?.original_name || result.value.original_name || result.value.name || 'Unknown file',
@@ -268,10 +275,14 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                                   <>
                                     <div className="mt-1 text-sm text-gray-600">
                                       <p>File ID: {result.value?.id}</p>
-                                      <p>Size: {analysis?.fileSize ? `${(analysis.fileSize / 1024).toFixed(1)} KB` : 'Unknown'}</p>
+                                      <p>Size: {result.value?.size_bytes ? `${(result.value.size_bytes / 1024).toFixed(1)} KB` : (analysis?.fileSize ? `${(analysis.fileSize / 1024).toFixed(1)} KB` : 'Unknown')}</p>
                                       <p>Status: Successfully uploaded and processed</p>
-                                      {analysis?.uploadedAt && (
-                                        <p>Uploaded: {new Date(analysis.uploadedAt).toLocaleString()}</p>
+                                      {(result.value?.created_at || analysis?.uploadedAt) && (
+                                        <p>Uploaded: {(() => {
+                                          const dateStr = result.value?.created_at || analysis?.uploadedAt;
+                                          const date = new Date(dateStr);
+                                          return isNaN(date.getTime()) ? 'Date unknown' : date.toLocaleString();
+                                        })()}</p>
                                       )}
                                     </div>
                                     {analysis && !analysis.error && (
@@ -279,7 +290,12 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                                         <div className="space-y-1">
                                           <h4 className="text-xs font-medium text-gray-500 uppercase">Content Analysis</h4>
                                           <p className="text-sm text-gray-700">
-                                            Language: {analysis.dominant_language || analysis.language || 'Unknown'}
+                                            Language: {
+                                              result.value?.processing_result?.language || 
+                                              analysis?.dominant_language || 
+                                              analysis?.language || 
+                                              'Unknown'
+                                            }
                                           </p>
                                           {analysis.readability_score && (
                                             <p className="text-sm text-gray-700">

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAgents } from '../hooks/index.js';
 import { useFilters } from '../context/FilterContext.jsx';
+import { useSpace } from '../contexts/SpaceContext.jsx';
 import AgentCard from '../components/cards/AgentCard.jsx';
 import AgentDetailModal from '../components/modals/AgentDetailModal.jsx';
 import { LoadingWrapper, AgentCardSkeleton } from '../components/skeletons/index.js';
@@ -8,9 +9,17 @@ import { LoadingWrapper, AgentCardSkeleton } from '../components/skeletons/index
 const AgentsPage = () => {
   const { agents, loading, error, createAgent } = useAgents();
   const { filterAgents } = useFilters();
+  const { currentSpace, loadAvailableSpaces, initialized } = useSpace();
   const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  // Initialize spaces
+  useEffect(() => {
+    if (!initialized) {
+      loadAvailableSpaces();
+    }
+  }, [initialized, loadAvailableSpaces]);
 
   // Apply filters to agents
   const filteredAgents = filterAgents(agents);

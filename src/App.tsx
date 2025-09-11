@@ -6,6 +6,7 @@ import { FilterProvider } from './context/FilterContext.jsx';
 import { useTheme } from './context/ThemeContext.jsx';
 import { useNavigation } from './context/NavigationContext.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
+import { SpaceProvider } from './contexts/SpaceContext.jsx';
 import { openModal, closeModal, selectModals } from './store/slices/uiSlice.js';
 import { createNotebook } from './store/slices/notebooksSlice.js';
 import TabButton from './components/ui/TabButton.jsx';
@@ -29,6 +30,7 @@ import TeamsPage from './pages/TeamsPage.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
+import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import { 
   BookOpen, 
   Users, 
@@ -209,11 +211,13 @@ const App = () => {
 
   return (
     <FilterProvider>
-      <div className="min-h-screen bg-gray-50">
+      <SpaceProvider>
+        <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Logo size="default" />
+            <SpaceSelector className="min-w-[200px]" />
           </div>
           <div className="flex items-center gap-4">
             <button 
@@ -402,7 +406,8 @@ const App = () => {
       
       {/* Toast Notifications */}
       <ToastNotification />
-    </div>
+        </div>
+      </SpaceProvider>
     </FilterProvider>
   );
 };

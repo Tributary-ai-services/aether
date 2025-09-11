@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { workflows } from '../data/mockData.js';
 import WorkflowBuilder from '../components/workflow/WorkflowBuilder.jsx';
+import { useSpace } from '../contexts/SpaceContext.jsx';
 import { Workflow } from 'lucide-react';
 
 const WorkflowsPage = () => {
+  const { currentSpace, loadAvailableSpaces, initialized } = useSpace();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
+
+  // Initialize spaces
+  useEffect(() => {
+    if (!initialized) {
+      loadAvailableSpaces();
+    }
+  }, [initialized, loadAvailableSpaces]);
 
   return (
     <div>

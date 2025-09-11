@@ -9,6 +9,7 @@ export {
   deleteNotebook,
   setSelectedNotebook,
   clearSelectedNotebook,
+  updateNotebookDocumentCount,
   clearError as clearNotebooksError
 } from './slices/notebooksSlice.js';
 

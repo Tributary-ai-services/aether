@@ -5,7 +5,7 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
       const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
       const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
@@ -62,7 +62,7 @@ export const refreshToken = createAsyncThunk(
         return rejectWithValue('No refresh token available');
       }
 
-      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8081';
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
       const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
       const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',

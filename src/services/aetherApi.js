@@ -29,13 +29,33 @@ class AetherApiService {
     // Check if token needs refresh before making request
     await this.ensureValidToken();
     
+    // Get space context headers
+    const spaceHeaders = this.getSpaceHeaders();
+    
+    // Build headers - handle FormData special case
+    const headers = {
+      'Authorization': await this.getAuthHeader(),
+      ...spaceHeaders,
+    };
+    
+    // Only set Content-Type if not FormData (browser needs to set boundary)
+    if (!options.body || !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
+    // Merge with any provided headers
+    Object.assign(headers, options.headers);
+    
+    // Remove any null/undefined headers
+    Object.keys(headers).forEach(key => {
+      if (headers[key] === null || headers[key] === undefined) {
+        delete headers[key];
+      }
+    });
+    
     const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': await this.getAuthHeader(),
-        ...options.headers,
-      },
       ...options,
+      headers,
     };
 
     try {
@@ -44,15 +64,33 @@ class AetherApiService {
       // If we get 401, try to refresh token and retry once
       if (response.status === 401) {
         console.log('Received 401, attempting token refresh...');
-        await this.refreshToken();
         
-        // Update auth header and retry
-        config.headers['Authorization'] = await this.getAuthHeader();
-        const retryResponse = await this.makeRequest(url, config);
-        
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`HTTP ${retryResponse.status}: ${errorText || retryResponse.statusText}`);
+        try {
+          await this.refreshToken();
+          
+          // Update auth header and retry
+          config.headers['Authorization'] = await this.getAuthHeader();
+          const retryResponse = await this.makeRequest(url, config);
+          
+          if (!retryResponse.ok) {
+            const errorText = await retryResponse.text();
+            
+            // If retry also fails with 401, it's a definitive auth failure
+            if (retryResponse.status === 401) {
+              console.log('Retry also failed with 401, triggering auth error');
+              this.triggerAuthenticationError('auth_failed_after_retry');
+            }
+            
+            const error = new Error(`HTTP ${retryResponse.status}: ${errorText || retryResponse.statusText}`);
+            error.response = { status: retryResponse.status };
+            throw error;
+          }
+        } catch (refreshError) {
+          console.log('Token refresh failed:', refreshError.message);
+          // Re-throw the original 401 error with response info
+          const error = new Error(`HTTP ${response.status}: Authentication failed`);
+          error.response = { status: response.status };
+          throw error;
         }
         
         // Handle responses with no content (like 204 No Content for DELETE)
@@ -73,7 +111,9 @@ class AetherApiService {
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        const error = new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        error.response = { status: response.status };
+        throw error;
       }
       
       // Handle responses with no content (like 204 No Content for DELETE)
@@ -140,6 +180,41 @@ class AetherApiService {
   async getAuthHeader() {
     const token = tokenStorage.getAccessToken();
     return token ? `Bearer ${token}` : '';
+  }
+
+  // Get space context headers for requests
+  getSpaceHeaders() {
+    // Try to get current space from localStorage first (for immediate use)
+    const savedSpace = localStorage.getItem('currentSpace');
+    if (savedSpace) {
+      try {
+        const currentSpace = JSON.parse(savedSpace);
+        if (currentSpace && currentSpace.space_type && currentSpace.space_id) {
+          return {
+            'X-Space-Type': currentSpace.space_type,
+            'X-Space-ID': currentSpace.space_id
+          };
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved space for headers:', error);
+      }
+    }
+
+    // If localStorage fails, try to get from Redux store (if available)
+    if (typeof window !== 'undefined' && window.__REDUX_STORE__) {
+      const state = window.__REDUX_STORE__.getState();
+      const currentSpace = state?.spaces?.currentSpace;
+      
+      if (currentSpace && currentSpace.space_type && currentSpace.space_id) {
+        return {
+          'X-Space-Type': currentSpace.space_type,
+          'X-Space-ID': currentSpace.space_id
+        };
+      }
+    }
+
+    // Return empty headers if no space context available
+    return {};
   }
 
   // Refresh the access token using refresh token
@@ -329,8 +404,18 @@ class AetherApiService {
 
   // Check if user is authenticated
   isAuthenticated() {
-    if (DEV_MODE) return true;
-    return tokenStorage.hasValidTokens();
+    // Even in DEV_MODE, we should check if we have valid tokens
+    // DEV_MODE just allows us to get tokens automatically, but we still need them
+    const hasTokens = tokenStorage.hasValidTokens();
+    
+    if (DEV_MODE && !hasTokens) {
+      // In dev mode, if we don't have tokens, we'll try to get them when needed
+      // but we shouldn't claim to be authenticated until we actually have them
+      console.log('DEV_MODE: No valid tokens found, will attempt to get them when needed');
+      return false;
+    }
+    
+    return hasTokens;
   }
 
   // Health check
@@ -347,7 +432,13 @@ class AetherApiService {
 
   // Notebooks API
   notebooks = {
-    getAll: () => this.request('/notebooks'),
+    getAll: (options = {}) => {
+      const params = new URLSearchParams({
+        limit: options.limit || 20,
+        offset: options.offset || 0
+      }).toString();
+      return this.request(`/notebooks?${params}`);
+    },
     getById: (id) => this.request(`/notebooks/${id}`),
     create: (data) => this.request('/notebooks', {
       method: 'POST',
@@ -384,6 +475,24 @@ class AetherApiService {
       body: JSON.stringify(data),
     }),
     getUserStats: () => this.request('/users/me/stats'),
+    getSpaces: () => this.request('/users/me/spaces'),
+  };
+
+  // Spaces API
+  spaces = {
+    getAll: () => this.request('/spaces'),
+    get: (id) => this.request(`/spaces/${id}`),
+    create: (data) => this.request('/spaces', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => this.request(`/spaces/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => this.request(`/spaces/${id}`, {
+      method: 'DELETE',
+    }),
   };
 
   // Documents API
@@ -394,10 +503,43 @@ class AetherApiService {
     upload: (formData) => this.request('/documents/upload', {
       method: 'POST',
       body: formData,
-      headers: {}, // Let browser set content-type for FormData
+    }),
+    uploadBase64: (data) => this.request('/documents/upload-base64', {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
     getByNotebook: (notebookId) => this.request(`/notebooks/${notebookId}/documents`),
+    create: (data) => this.request('/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    delete: (id) => this.request(`/documents/${id}`, { method: 'DELETE' }),
   };
+
+  // Download method with proper context
+  async downloadDocument(id) {
+    // Ensure we have valid token
+    await this.ensureValidToken();
+    
+    // Build headers using existing methods
+    const headers = {
+      'Authorization': await this.getAuthHeader(),
+      ...this.getSpaceHeaders(),
+    };
+    
+    const response = await fetch(`${this.baseURL}/documents/${id}/download`, {
+      method: 'GET',
+      headers: headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to download document: ${response.status} - ${errorText}`);
+    }
+    
+    return response.blob();
+  }
 
   // Teams API
   teams = {

@@ -5,9 +5,11 @@ import { PERMISSIONS } from '../../utils/permissions.js';
 // Async thunks for notebook operations
 export const fetchNotebooks = createAsyncThunk(
   'notebooks/fetchNotebooks',
-  async (_, { rejectWithValue }) => {
+  async (options = { limit: 20, offset: 0 }, { rejectWithValue }) => {
+    console.log('fetchNotebooks called with options:', options);
     try {
-      const response = await aetherApi.notebooks.getAll();
+      const response = await aetherApi.notebooks.getAll(options);
+      console.log('fetchNotebooks response:', response);
       if (response.success) {
         return response.data;
       } else {
@@ -326,6 +328,17 @@ const notebooksSlice = createSlice({
     },
     clearSharingError: (state) => {
       state.sharingError = null;
+    },
+    updateNotebookDocumentCount: (state, action) => {
+      const { notebookId, documentCount } = action.payload;
+      const notebook = state.data.find(nb => nb.id === notebookId);
+      if (notebook) {
+        // Update both possible attribute names to ensure compatibility
+        notebook.documentCount = documentCount;
+        notebook.document_count = documentCount;
+      }
+      // Rebuild tree to reflect changes
+      state.tree = buildNotebookTree(state.data);
     }
   },
   extraReducers: (builder) => {
@@ -502,7 +515,8 @@ export const {
   setSelectedNotebook, 
   clearSelectedNotebook, 
   clearError, 
-  clearSharingError 
+  clearSharingError,
+  updateNotebookDocumentCount
 } = notebooksSlice.actions;
 
 // Selectors

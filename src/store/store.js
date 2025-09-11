@@ -5,6 +5,7 @@ import uiReducer from './slices/uiSlice.js';
 import teamsReducer from './slices/teamsSlice.js';
 import organizationsReducer from './slices/organizationsSlice.js';
 import usersReducer from './slices/usersSlice.js';
+import spacesReducer from './slices/spacesSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -14,7 +15,8 @@ const store = configureStore({
     ui: uiReducer,
     teams: teamsReducer,
     organizations: organizationsReducer,
-    users: usersReducer
+    users: usersReducer,
+    spaces: spacesReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -28,5 +30,10 @@ const store = configureStore({
 // TypeScript types (exported for TypeScript files)
 // export type RootState = ReturnType<typeof store.getState>;
 // export type AppDispatch = typeof store.dispatch;
+
+// Make store available globally for API service
+if (typeof window !== 'undefined') {
+  window.__REDUX_STORE__ = store;
+}
 
 export default store;

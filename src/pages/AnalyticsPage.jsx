@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { analyticsData, mlModels, experiments } from '../data/mockData.js';
+import { useSpace } from '../contexts/SpaceContext.jsx';
 import { getTrendIcon, getModelStatusColor, getExperimentStatusColor, getMediaIcon } from '../utils/helpers.jsx';
 import { PerformanceTrendChart, ProcessingDistributionChart, InfrastructureChart } from '../components/charts/index.js';
 import { 
@@ -16,6 +17,15 @@ import {
 } from 'lucide-react';
 
 const AnalyticsPage = () => {
+  const { currentSpace, loadAvailableSpaces, initialized } = useSpace();
+
+  // Initialize spaces
+  useEffect(() => {
+    if (!initialized) {
+      loadAvailableSpaces();
+    }
+  }, [initialized, loadAvailableSpaces]);
+
   return (
     <div>
       <div className="mb-8">

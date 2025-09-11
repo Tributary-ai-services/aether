@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Modal from '../ui/Modal.jsx';
-import audiModalService from '../../services/audiModalService.js';
+import { aetherApi } from '../../services/aetherApi.js';
 import UploadSummaryModal from './UploadSummaryModal';
 import { useAppDispatch } from '../../store/index.js';
 import { fetchNotebooks } from '../../store/slices/notebooksSlice.js';
@@ -62,7 +62,6 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   };
 
   const maxFileSize = 100 * 1024 * 1024; // 100MB
-  const directUploadThreshold = 10 * 1024 * 1024; // 10MB - files larger than this use S3
   const maxFiles = 50;
 
   const getFileIcon = (type) => {
@@ -89,13 +88,22 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       errors.push(`File size exceeds ${formatFileSize(maxFileSize)} limit`);
     }
 
-    // Use audimodal service for format validation
-    const formatInfo = audiModalService.validateFileFormat(file.name);
-    if (!formatInfo.supported) {
-      errors.push('File format not supported by audimodal service');
+    // Basic format validation
+    const fileName = file.name.toLowerCase();
+    const allFormats = [
+      ...supportedFormats.documents,
+      ...supportedFormats.images,
+      ...supportedFormats.videos,
+      ...supportedFormats.audio,
+      ...supportedFormats.data
+    ];
+    
+    const isSupported = allFormats.some(ext => fileName.endsWith(ext));
+    if (!isSupported) {
+      errors.push('File format not supported');
     }
 
-    return { errors, formatInfo, processingTier: audiModalService.getProcessingTier(file.size) };
+    return { errors };
   };
 
   const handleFileSelect = (selectedFiles) => {
@@ -118,9 +126,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           type: file.type,
           status: 'pending',
           errors: [],
-          progress: 0,
-          formatInfo: validation.formatInfo,
-          processingTier: validation.processingTier
+          progress: 0
         });
       } else {
         // Still add invalid files to show errors
@@ -132,9 +138,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           type: file.type,
           status: 'error',
           errors: validation.errors,
-          progress: 0,
-          formatInfo: validation.formatInfo,
-          processingTier: validation.processingTier
+          progress: 0
         });
       }
     });
@@ -167,33 +171,21 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     });
   };
 
-  const simulateUpload = async (fileData) => {
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        const currentProgress = prev[fileData.id] || 0;
-        const newProgress = currentProgress + Math.random() * 20;
-        
-        if (newProgress >= 100) {
-          clearInterval(progressInterval);
-          return { ...prev, [fileData.id]: 100 };
-        }
-        
-        return { ...prev, [fileData.id]: newProgress };
-      });
-    }, 200);
-
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
-    
-    // Update file status
-    setFiles(prev => prev.map(f => 
-      f.id === fileData.id 
-        ? { ...f, status: 'completed' }
-        : f
-    ));
+  // Helper function to convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove the data URL prefix to get just the base64 string
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
   };
 
+  // NEW BASE64 UPLOAD FLOW: Frontend -> Aether-BE -> Storage
   const handleUpload = async () => {
     const validFiles = files.filter(f => f.status === 'pending');
     
@@ -203,18 +195,10 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     }
 
     setUploading(true);
-    let processingSession = null;
 
     try {
-      // Step 1: Create/get data source for notebook via audimodal API
-      console.log(`Creating data source for notebook: ${notebook.name}`);
-      const dataSource = await audiModalService.createNotebookDataSource(
-        notebook.id, 
-        notebook.name, 
-        notebook.complianceSettings
-      );
-      console.log(`Data source created: ${dataSource.id}`);
-
+      console.log(`Starting base64 upload of ${validFiles.length} files to notebook: ${notebook.name}`);
+      
       // Update all valid files to uploading status
       setFiles(prev => prev.map(f => 
         f.status === 'pending' 
@@ -222,119 +206,119 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           : f
       ));
 
-      // Step 2: Upload files via audimodal API
+      // Upload files via Aether Backend using base64 encoding
       const uploadPromises = validFiles.map(async (fileData) => {
-        console.log(`Uploading ${fileData.name} (${fileData.processingTier.description})`);
+        console.log(`Uploading ${fileData.name} via Aether Backend (base64)`);
         
         try {
-          // Prepare metadata
-          const metadata = {
-            notebook_id: notebook.id,
-            processing_tier: fileData.processingTier.tier,
-            file_category: fileData.formatInfo?.category,
-            uploaded_via: 'aether_ui',
-            original_name: fileData.name
-          };
+          // Update progress - encoding
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileData.id]: 5
+          }));
 
-          // Upload file to audimodal service
-          const uploadResult = await audiModalService.uploadFile(
-            dataSource.id,
-            fileData.file,
-            metadata,
-            [`notebook:${notebook.name}`, `tier:${fileData.processingTier.tier}`],
-            (progressData) => {
-              // Enhanced progress tracking for different upload methods
-              let progress = 0;
-              let statusText = 'Uploading...';
-              
-              switch (progressData.processing_status) {
-                case 'requesting_upload_url':
-                  progress = 5;
-                  statusText = 'Getting upload URL...';
-                  break;
-                case 'uploading_to_s3':
-                  progress = progressData.progress || 10;
-                  // Show byte-level progress for S3 uploads if available
-                  if (progressData.bytes_uploaded && progressData.bytes_total) {
-                    const uploadedMB = (progressData.bytes_uploaded / (1024 * 1024)).toFixed(1);
-                    const totalMB = (progressData.bytes_total / (1024 * 1024)).toFixed(1);
-                    statusText = `Uploading to S3: ${uploadedMB}MB / ${totalMB}MB`;
-                  } else {
-                    statusText = `Uploading to cloud (${progressData.upload_method || 'S3'})...`;
-                  }
-                  break;
-                case 's3_upload_complete':
-                  progress = 80;
-                  statusText = 'S3 upload complete, creating file record...';
-                  break;
-                case 'creating_file_record':
-                  progress = 90;
-                  statusText = 'Creating file record...';
-                  break;
-                case 'uploaded':
-                  progress = progressData.progress || 100;
-                  statusText = `Uploaded via ${progressData.upload_method || 'multipart'}`;
-                  break;
-                case 'completed':
-                  progress = 100;
-                  statusText = `Upload complete (${progressData.upload_method || 'unknown'})`;
-                  break;
-                case 'processing':
-                  progress = 50;
-                  statusText = 'Processing...';
-                  break;
-                case 'failed':
-                  progress = 0;
-                  statusText = `Failed: ${progressData.error || 'Unknown error'}`;
-                  break;
-                default:
-                  progress = progressData.progress || 25;
-                  statusText = progressData.processing_status || 'Uploading...';
-              }
-              
-              setUploadProgress(prev => ({
-                ...prev,
-                [fileData.id]: progress
-              }));
-              
-              // Update file status and status text
-              setFiles(prev => prev.map(f => 
-                f.id === fileData.id 
-                  ? { 
-                      ...f, 
-                      status: progressData.processing_status === 'completed' ? 'completed' : 
-                             progressData.processing_status === 'failed' ? 'failed' : 'uploading',
-                      statusText: statusText,
-                      uploadMethod: progressData.upload_method
-                    }
-                  : f
-              ));
-              
-              // Update file status based on completion
-              if (progressData.processing_status === 'completed') {
-                setFiles(prev => prev.map(f => 
-                  f.id === fileData.id 
-                    ? { ...f, status: 'completed', uploadResult: progressData }
-                    : f
-                ));
-              } else if (progressData.processing_status === 'failed') {
-                setFiles(prev => prev.map(f => 
-                  f.id === fileData.id 
-                    ? { ...f, status: 'error', errors: [progressData.error || 'Processing failed'] }
-                    : f
-                ));
-              }
-            }
-          );
-
-          console.log(`File uploaded successfully: ${uploadResult.id}`);
-          return uploadResult;
-
-        } catch (error) {
-          console.error(`Failed to upload ${fileData.name}:`, error);
           setFiles(prev => prev.map(f => 
             f.id === fileData.id 
-              ? { ...f, status: 'error', errors: [error.message] }
+              ? { ...f, statusText: 'Encoding file...' }
+              : f
+          ));
+
+          // Convert file to base64
+          const fileContent = await fileToBase64(fileData.file);
+
+          // Update progress - uploading
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileData.id]: 20
+          }));
+
+          setFiles(prev => prev.map(f => 
+            f.id === fileData.id 
+              ? { ...f, statusText: 'Uploading to Aether Backend...' }
+              : f
+          ));
+
+          // Ensure space context is set for upload - use default personal space if none exists
+          let spaceContext = null;
+          const savedSpace = localStorage.getItem('currentSpace');
+          if (savedSpace) {
+            try {
+              const currentSpace = JSON.parse(savedSpace);
+              if (currentSpace && currentSpace.space_type && currentSpace.space_id) {
+                spaceContext = currentSpace;
+              }
+            } catch (e) {
+              console.warn('Failed to parse space context:', e);
+            }
+          }
+          
+          // Fallback: Create default personal space context if none exists
+          if (!spaceContext) {
+            spaceContext = {
+              space_type: 'personal',
+              space_id: '00000000-0000-0000-0000-000000000000', // Default personal space ID
+              tenant_id: 'default'
+            };
+            localStorage.setItem('currentSpace', JSON.stringify(spaceContext));
+            console.log('Created default space context for upload:', spaceContext);
+          }
+          
+          console.log('Upload debug - Space context:', spaceContext);
+
+          // Prepare base64 upload payload
+          const uploadPayload = {
+            name: fileData.name,
+            description: `Uploaded document: ${fileData.name}`,
+            notebook_id: notebook.id,
+            file_name: fileData.name,
+            mime_type: fileData.type || 'application/octet-stream',
+            file_content: fileContent,
+            tags: [`notebook:${notebook.name.replace(/\s+/g, '_').toLowerCase()}`, 'document']
+          };
+
+          console.log('Upload debug - Base64 payload:', {
+            name: uploadPayload.name,
+            description: uploadPayload.description,
+            notebook_id: uploadPayload.notebook_id,
+            file_name: uploadPayload.file_name,
+            mime_type: uploadPayload.mime_type,
+            tags: uploadPayload.tags,
+            file_content_length: uploadPayload.file_content.length
+          });
+
+          // Upload to aether-be /documents/upload-base64 endpoint
+          const uploadResult = await aetherApi.documents.uploadBase64(uploadPayload);
+          
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileData.id]: 100
+          }));
+
+          setFiles(prev => prev.map(f => 
+            f.id === fileData.id 
+              ? { 
+                  ...f, 
+                  status: 'completed', 
+                  statusText: 'Upload complete',
+                  uploadResult: uploadResult.data
+                }
+              : f
+          ));
+
+          console.log(`File uploaded successfully via Aether Backend (base64):`, uploadResult.data);
+          return uploadResult.data;
+
+        } catch (error) {
+          console.error(`Failed to upload ${fileData.name} via Aether Backend (base64):`, error);
+          
+          setFiles(prev => prev.map(f => 
+            f.id === fileData.id 
+              ? { 
+                  ...f, 
+                  status: 'error', 
+                  errors: [error.message || 'Upload failed'],
+                  statusText: 'Upload failed'
+                }
               : f
           ));
           throw error;
@@ -344,30 +328,9 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       // Wait for all uploads to complete
       const uploadResults = await Promise.allSettled(uploadPromises);
       const successfulUploads = uploadResults.filter(result => result.status === 'fulfilled');
+      const failedUploads = uploadResults.filter(result => result.status === 'rejected');
 
-      // Step 3: Generate insights and check for anomalies (if uploads succeeded)
-      if (successfulUploads.length > 0) {
-        console.log('Generating content insights...');
-        try {
-          const insights = await audiModalService.generateInsights();
-          console.log('Content insights generated:', insights);
-        } catch (error) {
-          console.warn('Failed to generate insights:', error);
-        }
-
-        // Check for recent anomalies
-        try {
-          const anomalies = await audiModalService.getAnomalies({ 
-            status: 'new',
-            severity: 'high'
-          });
-          if (anomalies.anomalies && anomalies.anomalies.length > 0) {
-            console.warn('High-severity anomalies detected:', anomalies.anomalies);
-          }
-        } catch (error) {
-          console.warn('Failed to check anomalies:', error);
-        }
-      }
+      console.log(`Base64 upload complete: ${successfulUploads.length} successful, ${failedUploads.length} failed`);
 
       // Store results and show summary modal
       setTimeout(() => {
@@ -380,16 +343,16 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       }, 1000);
 
     } catch (error) {
-      console.error('Upload session failed:', error);
+      console.error('Base64 upload session failed:', error);
       
       // Update any remaining uploading files to error status
       setFiles(prev => prev.map(f => 
         f.status === 'uploading' 
-          ? { ...f, status: 'error', errors: [error.message || 'Upload session failed'] }
+          ? { ...f, status: 'error', errors: [error.message || 'Base64 upload session failed'] }
           : f
       ));
       
-      alert(`Upload failed: ${error.message}\n\nPlease check your audimodal service configuration and try again.`);
+      alert(`Upload failed: ${error.message}\\n\\nPlease check your connection and try again.`);
       
     } finally {
       setUploading(false);
@@ -458,95 +421,25 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           />
         </div>
 
-        {/* AudiModal Processing Info */}
+        {/* Aether Backend Info */}
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="text-sm text-blue-900 mb-2">
-            <strong>🎯 AudiModal AI Processing Platform</strong>
+            <strong>🚀 Base64 Upload Processing Pipeline</strong>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-blue-700">
-            <div>
-              <strong>Enterprise Formats (35+):</strong>
-              <div className="mt-1">
-                • Office: PDF, DOCX, XLSX, PPTX, DOC, XLS, PPT
-              </div>
-              <div>
-                • Media: JPG, PNG, MP4, MP3 (with OCR & transcription)
-              </div>
-              <div>
-                • Email: MSG, EML, PST archives
-              </div>
-            </div>
-            <div>
-              <strong>AI Processing Tiers:</strong>
-              <div className="mt-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span>Tier 1 (&lt;10MB): 30 seconds</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                  <span>Tier 2 (10MB-1GB): 2-5 minutes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                  <span>Tier 3 (&gt;1GB): 10-30 minutes</span>
-                </div>
-              </div>
+          <div className="text-xs text-blue-700">
+            <div className="mt-1 space-y-1">
+              <div>1. 🔄 Encode files as Base64 in browser</div>
+              <div>2. 📤 Upload JSON payload to Aether Backend</div>
+              <div>3. 🗄️ Store in tenant-scoped MinIO bucket (aether-{'{tenant_id}'})</div>
+              <div>4. 💾 Create document record in Neo4j</div>
+              <div>5. 📊 Update notebook document counts</div>
+              <div>6. 🔍 Enable document search and retrieval</div>
             </div>
           </div>
-          <div className="mt-3 text-xs text-blue-600">
-            <strong>Features:</strong> Vector embeddings, semantic search, content analysis, anomaly detection, OCR, transcription, DeepLake integration
-          </div>
-          <div className="mt-1 text-xs text-gray-600">
-            <strong>Limits:</strong> Max {maxFiles} files, {formatFileSize(maxFileSize)} per file
-            {notebook?.complianceSettings?.dataRetentionDays > 0 && (
-              <span> • Auto-delete after {notebook.complianceSettings.dataRetentionDays} days</span>
-            )}
+          <div className="mt-2 text-xs text-gray-600">
+            <strong>Improved Architecture:</strong> Base64 encoding prevents timeout issues
           </div>
         </div>
-
-        {/* Compliance Status Display (Read-only) */}
-        {notebook?.complianceSettings && (
-          <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <div className="text-sm text-purple-900 mb-2 font-medium">
-              📋 Active Compliance Settings
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              {notebook.complianceSettings.hipaaCompliant && (
-                <div className="flex items-center gap-1 text-purple-700">
-                  <Shield size={10} />
-                  <span>HIPAA</span>
-                </div>
-              )}
-              {notebook.complianceSettings.piiDetection !== false && (
-                <div className="flex items-center gap-1 text-orange-700">
-                  <Eye size={10} />
-                  <span>PII Detection</span>
-                </div>
-              )}
-              {notebook.complianceSettings.redactionEnabled && (
-                <div className="flex items-center gap-1 text-red-700">
-                  <X size={10} />
-                  <span>Redaction</span>
-                </div>
-              )}
-              {notebook.complianceSettings.auditTrail !== false && (
-                <div className="flex items-center gap-1 text-blue-700">
-                  <Clock size={10} />
-                  <span>Audit Trail</span>
-                </div>
-              )}
-            </div>
-            {notebook.complianceSettings.complianceFrameworks?.length > 0 && (
-              <div className="mt-2 text-xs text-purple-600">
-                <strong>Frameworks:</strong> {notebook.complianceSettings.complianceFrameworks.join(', ')}
-              </div>
-            )}
-            <div className="mt-2 text-xs text-gray-600">
-              <em>Configure compliance settings in notebook settings</em>
-            </div>
-          </div>
-        )}
 
         {/* File List */}
         {files.length > 0 && (
@@ -599,49 +492,17 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                         <p className="text-xs text-gray-500">
                           {formatFileSize(fileData.size)}
                         </p>
-                        {fileData.processingTier && (
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            fileData.processingTier.tier === 1 
-                              ? 'bg-green-100 text-green-700' 
-                              : fileData.processingTier.tier === 2 
-                              ? 'bg-yellow-100 text-yellow-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            Tier {fileData.processingTier.tier}
-                          </span>
-                        )}
-                        {fileData.formatInfo && (
-                          <span className="text-xs text-blue-600 capitalize">
-                            {fileData.formatInfo.category}
-                          </span>
-                        )}
-                        {fileData.status === 'pending' && (
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            fileData.size > directUploadThreshold 
-                              ? 'bg-purple-100 text-purple-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {fileData.size > directUploadThreshold ? '☁️ S3 Upload' : '🔽 Direct Upload'}
-                          </span>
-                        )}
-                      </div>
-                      {fileData.status === 'uploading' && (
-                        <div className="text-xs text-blue-600 font-medium">
-                          <div className="flex items-center justify-between">
-                            <span>{Math.round(uploadProgress[fileData.id] || 0)}%</span>
-                            {fileData.uploadMethod && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                {fileData.uploadMethod === 'multipart' ? '🔽 Direct' : '☁️ S3'}
+                        {fileData.status === 'uploading' && (
+                          <div className="text-xs text-blue-600 font-medium">
+                            {Math.round(uploadProgress[fileData.id] || 0)}%
+                            {fileData.statusText && (
+                              <span className="text-xs text-gray-600 ml-1">
+                                - {fileData.statusText}
                               </span>
                             )}
                           </div>
-                          {fileData.statusText && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              {fileData.statusText}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {/* Progress Bar */}
@@ -678,44 +539,13 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             <div className="text-sm text-gray-600">
               <div className="flex justify-between items-center mb-2">
                 <p>Ready to upload: <strong>{validFiles.length}</strong> files</p>
-                <div className="flex flex-col items-end text-xs">
-                  {validFiles.length > 0 && (
-                    <div className="text-blue-600 mb-1">
-                      Processing tiers: {[1,2,3].map(tier => {
-                        const count = validFiles.filter(f => f.processingTier?.tier === tier).length;
-                        return count > 0 ? `T${tier}: ${count}` : null;
-                      }).filter(Boolean).join(', ')}
-                    </div>
-                  )}
-                  {validFiles.length > 0 && (
-                    <div className="text-purple-600">
-                      Upload methods: {(() => {
-                        const directCount = validFiles.filter(f => f.size <= directUploadThreshold).length;
-                        const s3Count = validFiles.filter(f => f.size > directUploadThreshold).length;
-                        const methods = [];
-                        if (directCount > 0) methods.push(`🔽 Direct: ${directCount}`);
-                        if (s3Count > 0) methods.push(`☁️ S3: ${s3Count}`);
-                        return methods.join(', ');
-                      })()}
-                    </div>
-                  )}
+                <div className="text-xs text-blue-600">
+                  Via Base64 → Aether Backend → Tenant Storage
                 </div>
               </div>
               {errorFiles.length > 0 && (
                 <p className="text-red-600">Files with errors: <strong>{errorFiles.length}</strong></p>
               )}
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
-                <strong>AudiModal Processing Pipeline:</strong>
-                <div className="mt-1 space-y-1">
-                  <div>1. 📤 Streaming upload to processing session</div>
-                  <div>2. 🔍 Content analysis & format detection</div>
-                  <div>3. 🧠 AI text extraction (OCR, transcription)</div>
-                  <div>4. 📊 Vector embedding generation</div>
-                  <div>5. 🗄️ DeepLake dataset integration</div>
-                  <div>6. 🛡️ Anomaly detection & content insights</div>
-                  <div>7. 🔍 Semantic search enablement</div>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -723,7 +553,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         {/* Actions */}
         <div className="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
           <div className="text-sm text-gray-500">
-            🚀 AudiModal will process, vectorize, and enable AI search
+            🔄 Base64 encoding prevents timeout issues
           </div>
           <div className="flex gap-3">
             <button
@@ -741,12 +571,12 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
               {uploading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing via AudiModal...
+                  Uploading (Base64)...
                 </>
               ) : (
                 <>
                   <Upload size={16} />
-                  Process {validFiles.length} Files with AI
+                  Upload {validFiles.length} Files
                 </>
               )}
             </button>

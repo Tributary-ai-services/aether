@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
-import audiModalService from '../services/audiModalService.js';
+import { useSpace } from '../contexts/SpaceContext.jsx';
+import { aetherApi } from '../services/aetherApi.js';
 import { 
   useAppDispatch, 
   useAppSelector,
@@ -9,6 +10,7 @@ import {
   updateNotebook as updateNotebookAction, 
   deleteNotebook as deleteNotebookAction,
   setSelectedNotebook,
+  updateNotebookDocumentCount,
   openModal,
   closeModal,
   setViewMode,
@@ -29,9 +31,313 @@ import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
 import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
 import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
 import { LoadingWrapper, NotebookCardSkeleton } from '../components/skeletons/index.js';
-import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder } from 'lucide-react';
+import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder, CheckCircle2, Clock, XCircle, Circle, Square, CheckSquare, DownloadCloud, Eye, X, File, Image, Code } from 'lucide-react';
+
+// Document Preview Modal Component
+const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
+  const [documentDetails, setDocumentDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && document && document.id) {
+      fetchDocumentDetails();
+    }
+  }, [isOpen, document]);
+
+  const fetchDocumentDetails = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await aetherApi.documents.getById(document.id);
+      setDocumentDetails(result.data);
+      
+      // If it's an image, load the image preview
+      const mimeType = result.data.mime_type || '';
+      if (mimeType.startsWith('image/')) {
+        loadImagePreview(document.id);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load document details');
+      console.error('Failed to fetch document details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadImagePreview = async (documentId) => {
+    setImageLoading(true);
+    try {
+      const blob = await aetherApi.downloadDocument(documentId);
+      const url = window.URL.createObjectURL(blob);
+      setImageUrl(url);
+    } catch (err) {
+      console.error('Failed to load image preview:', err);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Clean up image URL when component unmounts or document changes
+  useEffect(() => {
+    return () => {
+      if (imageUrl) {
+        window.URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileTypeIcon = (mimeType, type) => {
+    if (!mimeType && !type) return <File size={24} className="text-gray-500" />;
+    
+    const mime = (mimeType || '').toLowerCase();
+    const docType = (type || '').toLowerCase();
+    
+    if (mime.startsWith('image/') || docType === 'image') {
+      return <Image size={24} className="text-blue-500" />;
+    }
+    if (mime.includes('pdf') || docType === 'pdf') {
+      return <FileText size={24} className="text-red-500" />;
+    }
+    if (mime.includes('text/') || mime.includes('json') || docType === 'text') {
+      return <Code size={24} className="text-green-500" />;
+    }
+    return <File size={24} className="text-gray-500" />;
+  };
+
+  const renderPreviewContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading preview...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle size={48} className="text-red-500 mx-auto mb-2" />
+            <p className="text-red-600 font-medium">Preview Error</p>
+            <p className="text-gray-600 text-sm">{error}</p>
+            <button 
+              onClick={fetchDocumentDetails}
+              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!documentDetails) return null;
+
+    const extractedText = documentDetails.extracted_text;
+    const hasText = extractedText && extractedText.trim().length > 0;
+    const mimeType = documentDetails.mime_type || '';
+    const isImage = mimeType.startsWith('image/');
+
+    return (
+      <div className="space-y-4">
+        {/* Document Info */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center gap-3">
+            {getFileTypeIcon(documentDetails.mime_type, documentDetails.type)}
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">
+                {documentDetails.original_name || documentDetails.name || 'Unknown file'}
+              </h4>
+              <div className="text-sm text-gray-600 space-y-1">
+                {documentDetails.mime_type && (
+                  <div>Type: {documentDetails.mime_type}</div>
+                )}
+                {documentDetails.size_bytes && (
+                  <div>Size: {formatFileSize(documentDetails.size_bytes)}</div>
+                )}
+                {documentDetails.status && (
+                  <div>Status: <span className="capitalize">{documentDetails.status}</span></div>
+                )}
+                {documentDetails.created_at && (
+                  <div>Created: {new Date(documentDetails.created_at).toLocaleDateString()}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Preview */}
+        <div>
+          <h5 className="font-medium text-gray-900 mb-2">Preview</h5>
+          {isImage ? (
+            <div className="bg-white border rounded-lg p-4">
+              <div className="text-center">
+                {imageLoading ? (
+                  <div className="flex items-center justify-center h-48">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-gray-600">Loading image...</span>
+                  </div>
+                ) : imageUrl ? (
+                  <img 
+                    src={imageUrl}
+                    alt={documentDetails.original_name || 'Document preview'}
+                    className="max-w-full max-h-96 mx-auto rounded shadow-sm border"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-red-500 mb-2">
+                      <Image size={48} className="mx-auto" />
+                    </div>
+                    <p className="text-gray-600">Image preview failed</p>
+                    <p className="text-gray-500 text-sm">Unable to load image preview</p>
+                    <button 
+                      onClick={() => loadImagePreview(documentDetails.id)}
+                      className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : hasText ? (
+            <div className="bg-white border rounded-lg p-4 max-h-96 overflow-y-auto">
+              <div className="mb-2 text-xs text-gray-500 flex justify-between items-center">
+                <span>Extracted Text Content</span>
+                <span>{extractedText.length} characters</span>
+              </div>
+              <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                {extractedText.substring(0, 10000)}
+                {extractedText.length > 10000 && (
+                  <div className="mt-4 p-2 bg-gray-50 rounded text-center">
+                    <span className="text-gray-500 text-sm">
+                      ... {extractedText.length - 10000} more characters (showing first 10,000)
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+              <FileText size={48} className="text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-600">No text content available</p>
+              <p className="text-gray-500 text-sm mb-3">
+                {isImage 
+                  ? 'This is an image file. Text extraction may not be available.'
+                  : 'Text extraction may be in progress or this file type may not support text extraction.'
+                }
+              </p>
+              {documentDetails.status === 'processing' && (
+                <div className="inline-flex items-center gap-2 text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm">Processing document...</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Debug Info (only in dev mode) */}
+        {window.location.hostname === 'localhost' && (
+          <details className="text-xs text-gray-500">
+            <summary className="cursor-pointer">Debug Info</summary>
+            <pre className="mt-2 bg-gray-100 p-2 rounded text-xs overflow-auto">
+              {JSON.stringify(documentDetails, null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
+    );
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Document Preview
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="p-6 h-full overflow-y-auto">
+            {renderPreviewContent()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const NotebooksPage = () => {
+  // Utility function to format file sizes
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Get status icon and color for document
+  const getStatusIcon = (status) => {
+    const normalizedStatus = (status || '').toLowerCase();
+    
+    if (['completed', 'processed', 'discovered', 'ready'].includes(normalizedStatus)) {
+      return {
+        icon: CheckCircle2,
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+        tooltip: 'Processed'
+      };
+    } else if (['processing', 'indexing', 'uploading'].includes(normalizedStatus)) {
+      return {
+        icon: Clock,
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-100',
+        tooltip: 'Processing'
+      };
+    } else if (['failed', 'error'].includes(normalizedStatus)) {
+      return {
+        icon: XCircle,
+        color: 'text-red-600',
+        bgColor: 'bg-red-100',
+        tooltip: 'Failed'
+      };
+    } else {
+      return {
+        icon: Circle,
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        tooltip: status || 'Unknown'
+      };
+    }
+  };
+
   // Redux selectors
   const dispatch = useAppDispatch();
   const { 
@@ -50,6 +356,9 @@ const NotebooksPage = () => {
   
   const { filterNotebooks } = useFilters();
   
+  // Space context
+  const { currentSpace, loadAvailableSpaces, initialized } = useSpace();
+  
   // Local state for things not in Redux yet
   const [parentForCreate, setParentForCreate] = useState(null);
   const [uploadNotebook, setUploadNotebook] = useState(null);
@@ -60,6 +369,8 @@ const NotebooksPage = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareNotebookModalOpen, setShareNotebookModalOpen] = useState(false);
   const [shareNotebook, setShareNotebook] = useState(null);
+  const [previewDocument, setPreviewDocument] = useState(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(320);
@@ -69,6 +380,10 @@ const NotebooksPage = () => {
   const [notebookDocumentCounts, setNotebookDocumentCounts] = useState({});
   const [notebookDocuments, setNotebookDocuments] = useState({});
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  
+  // Bulk selection state
+  const [selectedDocuments, setSelectedDocuments] = useState(new Set());
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
   
   // Analysis modal state
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
@@ -80,10 +395,19 @@ const NotebooksPage = () => {
   const [dataSourceNotebook, setDataSourceNotebook] = useState(null);
   const [pendingRefreshAfterUpload, setPendingRefreshAfterUpload] = useState(false);
   
-  // Initialize data on component mount
+  // Initialize spaces first, then data
   useEffect(() => {
-    dispatch(fetchNotebooks());
-  }, [dispatch]);
+    if (!initialized) {
+      loadAvailableSpaces();
+    }
+  }, [initialized, loadAvailableSpaces]);
+
+  // Initialize notebooks data after spaces are loaded
+  useEffect(() => {
+    if (initialized && currentSpace) {
+      dispatch(fetchNotebooks());
+    }
+  }, [dispatch, initialized, currentSpace]);
   
   // Fetch document counts for notebooks after notebooks are loaded
   useEffect(() => {
@@ -92,39 +416,21 @@ const NotebooksPage = () => {
     }
   }, [notebooks]);
   
-  // Fetch document counts from audimodal service
+  // Fetch document counts from aether backend
   const fetchNotebookDocumentCounts = async () => {
+    // Extract document counts directly from notebook data (backend already provides this)
     const counts = {};
     
     try {
-      // Get all data sources to map notebook names to data source IDs
-      const dataSources = await audiModalService.getDataSources();
-      
       for (const notebook of notebooks) {
-        try {
-          // Find data source for this notebook
-          const dataSourceName = `Notebook: ${notebook.name}`;
-          const dataSource = dataSources.find(ds => ds.name === dataSourceName);
-          
-          if (dataSource) {
-            // Get files for this data source
-            const filesResponse = await audiModalService.getNotebookFiles(dataSource.id, { limit: 1000 });
-            const files = filesResponse.data?.files || filesResponse.files || [];
-            counts[notebook.id] = files.length;
-            console.log(`Document count for ${notebook.name}: ${files.length} files`);
-          } else {
-            counts[notebook.id] = 0;
-            console.log(`No data source found for ${notebook.name}, count = 0`);
-          }
-        } catch (error) {
-          console.warn(`Failed to get document count for notebook ${notebook.name}:`, error);
-          counts[notebook.id] = 0;
-        }
+        // Use the document count from the notebook object if available, otherwise default to 0
+        counts[notebook.id] = notebook.documentCount || notebook.document_count || 0;
+        console.log(`Document count for ${notebook.name}: ${counts[notebook.id]} files (from notebook data)`);
       }
       
       setNotebookDocumentCounts(counts);
     } catch (error) {
-      console.error('Failed to fetch document counts:', error);
+      console.error('Failed to extract document counts from notebook data:', error);
     }
   };
   
@@ -132,42 +438,43 @@ const NotebooksPage = () => {
   const fetchNotebookDocuments = async (notebook, forceRefresh = false) => {
     if (!forceRefresh && notebookDocuments[notebook.id] && notebookDocuments[notebook.id].length > 0) {
       console.log(`Documents already loaded for notebook ${notebook.name}:`, notebookDocuments[notebook.id].length);
-      return notebookDocuments[notebook.id]; // Already loaded
+      // Return cached documents with the count from notebookDocumentCounts
+      return { 
+        documents: notebookDocuments[notebook.id], 
+        total: notebookDocumentCounts[notebook.id] || notebookDocuments[notebook.id].length 
+      };
     }
     
     console.log(`Fetching documents for notebook: ${notebook.name} (ID: ${notebook.id})`);
     setLoadingDocuments(true);
     try {
-      // Get all data sources to find the one for this notebook
-      const dataSources = await audiModalService.getDataSources();
-      const dataSourceName = `Notebook: ${notebook.name}`;
-      const dataSource = dataSources.find(ds => ds.name === dataSourceName);
+      // Get documents for this notebook from aether backend
+      const documentsResponse = await aetherApi.documents.getByNotebook(notebook.id);
+      console.log(`Raw API response for ${notebook.name}:`, documentsResponse);
+      console.log(`Response data:`, documentsResponse.data);
+      console.log(`Documents in response:`, documentsResponse.data?.documents);
       
-      console.log(`Looking for data source: "${dataSourceName}"`);
-      console.log(`Available data sources:`, dataSources.map(ds => ds.name));
+      const documents = documentsResponse.data?.documents || [];
+      const totalCount = documentsResponse.data?.total || documents.length;
       
-      if (dataSource) {
-        console.log(`Found data source:`, dataSource.id);
-        const filesResponse = await audiModalService.getNotebookFiles(dataSource.id, { limit: 1000 });
-        const files = filesResponse.data?.files || filesResponse.files || [];
-        
-        console.log(`Fetched ${files.length} files for notebook ${notebook.name}`);
-        console.log(`Sample files:`, files.slice(0, 3).map(f => ({ id: f.id, filename: f.filename, original_name: f.metadata?.original_name })));
-        
-        setNotebookDocuments(prev => ({
+      console.log(`Fetched ${documents.length} documents for notebook ${notebook.name} (Total: ${totalCount})`);
+      console.log(`Sample documents:`, documents.slice(0, 3).map(d => ({ id: d.id, name: d.name, original_name: d.original_name })));
+      console.log(`Setting notebookDocuments[${notebook.id}] with ${documents.length} documents`);
+      
+      setNotebookDocuments(prev => {
+        const newState = {
           ...prev,
-          [notebook.id]: files
-        }));
-        
-        return files;
-      } else {
-        console.warn(`No data source found for notebook: ${notebook.name}`);
-        console.warn(`Available data sources:`, dataSources.map(ds => ({ id: ds.id, name: ds.name })));
-        return [];
-      }
+          [notebook.id]: documents
+        };
+        console.log(`New notebookDocuments state:`, newState);
+        return newState;
+      });
+      
+      // Return an object with both the documents and the total count
+      return { documents, total: totalCount };
     } catch (error) {
       console.error('Failed to fetch notebook documents:', error);
-      return [];
+      return { documents: [], total: 0 };
     } finally {
       setLoadingDocuments(false);
     }
@@ -236,6 +543,10 @@ const NotebooksPage = () => {
   const handleSelectNotebook = async (notebook) => {
     console.log(`🔍 handleSelectNotebook called for: ${notebook.name} (ID: ${notebook.id})`);
     
+    // Clear document selection when switching notebooks
+    setSelectedDocuments(new Set());
+    setSelectAllChecked(false);
+    
     // Ensure the selected notebook includes its children and document count
     const notebookWithChildren = {
       ...notebook,
@@ -281,19 +592,39 @@ const NotebooksPage = () => {
   };
 
   const handleDeleteDocument = async (document, notebookId) => {
-    if (!confirm(`Are you sure you want to delete "${document.filename || document.metadata?.original_name || 'Unknown file'}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${document.name || document.original_name || 'Unknown file'}"?`)) {
       return;
     }
     
     try {
-      // Call the audimodal API to delete the document
-      await audiModalService.deleteDocument(document.id);
+      // Call the aether API to delete the document
+      await aetherApi.documents.delete(document.id);
       
       // Refresh the documents list
       const notebook = notebooks.find(nb => nb.id === notebookId);
       if (notebook) {
-        await fetchNotebookDocuments(notebook, true);
-        await fetchNotebookDocumentCounts();
+        const result = await fetchNotebookDocuments(notebook, true);
+        const newDocumentCount = result.total; // Use the total count, not the array length
+        
+        // Update the notebook document count in Redux state (for the cards view)
+        dispatch(updateNotebookDocumentCount({
+          notebookId: notebookId,
+          documentCount: newDocumentCount
+        }));
+        
+        // Update the local document counts state
+        setNotebookDocumentCounts(prev => ({
+          ...prev,
+          [notebookId]: newDocumentCount
+        }));
+        
+        // Update selected notebook's document count if it's the same notebook
+        if (selectedNotebook && selectedNotebook.id === notebookId) {
+          dispatch(setSelectedNotebook({
+            ...selectedNotebook,
+            documentCount: newDocumentCount
+          }));
+        }
       }
       
       dispatch(addNotification({
@@ -311,14 +642,169 @@ const NotebooksPage = () => {
     }
   };
 
+  const handleDownloadDocument = async (doc) => {
+    try {
+      const blob = await aetherApi.downloadDocument(doc.id);
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.original_name || doc.name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      dispatch(addNotification({
+        type: 'success',
+        title: 'Download Complete',
+        message: `Downloaded ${doc.name || doc.original_name}`
+      }));
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Download Failed',
+        message: error.message || 'Failed to download document. Please try again.'
+      }));
+    }
+  };
+
+  const handleToggleDocumentSelection = (documentId) => {
+    setSelectedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(documentId)) {
+        newSet.delete(documentId);
+      } else {
+        newSet.add(documentId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllDocuments = (documents) => {
+    if (selectAllChecked) {
+      setSelectedDocuments(new Set());
+      setSelectAllChecked(false);
+    } else {
+      const allIds = documents.map(doc => doc.id);
+      setSelectedDocuments(new Set(allIds));
+      setSelectAllChecked(true);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDocuments.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedDocuments.size} document(s)?`)) {
+      return;
+    }
+    
+    try {
+      // Delete all selected documents
+      const deletePromises = Array.from(selectedDocuments).map(docId => 
+        aetherApi.documents.delete(docId)
+      );
+      await Promise.all(deletePromises);
+      
+      // Clear selection
+      setSelectedDocuments(new Set());
+      setSelectAllChecked(false);
+      
+      // Refresh the current notebook's documents
+      if (selectedNotebook) {
+        const result = await fetchNotebookDocuments(selectedNotebook, true);
+        const newDocumentCount = result.total;
+        
+        dispatch(updateNotebookDocumentCount({
+          notebookId: selectedNotebook.id,
+          documentCount: newDocumentCount
+        }));
+        
+        setNotebookDocumentCounts(prev => ({
+          ...prev,
+          [selectedNotebook.id]: newDocumentCount
+        }));
+        
+        dispatch(setSelectedNotebook({
+          ...selectedNotebook,
+          documentCount: newDocumentCount,
+          document_count: newDocumentCount
+        }));
+      }
+      
+      dispatch(addNotification({
+        type: 'success',
+        title: 'Bulk Delete Successful',
+        message: `Successfully deleted ${selectedDocuments.size} document(s).`
+      }));
+    } catch (error) {
+      console.error('Failed to bulk delete documents:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Bulk Delete Failed',
+        message: error.message || 'Failed to delete some documents. Please try again.'
+      }));
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedDocuments.size === 0) return;
+    
+    try {
+      // Download each selected document
+      const documents = notebookDocuments[selectedNotebook.id] || [];
+      for (const docId of selectedDocuments) {
+        const document = documents.find(d => d.id === docId);
+        if (document) {
+          await handleDownloadDocument(document);
+          // Add a small delay between downloads to avoid overwhelming the browser
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // Clear selection after download
+      setSelectedDocuments(new Set());
+      setSelectAllChecked(false);
+      
+      dispatch(addNotification({
+        type: 'success',
+        title: 'Bulk Download Complete',
+        message: `Downloaded ${selectedDocuments.size} document(s).`
+      }));
+    } catch (error) {
+      console.error('Failed to bulk download documents:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Bulk Download Failed',
+        message: error.message || 'Failed to download some documents. Please try again.'
+      }));
+    }
+  };
+
+  const handlePreviewDocument = async (doc) => {
+    try {
+      setPreviewDocument(doc);
+      setPreviewModalOpen(true);
+    } catch (error) {
+      console.error('Failed to preview document:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Preview Failed',
+        message: error.message || 'Failed to open document preview. Please try again.'
+      }));
+    }
+  };
+
   const handleShowMLStats = async (document) => {
     try {
       setAnalysisDocument(document);
       setAnalysisData(null);
       setAnalysisModalOpen(true);
       
-      // Fetch ML analysis for this specific document
-      const analysis = await audiModalService.getDocumentAnalysis(document.id);
+      // Fetch ML analysis for this specific document (placeholder for future implementation)
+      const analysis = { status: 'Analysis not yet implemented in Aether backend' };
       setAnalysisData(analysis);
       
     } catch (error) {
@@ -637,82 +1123,159 @@ const NotebooksPage = () => {
                       
                       {/* Documents section */}
                       <div className={selectedNotebook.children && selectedNotebook.children.length > 0 ? 'border-t border-gray-200 pt-4' : ''}>
-                        <h4 className="font-medium text-gray-900 text-sm mb-2 flex items-center gap-2">
-                          <FileText size={14} />
-                          Documents ({selectedNotebook.documentCount || 0})
-                        </h4>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                            <FileText size={14} />
+                            Documents ({selectedNotebook.documentCount || 0})
+                          </h4>
+                          {/* Bulk actions */}
+                          {selectedDocuments.size > 0 && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={handleBulkDownload}
+                                className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
+                                title={`Download ${selectedDocuments.size} selected`}
+                              >
+                                <DownloadCloud size={14} />
+                              </button>
+                              <button
+                                onClick={handleBulkDelete}
+                                className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
+                                title={`Delete ${selectedDocuments.size} selected`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        
                         {loadingDocuments ? (
                           <div className="text-center py-4 text-gray-500">
                             <div className="text-sm">Loading documents...</div>
                           </div>
                         ) : (notebookDocuments[selectedNotebook.id] && notebookDocuments[selectedNotebook.id].length > 0) ? (
-                          // Debug: log what we're about to display
-                          console.log(`Displaying ${notebookDocuments[selectedNotebook.id].length} documents for ${selectedNotebook.name}`, notebookDocuments[selectedNotebook.id]) || (
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {notebookDocuments[selectedNotebook.id].map(document => (
-                              <div 
-                                key={document.id} 
-                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded group"
-                                title={`${document.filename || document.metadata?.original_name || 'Unknown file'} - ${document.size ? audiModalService.formatFileSize(document.size) : 'Unknown size'}`}
-                              >
-                                <div className="w-4 h-4 bg-green-100 rounded flex items-center justify-center">
-                                  <FileText size={10} className="text-green-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm text-gray-700 truncate">
-                                    {document.filename || document.metadata?.original_name || 'Unknown file'}
-                                  </div>
-                                  {document.size && document.size > 0 && (
-                                    <div className="text-xs text-gray-500">
-                                      {audiModalService.formatFileSize(document.size)}
-                                    </div>
+                          <div className="space-y-1">
+                            {/* Select all checkbox */}
+                            {notebookDocuments[selectedNotebook.id].length > 0 && (
+                              <div className="flex items-center gap-2 p-2 border-b border-gray-100">
+                                <button
+                                  onClick={() => handleSelectAllDocuments(notebookDocuments[selectedNotebook.id])}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title="Select all"
+                                >
+                                  {selectAllChecked ? (
+                                    <CheckSquare size={14} className="text-blue-600" />
+                                  ) : (
+                                    <Square size={14} className="text-gray-400" />
                                   )}
-                                  <div className="text-xs text-gray-400">
-                                    {new Date(document.created_at || document.updated_at).toLocaleString()}
-                                  </div>
-                                </div>
-                                
-                                {/* Action buttons - always visible */}
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleShowMLStats(document);
-                                    }}
-                                    className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
-                                    title="View ML Analysis"
-                                  >
-                                    <BarChart3 size={14} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteDocument(document, selectedNotebook.id);
-                                    }}
-                                    className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
-                                    title="Delete Document"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                                
-                                {document.status && (
-                                  <div className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                                    document.status === 'completed' || document.status === 'discovered' || document.status === 'ready'
-                                      ? 'bg-green-100 text-green-700' 
-                                      : document.status === 'processing' || document.status === 'indexing'
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : document.status === 'failed' || document.status === 'error'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {document.status === 'discovered' || document.status === 'ready' ? 'completed' : document.status}
-                                  </div>
-                                )}
+                                </button>
+                                <span className="text-xs text-gray-500">Select all</span>
                               </div>
-                            ))}
+                            )}
+                            
+                            <div className="space-y-1 max-h-64 overflow-y-auto">
+                              {notebookDocuments[selectedNotebook.id].map(document => {
+                                const statusInfo = getStatusIcon(document.status);
+                                const StatusIcon = statusInfo.icon;
+                                const isSelected = selectedDocuments.has(document.id);
+                                
+                                return (
+                                  <div 
+                                    key={document.id} 
+                                    className={`flex items-center gap-2 p-2 hover:bg-gray-50 rounded group ${isSelected ? 'bg-blue-50' : ''}`}
+                                  >
+                                    {/* Selection checkbox */}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleDocumentSelection(document.id);
+                                      }}
+                                      className="p-1 hover:bg-gray-100 rounded"
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare size={14} className="text-blue-600" />
+                                      ) : (
+                                        <Square size={14} className="text-gray-400" />
+                                      )}
+                                    </button>
+                                    
+                                    {/* Status icon */}
+                                    <div 
+                                      className={`w-5 h-5 ${statusInfo.bgColor} rounded flex items-center justify-center`}
+                                      title={statusInfo.tooltip}
+                                    >
+                                      <StatusIcon size={12} className={statusInfo.color} />
+                                    </div>
+                                    
+                                    {/* Document info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm text-gray-700 truncate">
+                                        {document.name || document.original_name || 'Unknown file'}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        {document.size_bytes && document.size_bytes > 0 && (
+                                          <span>{formatFileSize(document.size_bytes)}</span>
+                                        )}
+                                        <span>•</span>
+                                        <span>
+                                          {(() => {
+                                            const dateStr = document.created_at || document.updated_at;
+                                            if (!dateStr) return 'Date unknown';
+                                            const date = new Date(dateStr);
+                                            return isNaN(date.getTime()) ? 'Date unknown' : date.toLocaleDateString();
+                                          })()}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handlePreviewDocument(document);
+                                        }}
+                                        className="p-1 hover:bg-purple-100 rounded text-purple-600 hover:text-purple-700"
+                                        title="Preview"
+                                      >
+                                        <Eye size={14} />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownloadDocument(document);
+                                        }}
+                                        className="p-1 hover:bg-green-100 rounded text-green-600 hover:text-green-700"
+                                        title="Download"
+                                      >
+                                        <Download size={14} />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleShowMLStats(document);
+                                        }}
+                                        className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
+                                        title="View ML Analysis"
+                                      >
+                                        <BarChart3 size={14} />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteDocument(document, selectedNotebook.id);
+                                        }}
+                                        className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
+                                        title="Delete"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          ) // Close the console.log expression
                         ) : (
                           <div className="text-center py-4 text-gray-500">
                             <div className="text-sm">No documents uploaded</div>
@@ -1083,6 +1646,18 @@ const NotebooksPage = () => {
           console.log('Database integration coming soon');
         }}
       />
+
+      {/* Document Preview Modal */}
+      {previewModalOpen && previewDocument && (
+        <DocumentPreviewModal
+          document={previewDocument}
+          isOpen={previewModalOpen}
+          onClose={() => {
+            setPreviewModalOpen(false);
+            setPreviewDocument(null);
+          }}
+        />
+      )}
     </div>
   );
 };
