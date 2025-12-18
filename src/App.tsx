@@ -18,7 +18,7 @@ import ToastNotification from './components/notifications/ToastNotification.jsx'
 import AuditTrail from './components/audit/AuditTrail.jsx';
 import LeftNavigation from './components/navigation/LeftNavigation.jsx';
 import NotebooksPage from './pages/NotebooksPage.jsx';
-import AgentsPage from './pages/AgentsPage.jsx';
+import AgentBuilderPage from './pages/AgentBuilderPage.jsx';
 import WorkflowsPage from './pages/WorkflowsPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import CommunityPage from './pages/CommunityPage.jsx';
@@ -98,7 +98,7 @@ const App = () => {
   const getCurrentTab = () => {
     const path = location.pathname;
     if (path === '/' || path === '/notebooks') return 'documents';
-    if (path === '/agents') return 'agents';
+    if (path === '/agent-builder') return 'agent-builder';
     if (path === '/workflows') return 'workflows';
     if (path === '/analytics') return 'analytics';
     if (path === '/community') return 'community';
@@ -112,7 +112,7 @@ const App = () => {
   useEffect(() => {
     const tabVisibilityMap = {
       'documents': visibleTabs.notebooks,
-      'agents': visibleTabs.agents,
+      'agent-builder': visibleTabs['agent-builder'],
       'workflows': visibleTabs.workflows,
       'analytics': visibleTabs.analytics,
       'community': visibleTabs.community,
@@ -125,7 +125,7 @@ const App = () => {
       if (firstVisibleTab) {
         const routes = {
           'documents': '/notebooks',
-          'agents': '/agents',
+          'agent-builder': '/agent-builder',
           'workflows': '/workflows',
           'analytics': '/analytics',
           'community': '/community',
@@ -139,7 +139,7 @@ const App = () => {
   const handleTabClick = (tabId) => {
     const routes = {
       'documents': '/notebooks',
-      'agents': '/agents',
+      'agent-builder': '/agent-builder',
       'workflows': '/workflows',
       'analytics': '/analytics',
       'community': '/community',
@@ -165,6 +165,8 @@ const App = () => {
     const path = location.pathname;
     if (path === '/' || path === '/notebooks') {
       dispatch(openModal('createNotebook'));
+    } else if (path === '/agent-builder') {
+      dispatch(openModal('createAgent'));
     } else if (path === '/teams') {
       // Navigate to teams page if not already there, the teams page has its own create button
       navigate('/teams');
@@ -304,12 +306,12 @@ const App = () => {
               onClick={handleTabClick} 
             />
           )}
-          {visibleTabs.agents && (
+          {visibleTabs['agent-builder'] && (
             <TabButton 
-              id="agents" 
-              label="Agents" 
+              id="agent-builder" 
+              label="Agent Builder" 
               icon={Bot} 
-              isActive={activeTab === 'agents'} 
+              isActive={activeTab === 'agent-builder'} 
               onClick={handleTabClick} 
             />
           )}
@@ -366,7 +368,7 @@ const App = () => {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/teams/:teamId" element={<TeamPage />} />
             <Route path="/organizations" element={<OrganizationsPage />} />
-            <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/agent-builder" element={<AgentBuilderPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/community" element={<CommunityPage />} />

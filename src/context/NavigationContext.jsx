@@ -13,11 +13,11 @@ export const useNavigation = () => {
 export const NavigationProvider = ({ children }) => {
   // Default visibility settings
   const defaultTabs = {
-    notebooks: true,    // Default to true
-    agents: true,       // Default to true
+    notebooks: true,        // Default to true
+    'agent-builder': true,  // Default to true (renamed from agents)
     workflows: false,
     analytics: false,
-    community: true,    // Default to true
+    community: true,        // Default to true
     streaming: false
   };
 

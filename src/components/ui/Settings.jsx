@@ -481,13 +481,13 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
-                          <span className="font-medium text-gray-900">Agents</span>
-                          <p className="text-sm text-gray-500">AI agents and automation</p>
+                          <span className="font-medium text-gray-900">Agent Builder</span>
+                          <p className="text-sm text-gray-500">Advanced agent creation and management</p>
                         </div>
                         <input 
                           type="checkbox" 
-                          checked={visibleTabs.agents}
-                          onChange={() => setTabVisibility('agents', !visibleTabs.agents)}
+                          checked={visibleTabs['agent-builder']}
+                          onChange={() => setTabVisibility('agent-builder', !visibleTabs['agent-builder'])}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                         />
                       </label>
@@ -550,7 +550,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       Reset to Defaults
                     </button>
                     <p className="text-sm text-gray-500 mt-2">
-                      Restore default navigation settings (Notebooks, Agents, and Community visible)
+                      Restore default navigation settings (Notebooks, Agent Builder, and Community visible)
                     </p>
                   </div>
                 </div>

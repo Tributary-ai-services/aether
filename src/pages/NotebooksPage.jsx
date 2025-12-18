@@ -304,36 +304,55 @@ const NotebooksPage = () => {
   };
 
   // Get status icon and color for document
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status, document = {}) => {
     const normalizedStatus = (status || '').toLowerCase();
     
+    // Check if document has placeholder data (indicates waiting for real AI processing)
+    const hasPlaceholderData = document.extractedText && 
+      (document.extractedText.includes('File uploaded to AudiModal') || 
+       document.extractedText.includes('Status: discovered') ||
+       (document.processingTime === 100 && normalizedStatus === 'processed')); // Hardcoded placeholder time
+    
     if (['completed', 'processed', 'discovered', 'ready'].includes(normalizedStatus)) {
-      return {
-        icon: CheckCircle2,
-        color: 'text-green-600',
-        bgColor: 'bg-green-100',
-        tooltip: 'Processed'
-      };
+      if (hasPlaceholderData) {
+        // Document is marked as processed but has placeholder data - awaiting real AI results
+        return {
+          icon: Clock,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-100',
+          tooltip: 'AI Processing - Awaiting Results',
+          isProcessing: true
+        };
+      } else {
+        // Document has real AI processing results
+        return {
+          icon: CheckCircle2,
+          color: 'text-green-600',
+          bgColor: 'bg-green-100',
+          tooltip: 'AI Analysis Complete'
+        };
+      }
     } else if (['processing', 'indexing', 'uploading'].includes(normalizedStatus)) {
       return {
         icon: Clock,
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-100',
-        tooltip: 'Processing'
+        tooltip: 'Processing',
+        isProcessing: true
       };
     } else if (['failed', 'error'].includes(normalizedStatus)) {
       return {
         icon: XCircle,
         color: 'text-red-600',
         bgColor: 'bg-red-100',
-        tooltip: 'Failed'
+        tooltip: 'Processing Failed'
       };
     } else {
       return {
         icon: Circle,
         color: 'text-gray-600',
         bgColor: 'bg-gray-100',
-        tooltip: status || 'Unknown'
+        tooltip: status || 'Unknown Status'
       };
     }
   };
@@ -1175,7 +1194,7 @@ const NotebooksPage = () => {
                             
                             <div className="space-y-1 max-h-64 overflow-y-auto">
                               {notebookDocuments[selectedNotebook.id].map(document => {
-                                const statusInfo = getStatusIcon(document.status);
+                                const statusInfo = getStatusIcon(document.status, document);
                                 const StatusIcon = statusInfo.icon;
                                 const isSelected = selectedDocuments.has(document.id);
                                 
@@ -1201,10 +1220,16 @@ const NotebooksPage = () => {
                                     
                                     {/* Status icon */}
                                     <div 
-                                      className={`w-5 h-5 ${statusInfo.bgColor} rounded flex items-center justify-center`}
+                                      className={`w-5 h-5 ${statusInfo.bgColor} rounded flex items-center justify-center ${statusInfo.isProcessing ? 'animate-pulse' : ''}`}
                                       title={statusInfo.tooltip}
                                     >
-                                      <StatusIcon size={12} className={statusInfo.color} />
+                                      {statusInfo.isProcessing ? (
+                                        <div className="flex items-center justify-center">
+                                          <div className="w-2 h-2 border border-current rounded-full animate-spin border-t-transparent"></div>
+                                        </div>
+                                      ) : (
+                                        <StatusIcon size={12} className={statusInfo.color} />
+                                      )}
                                     </div>
                                     
                                     {/* Document info */}
@@ -1226,6 +1251,11 @@ const NotebooksPage = () => {
                                           })()}
                                         </span>
                                       </div>
+                                      {statusInfo.isProcessing && (
+                                        <div className="text-xs text-blue-600 font-medium animate-pulse">
+                                          {statusInfo.tooltip}
+                                        </div>
+                                      )}
                                     </div>
                                     
                                     {/* Action buttons */}

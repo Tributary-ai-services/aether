@@ -306,7 +306,18 @@ const LoginPage = () => {
               className="font-medium text-blue-600 hover:text-blue-500"
               onClick={(e) => {
                 e.preventDefault();
-                navigate('/signup');
+                // Redirect to Keycloak registration page
+                const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
+                const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+                const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
+
+                const registrationUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/registrations?` +
+                  `client_id=${CLIENT_ID}&` +
+                  `redirect_uri=${encodeURIComponent(window.location.origin)}/&` +
+                  `response_type=code&` +
+                  `scope=openid%20profile%20email`;
+
+                window.location.href = registrationUrl;
               }}
             >
               Sign up here

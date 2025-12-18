@@ -50,35 +50,7 @@ export const notebooks = [
   }
 ];
 
-export const agents = [
-  { 
-    id: 1, 
-    name: "Legal Contract Analyzer", 
-    status: "active", 
-    runs: 1204, 
-    accuracy: 94,
-    mediaSupport: ['document', 'image', 'handwriting'],
-    recentAnalysis: 'Detected 12 key clauses in scanned contract'
-  },
-  { 
-    id: 2, 
-    name: "PII Detection Agent", 
-    status: "training", 
-    runs: 345, 
-    accuracy: 87,
-    mediaSupport: ['audio', 'video', 'document', 'image'],
-    recentAnalysis: 'Identified SSN in voice recording at 2:34'
-  },
-  { 
-    id: 3, 
-    name: "Invoice Data Extractor", 
-    status: "active", 
-    runs: 2341, 
-    accuracy: 96,
-    mediaSupport: ['scan', 'image', 'document'],
-    recentAnalysis: 'Extracted line items from blurry receipt photo'
-  }
-];
+// NOTE: Agent data removed - now using real Agent Builder backend API
 
 export const workflows = [
   { id: 1, name: "Document Approval Chain", triggers: "Upload", status: "active" },

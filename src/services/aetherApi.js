@@ -190,6 +190,19 @@ class AetherApiService {
       try {
         const currentSpace = JSON.parse(savedSpace);
         if (currentSpace && currentSpace.space_type && currentSpace.space_id) {
+          // Validate space_type to prevent sending invalid headers
+          if (currentSpace.space_type !== 'personal' && currentSpace.space_type !== 'organization') {
+            console.error('Invalid space_type in localStorage:', currentSpace.space_type, 'Expected: personal or organization');
+            console.warn('Removing corrupted space context from localStorage:', currentSpace);
+            localStorage.removeItem('currentSpace');
+            return {};
+          }
+          
+          console.log('Using space headers:', {
+            'X-Space-Type': currentSpace.space_type,
+            'X-Space-ID': currentSpace.space_id
+          });
+          
           return {
             'X-Space-Type': currentSpace.space_type,
             'X-Space-ID': currentSpace.space_id
@@ -206,6 +219,17 @@ class AetherApiService {
       const currentSpace = state?.spaces?.currentSpace;
       
       if (currentSpace && currentSpace.space_type && currentSpace.space_id) {
+        // Validate space_type from Redux store as well
+        if (currentSpace.space_type !== 'personal' && currentSpace.space_type !== 'organization') {
+          console.error('Invalid space_type in Redux store:', currentSpace.space_type, 'Expected: personal or organization');
+          return {};
+        }
+        
+        console.log('Using space headers from Redux store:', {
+          'X-Space-Type': currentSpace.space_type,
+          'X-Space-ID': currentSpace.space_id
+        });
+        
         return {
           'X-Space-Type': currentSpace.space_type,
           'X-Space-ID': currentSpace.space_id
@@ -309,14 +333,20 @@ class AetherApiService {
       // Store new tokens - prefer ID token for authentication
       const tokenToUse = tokenData.id_token || tokenData.access_token;
       tokenStorage.setAccessToken(tokenToUse, tokenData.expires_in);
+      
+      // Implement token rotation - store new refresh token if provided
+      const oldRefreshToken = tokenStorage.getRefreshToken();
+      let rotatedRefreshToken = false;
       if (tokenData.refresh_token) {
-        tokenStorage.setRefreshToken(tokenData.refresh_token, tokenData.refresh_expires_in || 1800); // 30 mins default
+        tokenStorage.setRefreshToken(tokenData.refresh_token, tokenData.refresh_expires_in || 1800);
+        rotatedRefreshToken = oldRefreshToken !== tokenData.refresh_token;
       }
       
       console.log('Token refreshed successfully', {
         hasIdToken: !!tokenData.id_token,
         hasAccessToken: !!tokenData.access_token,
-        usingIdToken: tokenToUse === tokenData.id_token
+        usingIdToken: tokenToUse === tokenData.id_token,
+        refreshTokenRotated: rotatedRefreshToken
       });
       
       // Trigger success event
@@ -327,7 +357,10 @@ class AetherApiService {
       
     } catch (error) {
       console.error('Token refresh error:', error);
+      
+      // Clear all tokens on refresh failure to prevent reuse of potentially compromised tokens
       tokenStorage.clearTokens();
+      this.stopTokenRotation();
       
       // Ensure authentication error is triggered
       if (!error.message.includes('Please log in again')) {
@@ -342,11 +375,15 @@ class AetherApiService {
   setTokens(accessToken, refreshToken, expiresIn = 300, refreshExpiresIn = 1800) {
     tokenStorage.setAccessToken(accessToken, expiresIn);
     tokenStorage.setRefreshToken(refreshToken, refreshExpiresIn);
+    
+    // Start automatic token rotation
+    this.setupTokenRotation();
   }
 
   // Clear all tokens (for logout)
   clearTokens() {
     tokenStorage.clearTokens();
+    this.stopTokenRotation();
   }
 
   // Full logout with optional server-side token revocation
@@ -379,6 +416,9 @@ class AetherApiService {
       // Clear tokens locally
       tokenStorage.clearTokens();
       
+      // Stop automatic token rotation
+      this.stopTokenRotation();
+      
       // Clear any pending refresh promises
       this.refreshPromise = null;
       
@@ -396,9 +436,61 @@ class AetherApiService {
       
       // Still clear tokens locally even if there was an error
       tokenStorage.clearTokens();
+      this.stopTokenRotation();
       this.refreshPromise = null;
       
       return { success: false, error: error.message };
+    }
+  }
+
+  // Setup automatic token rotation
+  setupTokenRotation() {
+    // Clear any existing interval
+    this.stopTokenRotation();
+    
+    // Set up interval to check token expiry every minute
+    this.rotationInterval = setInterval(() => {
+      this.checkAndRotateToken();
+    }, 60000); // Check every minute
+    
+    console.log('🔄 Automatic token rotation setup');
+  }
+  
+  // Stop automatic token rotation
+  stopTokenRotation() {
+    if (this.rotationInterval) {
+      clearInterval(this.rotationInterval);
+      this.rotationInterval = null;
+      console.log('⏹️ Automatic token rotation stopped');
+    }
+  }
+  
+  // Check and rotate token if needed
+  async checkAndRotateToken() {
+    try {
+      // Don't rotate if we're not authenticated
+      if (!this.isAuthenticated()) {
+        return;
+      }
+      
+      // Check if token will expire in the next 5 minutes (proactive rotation)
+      if (tokenStorage.isAccessTokenExpired(5)) {
+        console.log('🔄 Token will expire soon, starting proactive rotation...');
+        
+        // Check if refresh token is still valid
+        if (tokenStorage.isRefreshTokenExpired()) {
+          console.log('⚠️ Refresh token expired, forcing logout');
+          this.triggerAuthenticationError('refresh_token_expired');
+          return;
+        }
+        
+        // Perform token refresh
+        await this.refreshToken();
+        console.log('✅ Proactive token rotation completed');
+      }
+    } catch (error) {
+      console.error('❌ Token rotation failed:', error);
+      // Don't trigger logout on rotation failure - wait for actual API failures
     }
   }
 
@@ -476,6 +568,7 @@ class AetherApiService {
     }),
     getUserStats: () => this.request('/users/me/stats'),
     getSpaces: () => this.request('/users/me/spaces'),
+    getOnboardingStatus: () => this.request('/users/me/onboarding'),
   };
 
   // Spaces API

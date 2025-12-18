@@ -1,0 +1,806 @@
+import React, { useState, useEffect } from 'react';
+import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
+import { api } from '../../services/api.js';
+import Modal from '../ui/Modal.jsx';
+import ConfigurationTemplateSelector from '../agent/ConfigurationTemplateSelector.jsx';
+import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
+import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
+import { 
+  Bot, 
+  Settings, 
+  Zap, 
+  DollarSign, 
+  Brain,
+  Save,
+  X,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  CheckCircle,
+  Info
+} from 'lucide-react';
+
+const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent }) => {
+  const { currentSpace } = useSpace();
+  const { createAgent } = useAgentBuilder();
+  const { providers, models, fetchModels, validateConfig } = useAgentProviders();
+  
+  // Handle both array and object with providers property
+  const providersArray = Array.isArray(providers) ? providers : (providers?.providers || []);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    type: 'qa', // Default to Q&A agent type
+    system_prompt: '',
+    llm_config: {
+      provider: '',
+      model: '',
+      temperature: 0.7,
+      max_tokens: 1000,
+      optimize_for: 'quality',
+      retry_config: {
+        max_attempts: 3,
+        backoff_type: 'exponential',
+        base_delay: '1s',
+        max_delay: '30s',
+        retryable_errors: ['timeout', 'connection', 'unavailable', 'rate_limit']
+      },
+      fallback_config: {
+        enabled: true,
+        max_cost_increase: 0.5,
+        require_same_features: true
+      }
+    },
+    is_public: false,
+    is_template: false,
+    tags: [],
+    notebook_ids: []
+  });
+
+  const [currentTag, setCurrentTag] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [configValidation, setConfigValidation] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState('Balanced');
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      if (agent) {
+        // Editing mode - populate with existing agent data
+        setFormData({
+          name: agent.name || '',
+          description: agent.description || '',
+          type: agent.type || 'qa',
+          system_prompt: agent.system_prompt || '',
+          llm_config: {
+            provider: agent.llm_config?.provider || (providers.length > 0 ? providers[0].name : ''),
+            model: agent.llm_config?.model || '',
+            temperature: agent.llm_config?.temperature || 0.7,
+            max_tokens: agent.llm_config?.max_tokens || 1000,
+            optimize_for: agent.llm_config?.optimize_for || 'quality',
+            retry_config: agent.llm_config?.retry_config || {
+              max_attempts: 3,
+              backoff_type: 'exponential',
+              base_delay: '1s',
+              max_delay: '30s',
+              retryable_errors: ['timeout', 'connection', 'unavailable', 'rate_limit']
+            },
+            fallback_config: agent.llm_config?.fallback_config || {
+              enabled: true,
+              max_cost_increase: 0.5,
+              require_same_features: true
+            }
+          },
+          is_public: agent.is_public || false,
+          is_template: agent.is_template || false,
+          tags: agent.tags || [],
+          notebook_ids: agent.notebook_ids || []
+        });
+      } else {
+        // Creation mode - use defaults
+        setFormData({
+          name: '',
+          description: '',
+          system_prompt: '',
+          llm_config: {
+            provider: providers.length > 0 ? providers[0].name : '',
+            model: '',
+            temperature: 0.7,
+            max_tokens: 1000,
+            optimize_for: 'quality',
+            retry_config: {
+              max_attempts: 3,
+              backoff_type: 'exponential',
+              base_delay: '1s',
+              max_delay: '30s',
+              retryable_errors: ['timeout', 'connection', 'unavailable', 'rate_limit']
+            },
+            fallback_config: {
+              enabled: true,
+              max_cost_increase: 0.5,
+              require_same_features: true
+            }
+          },
+          is_public: false,
+          is_template: false,
+          tags: [],
+          notebook_ids: []
+        });
+      }
+      setError(null);
+      setValidationErrors({});
+      setConfigValidation(null);
+    }
+  }, [isOpen, agent, providers]);
+
+  // Load models when provider changes
+  useEffect(() => {
+    if (formData.llm_config.provider && !models[formData.llm_config.provider]) {
+      fetchModels(formData.llm_config.provider);
+    }
+  }, [formData.llm_config.provider, models, fetchModels]);
+
+  // Validate configuration when it changes
+  useEffect(() => {
+    const validateConfiguration = async () => {
+      if (formData.llm_config.provider && formData.llm_config.model) {
+        try {
+          const validation = await validateConfig(formData.llm_config);
+          setConfigValidation(validation);
+        } catch (err) {
+          console.warn('Config validation failed:', err);
+          // Don't show validation errors if the endpoint isn't available yet
+          setConfigValidation({ valid: true, errors: [] });
+        }
+      } else {
+        // Reset validation if required fields are missing
+        setConfigValidation({ valid: true, errors: [] });
+      }
+    };
+
+    const timeoutId = setTimeout(validateConfiguration, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.llm_config, validateConfig]);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const handleLLMConfigChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      llm_config: { ...prev.llm_config, [field]: value }
+    }));
+  };
+
+  const handleTemplateChange = (templateName) => {
+    setSelectedTemplate(templateName);
+    
+    // Simple template configurations
+    const templates = {
+      'Balanced': {
+        retry_config: {
+          max_attempts: 3,
+          backoff_type: 'exponential',
+          base_delay: '1s',
+          max_delay: '30s',
+          retryable_errors: ['timeout', 'connection', 'unavailable', 'rate_limit']
+        },
+        fallback_config: {
+          enabled: true,
+          max_cost_increase: 0.5,
+          require_same_features: true
+        }
+      },
+      'High Reliability': {
+        retry_config: {
+          max_attempts: 5,
+          backoff_type: 'exponential',
+          base_delay: '500ms',
+          max_delay: '60s',
+          retryable_errors: ['timeout', 'connection', 'unavailable', 'rate_limit', 'server_error']
+        },
+        fallback_config: {
+          enabled: true,
+          max_cost_increase: 1.0,
+          require_same_features: true
+        }
+      },
+      'Cost Optimized': {
+        retry_config: {
+          max_attempts: 2,
+          backoff_type: 'linear',
+          base_delay: '2s',
+          max_delay: '10s',
+          retryable_errors: ['timeout', 'connection']
+        },
+        fallback_config: {
+          enabled: false,
+          max_cost_increase: 0.2,
+          require_same_features: true
+        }
+      },
+      'Performance': {
+        retry_config: {
+          max_attempts: 1,
+          backoff_type: 'linear',
+          base_delay: '500ms',
+          max_delay: '5s',
+          retryable_errors: ['timeout']
+        },
+        fallback_config: {
+          enabled: false,
+          max_cost_increase: 0.1,
+          require_same_features: false
+        }
+      }
+    };
+    
+    const templateConfig = templates[templateName] || templates['Balanced'];
+    setFormData(prev => ({
+      ...prev,
+      llm_config: { ...prev.llm_config, ...templateConfig }
+    }));
+  };
+
+  const handleAddTag = () => {
+    if (currentTag.trim() && !formData.tags.includes(currentTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, currentTag.trim()]
+      }));
+      setCurrentTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'Agent name is required';
+    } else if (formData.name.length > 255) {
+      errors.name = 'Agent name must be less than 255 characters';
+    }
+
+    if (formData.description.length > 1000) {
+      errors.description = 'Description must be less than 1000 characters';
+    }
+
+    if (!formData.system_prompt.trim()) {
+      errors.system_prompt = 'System prompt is required';
+    }
+
+    if (!formData.llm_config.provider) {
+      errors.provider = 'Provider is required';
+    }
+
+    if (!formData.llm_config.model) {
+      errors.model = 'Model is required';
+    }
+
+    if (formData.llm_config.temperature < 0 || formData.llm_config.temperature > 1) {
+      errors.temperature = 'Temperature must be between 0 and 1';
+    }
+
+    if (formData.llm_config.max_tokens < 1 || formData.llm_config.max_tokens > 32000) {
+      errors.max_tokens = 'Max tokens must be between 1 and 32000';
+    }
+
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Debug space context
+      console.log('Current space context:', currentSpace);
+      console.log('Form data before building agentData:', JSON.stringify(formData, null, 2));
+      
+      // Ensure we have proper space context before making the API call
+      if (!currentSpace || !currentSpace.space_type || !currentSpace.space_id) {
+        throw new Error('Invalid space context. Please refresh the page and try again.');
+      }
+      
+      // Validate that space_type is either 'personal' or 'organization', not 'notebook'
+      if (currentSpace.space_type !== 'personal' && currentSpace.space_type !== 'organization') {
+        console.error('Invalid space_type detected:', currentSpace.space_type);
+        throw new Error(`Invalid space type: ${currentSpace.space_type}. Expected 'personal' or 'organization'.`);
+      }
+      
+      // Make sure localStorage has correct space context
+      const savedSpace = localStorage.getItem('currentSpace');
+      if (savedSpace) {
+        try {
+          const parsedSpace = JSON.parse(savedSpace);
+          if (parsedSpace.space_type === 'notebook') {
+            console.error('Found corrupted space context in localStorage with space_type=notebook:', parsedSpace);
+            // Remove corrupted space context
+            localStorage.removeItem('currentSpace');
+            throw new Error('Corrupted space context detected. Please refresh the page and try again.');
+          }
+        } catch (parseError) {
+          console.error('Error parsing saved space:', parseError);
+          localStorage.removeItem('currentSpace');
+        }
+      }
+      
+      const agentData = {
+        ...formData,
+        type: formData.type || 'qa', // Explicitly ensure type is included
+        space_id: currentSpace.space_id
+      };
+      
+      console.log('Agent data being sent:', JSON.stringify(agentData, null, 2));
+      console.log('Space headers that will be sent:', {
+        'X-Space-Type': currentSpace.space_type,
+        'X-Space-ID': currentSpace.space_id
+      });
+
+      let resultAgent;
+      if (agent) {
+        // Editing mode - use update callback or fallback to internal hook
+        if (onUpdateAgent) {
+          resultAgent = await onUpdateAgent(agent.id, agentData);
+        } else {
+          const { updateAgent } = useAgentBuilder();
+          resultAgent = await updateAgent(agent.id, agentData);
+        }
+      } else {
+        // Creation mode - use create callback or fallback to internal hook
+        if (onCreateAgent) {
+          resultAgent = await onCreateAgent(agentData);
+        } else {
+          resultAgent = await createAgent(agentData);
+        }
+      }
+      
+      onClose();
+    } catch (err) {
+      console.error(`Failed to ${agent ? 'update' : 'create'} agent:`, err);
+      setError(err.message || `Failed to ${agent ? 'update' : 'create'} agent`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Get models from either the models object (if fetched) or from the provider's models array
+  const selectedProvider = providersArray.find(p => (p.id || p.name) === formData.llm_config.provider);
+  // Handle both array and object with models property
+  let availableModels = [];
+  if (formData.llm_config.provider) {
+    const providerModels = models[formData.llm_config.provider];
+    if (Array.isArray(providerModels)) {
+      availableModels = providerModels;
+    } else if (providerModels?.models) {
+      availableModels = providerModels.models;
+    } else if (selectedProvider?.models) {
+      availableModels = selectedProvider.models;
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <Bot className="text-blue-600" size={20} />
+          {agent ? 'Edit Agent' : 'Create New Agent'}
+        </div>
+      }
+      size="large"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="text-red-500 mt-0.5" size={16} />
+            <div>
+              <h4 className="font-medium text-red-800">Creation Failed</h4>
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Basic Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Agent Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                validationErrors.name ? 'border-red-300' : 'border-gray-300'
+              }`}
+              placeholder="Enter agent name"
+            />
+            {validationErrors.name && (
+              <p className="text-sm text-red-600 mt-1">{validationErrors.name}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Agent Type *
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => handleInputChange('type', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="qa">Q&A Agent - Answer questions based on knowledge sources</option>
+              <option value="conversational">Conversational Agent - Chat-based with memory</option>
+              <option value="producer">Producer Agent - Generate content using templates</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Configuration Template
+            </label>
+            <select
+              value={selectedTemplate}
+              onChange={(e) => handleTemplateChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="Balanced">Balanced (Recommended)</option>
+              <option value="High Reliability">High Reliability</option>
+              <option value="Cost Optimized">Cost Optimized</option>
+              <option value="Performance">Performance</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            rows={3}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              validationErrors.description ? 'border-red-300' : 'border-gray-300'
+            }`}
+            placeholder="Describe what this agent does..."
+          />
+          {validationErrors.description && (
+            <p className="text-sm text-red-600 mt-1">{validationErrors.description}</p>
+          )}
+        </div>
+
+        {/* System Prompt */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            System Prompt *
+          </label>
+          <textarea
+            value={formData.system_prompt}
+            onChange={(e) => handleInputChange('system_prompt', e.target.value)}
+            rows={4}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              validationErrors.system_prompt ? 'border-red-300' : 'border-gray-300'
+            }`}
+            placeholder="Enter the system prompt that defines the agent's behavior..."
+          />
+          {validationErrors.system_prompt && (
+            <p className="text-sm text-red-600 mt-1">{validationErrors.system_prompt}</p>
+          )}
+        </div>
+
+        {/* LLM Configuration */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <Brain className="text-purple-600" size={18} />
+            LLM Configuration
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider *
+              </label>
+              <select
+                value={formData.llm_config.provider}
+                onChange={(e) => handleLLMConfigChange('provider', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  validationErrors.provider ? 'border-red-300' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Select Provider</option>
+                {providersArray.map(provider => (
+                  <option key={provider.id || provider.name} value={provider.id || provider.name}>
+                    {provider.name || provider.display_name}
+                  </option>
+                ))}
+              </select>
+              {validationErrors.provider && (
+                <p className="text-sm text-red-600 mt-1">{validationErrors.provider}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Model *
+              </label>
+              <select
+                value={formData.llm_config.model}
+                onChange={(e) => handleLLMConfigChange('model', e.target.value)}
+                disabled={!formData.llm_config.provider || availableModels.length === 0}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  validationErrors.model ? 'border-red-300' : 'border-gray-300'
+                } ${!formData.llm_config.provider ? 'bg-gray-100' : ''}`}
+              >
+                <option value="">Select Model</option>
+                {(availableModels || []).map(model => {
+                  // Handle both string models and object models
+                  const modelName = typeof model === 'string' ? model : (model.id || model.name);
+                  const modelDisplay = typeof model === 'string' ? model : (model.name || model.display_name);
+                  return (
+                    <option key={modelName} value={modelName}>
+                      {modelDisplay}
+                    </option>
+                  );
+                })}
+              </select>
+              {validationErrors.model && (
+                <p className="text-sm text-red-600 mt-1">{validationErrors.model}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Temperature
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                value={formData.llm_config.temperature}
+                onChange={(e) => handleLLMConfigChange('temperature', parseFloat(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Max Tokens
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="32000"
+                value={formData.llm_config.max_tokens}
+                onChange={(e) => handleLLMConfigChange('max_tokens', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Optimize For
+              </label>
+              <select
+                value={formData.llm_config.optimize_for}
+                onChange={(e) => handleLLMConfigChange('optimize_for', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="quality">Quality</option>
+                <option value="cost">Cost</option>
+                <option value="performance">Performance</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Configuration Validation */}
+          {configValidation && (
+            <div className={`mt-4 p-3 rounded-lg border ${
+              configValidation.valid 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-start gap-2">
+                {configValidation.valid ? (
+                  <CheckCircle className="text-green-500 mt-0.5" size={16} />
+                ) : (
+                  <Info className="text-yellow-500 mt-0.5" size={16} />
+                )}
+                <div>
+                  <p className={`text-sm font-medium ${
+                    configValidation.valid ? 'text-green-800' : 'text-yellow-800'
+                  }`}>
+                    {configValidation.valid ? 'Configuration Valid' : 'Configuration Issues'}
+                  </p>
+                  {configValidation.errors?.length > 0 && (
+                    <ul className="text-sm text-yellow-700 mt-1 space-y-1">
+                      {(configValidation.errors || []).map((error, index) => (
+                        <li key={index}>• {error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Advanced Configuration */}
+        <div className="border border-gray-200 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Settings className="text-gray-600" size={18} />
+              <span className="font-medium text-gray-900">Advanced Configuration</span>
+            </div>
+            {showAdvanced ? (
+              <ChevronUp className="text-gray-400" size={20} />
+            ) : (
+              <ChevronDown className="text-gray-400" size={20} />
+            )}
+          </button>
+
+          {showAdvanced && (
+            <div className="px-4 pb-4 space-y-4 border-t border-gray-200">
+              {/* Configuration Template Selector */}
+              <ConfigurationTemplateSelector
+                selectedTemplate={selectedTemplate}
+                onTemplateChange={handleTemplateChange}
+              />
+
+              {/* Retry Configuration */}
+              <RetryConfigurationForm
+                config={formData.llm_config.retry_config}
+                onChange={(config) => handleLLMConfigChange('retry_config', config)}
+              />
+
+              {/* Fallback Configuration */}
+              <FallbackConfigurationForm
+                config={formData.llm_config.fallback_config}
+                onChange={(config) => handleLLMConfigChange('fallback_config', config)}
+              />
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={currentTag}
+                    onChange={(e) => setCurrentTag(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Add tag..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.tags || []).map(tag => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Publishing Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_public}
+                    onChange={(e) => handleInputChange('is_public', e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Make Public</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_template}
+                    onChange={(e) => handleInputChange('is_template', e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Save as Template</span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Form Actions */}
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading || (configValidation && !configValidation.valid)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                {agent ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                {agent ? 'Update Agent' : 'Create Agent'}
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+export default AgentCreateModal;

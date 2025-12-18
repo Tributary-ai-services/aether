@@ -158,7 +158,7 @@ The project includes comprehensive testing setup:
 
 Additional documentation is available:
 
-- [Authentication Flow](AUTHENTICATION_FLOW.md)
+- [Development Authentication Setup](DEV_AUTH_SETUP.md)
 - [Backend Design](BACKEND-DESIGN.md)
 - [Notebook Persistence](NOTEBOOK_PERSISTENCE.md)
 - [Upload Functionality Guide](UPLOAD_FUNCTIONALITY_GUIDE.md)

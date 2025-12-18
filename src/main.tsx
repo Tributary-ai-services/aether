@@ -19,39 +19,29 @@ if (import.meta.env.VITE_DEV_MODE === 'true') {
   import('./utils/fixKeycloakCors.js');
 }
 
-// Add console logs to debug
-console.log('Main.tsx loading...')
-
 const root = document.getElementById('root')
 if (!root) {
   console.error('Root element not found!')
 } else {
-  console.log('Root element found, rendering app...')
-  
-  try {
-    ReactDOM.createRoot(root).render(
-      <React.StrictMode>
-        <Provider store={store}>
-          <BrowserRouter>
-            <AuthProvider>
-              <ThemeProvider>
-                <NavigationProvider>
-                  <NotificationProvider>
-                    <AuditProvider>
-                      <CollaborationProvider>
-                        <App />
-                      </CollaborationProvider>
-                    </AuditProvider>
-                  </NotificationProvider>
-                </NavigationProvider>
-              </ThemeProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </Provider>
-      </React.StrictMode>,
-    )
-    console.log('App rendered successfully')
-  } catch (error) {
-    console.error('Error rendering app:', error)
-  }
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider>
+              <NavigationProvider>
+                <NotificationProvider>
+                  <AuditProvider>
+                    <CollaborationProvider>
+                      <App />
+                    </CollaborationProvider>
+                  </AuditProvider>
+                </NotificationProvider>
+              </NavigationProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </Provider>
+    </React.StrictMode>,
+  )
 }

@@ -139,17 +139,32 @@ export const AuthProvider = ({ children }) => {
       );
       
       setIsAuthenticated(true);
-      
+
       // Try to fetch user info
       try {
         const userResponse = await aetherApi.users.getCurrentUser();
         console.log('User data fetched:', userResponse.data);
         setUser(userResponse.data);
+
+        // Check onboarding status for new users
+        try {
+          const onboardingResponse = await aetherApi.users.getOnboardingStatus();
+          console.log('Onboarding status:', onboardingResponse.data);
+
+          // Store onboarding status with user data
+          if (onboardingResponse.data && !onboardingResponse.data.is_complete) {
+            console.log('User needs to complete onboarding');
+            // You could set a flag here to show an onboarding modal or redirect
+          }
+        } catch (onboardingError) {
+          console.error('Failed to check onboarding status:', onboardingError);
+          // Don't fail login if onboarding check fails
+        }
       } catch (userError) {
         console.error('Failed to fetch user info:', userError);
         // Don't fail login if user fetch fails - user creation might be in progress
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error('Login failed:', error);
@@ -246,42 +261,43 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       setAuthError(null);
-      
-      // TODO: Implement Keycloak user registration
+
       console.log('Attempting signup with:', userData);
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate registration success
-      const mockUser = {
-        id: Date.now().toString(),
-        email: userData.email,
-        name: `${userData.firstName} ${userData.lastName}`,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        roles: ['user']
-      };
-      
-      // Auto-login after successful registration
-      const mockTokens = {
-        accessToken: 'mock-access-token-new-user',
-        refreshToken: 'mock-refresh-token-new-user',
-        expiresIn: 3600,
-        refreshExpiresIn: 86400
-      };
-      
-      aetherApi.setTokens(
-        mockTokens.accessToken,
-        mockTokens.refreshToken,
-        mockTokens.expiresIn,
-        mockTokens.refreshExpiresIn
-      );
-      
-      setUser(mockUser);
-      setIsAuthenticated(true);
-      
-      return { success: true, user: mockUser };
+
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
+      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+
+      // Step 1: Register user in Keycloak via backend onboarding endpoint
+      // Note: Since we need authentication to call the backend, we'll use a different approach
+      // For now, we'll login with credentials and then call the onboarding endpoint
+      // In production, Keycloak registration should be done via Keycloak's registration page
+      // or via an unauthenticated registration endpoint on the backend
+
+      // For demonstration, try to authenticate and create user profile
+      // This assumes the user was already created in Keycloak
+      const result = await login(userData.email, userData.password, false);
+
+      if (result.success) {
+        // User authenticated, now call onboarding endpoint to ensure profile is complete
+        try {
+          const onboardingResponse = await aetherApi.users.getOnboardingStatus();
+          console.log('Onboarding status:', onboardingResponse.data);
+
+          // If onboarding is incomplete, you might want to redirect to onboarding flow
+          if (!onboardingResponse.data.is_complete) {
+            console.log('User needs to complete onboarding');
+          }
+        } catch (onboardingError) {
+          console.error('Failed to check onboarding status:', onboardingError);
+          // Don't fail signup if onboarding check fails
+        }
+
+        return { success: true, user: result.user };
+      } else {
+        // If login fails, it means the user doesn't exist in Keycloak yet
+        // In production, this should redirect to Keycloak's registration page
+        throw new Error('User registration requires Keycloak admin setup. Please contact administrator.');
+      }
     } catch (error) {
       console.error('Signup failed:', error);
       setAuthError(error.message);

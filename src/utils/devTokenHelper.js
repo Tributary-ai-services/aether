@@ -1,7 +1,13 @@
 // Development Token Helper
 // Utilities for easier token management during development
+// WARNING: This file should only be used in development environments
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+
+// Prevent usage in production
+if (import.meta.env.PROD && typeof window !== 'undefined') {
+  console.warn('⚠️ DevTokenHelper should not be used in production builds');
+}
 
 class DevTokenHelper {
   // Mock token refresh for development (simulates successful refresh)
@@ -24,11 +30,14 @@ class DevTokenHelper {
   static getDevTokenInfo() {
     if (!DEV_MODE) return null;
 
-    // This would be extracted from the actual JWT in production
+    // Extract from environment or use generic dev data
+    const devUsername = import.meta.env.VITE_DEV_USERNAME || 'dev-user';
+    const devEmail = import.meta.env.VITE_DEV_EMAIL || 'dev@example.com';
+    
     return {
-      user: 'test',
-      name: 'John Scharber',
-      email: 'john@scharber.com',
+      user: devUsername,
+      name: 'Development User',
+      email: devEmail,
       roles: ['offline_access', 'uma_authorization', 'default-roles-aether'],
       exp: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
       iat: Math.floor(Date.now() / 1000),

@@ -124,19 +124,36 @@ const SignupPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
-      await signup({
+      // Attempt signup (will redirect to Keycloak registration if needed)
+      const result = await signup({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
         password: formData.password
       });
-      // Navigation will be handled by useEffect
+
+      if (!result.success && result.error.includes('Keycloak admin setup')) {
+        // Redirect to Keycloak registration page
+        const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
+        const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+        const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
+
+        const registrationUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/registrations?` +
+          `client_id=${CLIENT_ID}&` +
+          `redirect_uri=${encodeURIComponent(window.location.origin)}/&` +
+          `response_type=code&` +
+          `scope=openid%20profile%20email`;
+
+        // Redirect to Keycloak registration
+        window.location.href = registrationUrl;
+      }
+      // Navigation will be handled by useEffect if successful
     } catch (err) {
       console.error('Signup failed:', err);
     } finally {

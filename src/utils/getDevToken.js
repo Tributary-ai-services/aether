@@ -4,13 +4,19 @@ export async function getDevToken() {
   const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
   const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
   const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
-  // admin-cli doesn't need a client secret
+  // aether-frontend is a public client, doesn't need a client secret
   
-  // admin-cli client doesn't support client credentials, skip directly to password grant
+  // Get ID token using password grant with environment-provided credentials
+  const devUsername = import.meta.env.VITE_DEV_USERNAME;
+  const devPassword = import.meta.env.VITE_DEV_PASSWORD;
   
-  // Get ID token using password grant with test user
+  if (!devUsername || !devPassword) {
+    console.error('❌ Development credentials not configured. Please set VITE_DEV_USERNAME and VITE_DEV_PASSWORD environment variables.');
+    return null;
+  }
+  
   try {
-    console.log('Getting ID token with admin-cli client and test user...');
+    console.log('Getting ID token with admin-cli client and dev user...');
     const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
       method: 'POST',
       headers: {
@@ -19,41 +25,44 @@ export async function getDevToken() {
       body: new URLSearchParams({
         grant_type: 'password',
         client_id: CLIENT_ID,
-        // No client_secret needed for admin-cli
-        username: 'john@scharber.com',
-        password: 'test123',
+        // No client_secret needed for aether-frontend (public client)
+        username: devUsername,
+        password: devPassword,
         scope: 'openid profile email', // Request ID token with proper scopes
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      console.log('✅ Got development tokens with test user!');
+      console.log('✅ Got development tokens with dev user!');
       console.log('Access Token:', data.access_token ? 'Present' : 'Missing');
       console.log('ID Token:', data.id_token ? 'Present' : 'Missing');
       console.log('Expires in:', data.expires_in, 'seconds');
       
-      // Store tokens in session storage - use ID token for authentication
+      // Use aetherApi.setTokens to properly initialize tokens and start automatic rotation
+      const tokenToUse = data.id_token || data.access_token;
+      const { aetherApi } = await import('../services/aetherApi.js');
+      
+      aetherApi.setTokens(
+        tokenToUse,
+        data.refresh_token || '',
+        data.expires_in,
+        data.refresh_expires_in || 1800
+      );
+      
       if (data.id_token) {
-        sessionStorage.setItem('aether_access_token', data.id_token); // Use ID token as access token
-        sessionStorage.setItem('aether_token_type', 'id_token');
-        console.log('✅ Stored ID token for authentication');
+        console.log('✅ Using ID token for authentication');
       } else {
-        sessionStorage.setItem('aether_access_token', data.access_token);
-        sessionStorage.setItem('aether_token_type', 'access_token');
         console.log('⚠️ Using access token (ID token not available)');
       }
       
-      sessionStorage.setItem('aether_refresh_token', data.refresh_token || 'none');
-      sessionStorage.setItem('aether_token_expiry', (Date.now() + data.expires_in * 1000).toString());
-      sessionStorage.setItem('aether_refresh_expiry', (Date.now() + (data.refresh_expires_in || 3600) * 1000).toString());
-      
+      console.log('🔄 Automatic token rotation started');
       return data;
     } else {
-      console.error('Failed to get token with test user:', await response.text());
+      console.error('Failed to get token with dev user:', await response.text());
     }
   } catch (error) {
-    console.error('Error getting dev token with test user:', error);
+    console.error('Error getting dev token with dev user:', error);
   }
   
   return null;
