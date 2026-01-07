@@ -18,6 +18,32 @@ This project is in **active development** as the frontend for the Aether AI Plat
 
 **Production Deployment**: The application is deployed on K3s with NGINX ingress at https://aether.tas.scharber.com
 
+## Data Models & Schema Reference
+
+### Service-Specific Data Models
+This service's data models are comprehensively documented in the centralized data models repository:
+
+**Location**: `../aether-shared/data-models/aether/`
+
+#### Key Frontend Models:
+- **Redux Store Structure** (`redux-store.md`) - Complete Redux state management with 7 slices (auth, notebooks, documents, agents, workflows, analytics, settings)
+- **API Response Types** (`api-responses.md`) - TypeScript interfaces for all backend API responses
+- **LocalStorage Schema** (`local-storage.md`) - Browser storage structure for user preferences and cached data
+
+#### Cross-Service Integration:
+- **User Onboarding Flow** (`../aether-shared/data-models/cross-service/flows/user-onboarding.md`) - Frontend components for registration and authentication
+- **Document Upload Flow** (`../aether-shared/data-models/cross-service/flows/document-upload.md`) - Frontend upload UI and progress tracking
+- **Platform ERD** (`../aether-shared/data-models/cross-service/diagrams/platform-erd.md`) - Understanding data relationships
+
+#### When to Reference Data Models:
+1. Before adding new Redux slices or modifying existing state structure
+2. When implementing new API integrations or updating TypeScript interfaces
+3. When debugging state management issues or data flow problems
+4. When onboarding new frontend developers to understand data architecture
+5. Before making changes to localStorage schema or cached data structure
+
+**Main Documentation Hub**: `../aether-shared/data-models/README.md` - Complete navigation for all 38 data model files
+
 ## Planned Technology Stack
 
 Based on the mockup implementation:
@@ -117,7 +143,7 @@ Any changes to the frontend MUST be pushed to the registry to take effect.
      --build-arg VITE_AETHER_API_BASE= \
      --build-arg VITE_AETHER_API_URL=/api/v1 \
      --build-arg VITE_KEYCLOAK_URL= \
-     --build-arg VITE_KEYCLOAK_REALM=master \
+     --build-arg VITE_KEYCLOAK_REALM=aether \
      --build-arg VITE_KEYCLOAK_CLIENT_ID=aether-frontend \
      -f Dockerfile .
    ```
@@ -158,7 +184,7 @@ Any changes to the frontend MUST be pushed to the registry to take effect.
 - `VITE_AETHER_API_BASE`: Should be empty (uses `window.location.origin`)
 - `VITE_AETHER_API_URL`: Should be `/api/v1` (relative URL for ingress routing)
 - `VITE_KEYCLOAK_URL`: Should be empty (uses `window.location.origin`)
-- `VITE_KEYCLOAK_REALM`: `master`
+- `VITE_KEYCLOAK_REALM`: `aether`
 - `VITE_KEYCLOAK_CLIENT_ID`: `aether-frontend`
 
 Setting API URLs to relative paths ensures the frontend works through NGINX ingress routing.
