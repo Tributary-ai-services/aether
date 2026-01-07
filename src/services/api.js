@@ -428,6 +428,47 @@ export const api = {
     }
   },
 
+  // Onboarding endpoints
+  onboarding: {
+    getStatus: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/users/me/onboarding`, {
+        headers: {
+          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'Content-Type': 'application/json',
+          ...aetherApi.getSpaceHeaders()
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch onboarding status');
+      return await response.json();
+    },
+
+    markTutorialComplete: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/users/me/onboarding`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'Content-Type': 'application/json',
+          ...aetherApi.getSpaceHeaders()
+        }
+      });
+      if (!response.ok) throw new Error('Failed to mark tutorial complete');
+      return await response.json();
+    },
+
+    resetTutorial: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/users/me/onboarding`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'Content-Type': 'application/json',
+          ...aetherApi.getSpaceHeaders()
+        }
+      });
+      if (!response.ok) throw new Error('Failed to reset tutorial');
+      return await response.json();
+    }
+  },
+
   // Router Service endpoints
   agentRouter: {
     getProviders: async () => {

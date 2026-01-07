@@ -26,6 +26,18 @@ export {
   openModal,
   closeModal,
   closeAllModals,
+  openOnboardingModal,
+  closeOnboardingModal,
+  clearOnboardingError,
+  fetchOnboardingStatus,
+  markOnboardingComplete,
+  resetOnboarding,
+  selectOnboardingModal,
+  selectOnboardingState,
+  selectHasCompletedOnboarding,
+  selectShouldAutoTrigger,
+  selectOnboardingLoading,
+  selectOnboardingError,
   addNotification,
   removeNotification,
   clearAllNotifications,
@@ -37,5 +49,6 @@ export {
   setGlobalLoading,
   setNotebooksLoading,
   setAuthLoading,
-  initializeUI
+  initializeUI,
+  selectModals
 } from './slices/uiSlice.js';

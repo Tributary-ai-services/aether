@@ -11,7 +11,7 @@ services:
         - VITE_AETHER_API_URL=http://localhost:8080/api/v1
         - VITE_AGENT_BUILDER_API_URL=http://localhost:8087/api/v1
         - VITE_KEYCLOAK_URL=http://localhost:8081
-        - VITE_KEYCLOAK_REALM=master
+        - VITE_KEYCLOAK_REALM=aether
         - VITE_KEYCLOAK_CLIENT_ID=aether-frontend
         - VITE_DEV_MODE=true
         - VITE_DEV_USERNAME=john@scharber.com
@@ -29,7 +29,7 @@ services:
       - VITE_AETHER_API_URL=http://localhost:8080/api/v1
       - VITE_AGENT_BUILDER_API_URL=http://localhost:8087/api/v1
       - VITE_KEYCLOAK_URL=http://localhost:8081
-      - VITE_KEYCLOAK_REALM=master
+      - VITE_KEYCLOAK_REALM=aether
       - VITE_KEYCLOAK_CLIENT_ID=aether-frontend
       - VITE_DEV_MODE=true
       - VITE_AUDIMODAL_API_URL=http://localhost:8084/api/v1

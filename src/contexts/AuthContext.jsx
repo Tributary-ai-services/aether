@@ -93,8 +93,8 @@ export const AuthProvider = ({ children }) => {
       console.log('Attempting login with:', { email, rememberMe });
       
       // Use Keycloak authentication
-      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
+      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
       const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
       
       const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
@@ -264,8 +264,8 @@ export const AuthProvider = ({ children }) => {
 
       console.log('Attempting signup with:', userData);
 
-      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
+      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
 
       // Step 1: Register user in Keycloak via backend onboarding endpoint
       // Note: Since we need authentication to call the backend, we'll use a different approach
@@ -319,7 +319,7 @@ export const AuthProvider = ({ children }) => {
       // For now, redirect to Keycloak social login URL
       // In production, this would redirect to Keycloak
       const keycloakUrl = process.env.REACT_APP_KEYCLOAK_URL || 'http://localhost:8080';
-      const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
       const clientId = process.env.REACT_APP_KEYCLOAK_CLIENT_ID || 'aether-frontend';
       
       const socialLoginUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +

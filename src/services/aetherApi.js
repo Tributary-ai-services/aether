@@ -7,8 +7,8 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 // Keycloak configuration
 // Use relative URL to work with nginx proxy in production
-const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
+const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
 const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
 // aether-frontend is a public client, doesn't need client secret
 

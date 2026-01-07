@@ -6,7 +6,7 @@ export const loginUser = createAsyncThunk(
   async ({ username, password }, { rejectWithValue }) => {
     try {
       const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
       const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: {
@@ -63,7 +63,7 @@ export const refreshToken = createAsyncThunk(
       }
 
       const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+      const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
       const response = await fetch(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: {

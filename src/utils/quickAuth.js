@@ -3,7 +3,7 @@ export async function quickAuth() {
   console.log('🔐 Attempting to authenticate with Keycloak...');
   
   try {
-    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
     
     // Try with the test user from the backend logs - using relative URL to go through Vite proxy
     const response = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {

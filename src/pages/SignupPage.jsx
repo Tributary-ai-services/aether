@@ -141,7 +141,7 @@ const SignupPage = () => {
       if (!result.success && result.error.includes('Keycloak admin setup')) {
         // Redirect to Keycloak registration page
         const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-        const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+        const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
         const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
 
         const registrationUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/registrations?` +

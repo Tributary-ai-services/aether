@@ -3,7 +3,7 @@ export async function fixKeycloakCors() {
   console.log('🔧 Attempting to configure Keycloak CORS settings...');
   
   try {
-    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
     
     // First get admin token
     const adminResponse = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
@@ -81,7 +81,7 @@ export async function quickAuthWithAdminCli() {
   console.log('🔐 Attempting authentication with admin-cli...');
   
   try {
-    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'master';
+    const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
     const response = await fetch(`/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`, {
       method: 'POST',
       headers: {
