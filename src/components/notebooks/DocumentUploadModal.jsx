@@ -421,25 +421,6 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           />
         </div>
 
-        {/* Aether Backend Info */}
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-sm text-blue-900 mb-2">
-            <strong>🚀 Base64 Upload Processing Pipeline</strong>
-          </div>
-          <div className="text-xs text-blue-700">
-            <div className="mt-1 space-y-1">
-              <div>1. 🔄 Encode files as Base64 in browser</div>
-              <div>2. 📤 Upload JSON payload to Aether Backend</div>
-              <div>3. 🗄️ Store in tenant-scoped MinIO bucket (aether-{'{tenant_id}'})</div>
-              <div>4. 💾 Create document record in Neo4j</div>
-              <div>5. 📊 Update notebook document counts</div>
-              <div>6. 🔍 Enable document search and retrieval</div>
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-600">
-            <strong>Improved Architecture:</strong> Base64 encoding prevents timeout issues
-          </div>
-        </div>
 
         {/* File List */}
         {files.length > 0 && (
@@ -537,12 +518,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         {files.length > 0 && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-600">
-              <div className="flex justify-between items-center mb-2">
-                <p>Ready to upload: <strong>{validFiles.length}</strong> files</p>
-                <div className="text-xs text-blue-600">
-                  Via Base64 → Aether Backend → Tenant Storage
-                </div>
-              </div>
+              <p className="mb-2">Ready to upload: <strong>{validFiles.length}</strong> files</p>
               {errorFiles.length > 0 && (
                 <p className="text-red-600">Files with errors: <strong>{errorFiles.length}</strong></p>
               )}
@@ -551,10 +527,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         )}
 
         {/* Actions */}
-        <div className="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
-          <div className="text-sm text-gray-500">
-            🔄 Base64 encoding prevents timeout issues
-          </div>
+        <div className="flex justify-end items-center pt-6 border-t border-gray-200 mt-6">
           <div className="flex gap-3">
             <button
               onClick={onClose}

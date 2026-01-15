@@ -83,6 +83,35 @@ export const deleteNotebook = createAsyncThunk(
   }
 );
 
+// Fetch documents for a specific notebook
+export const fetchNotebookDocuments = createAsyncThunk(
+  'notebooks/fetchNotebookDocuments',
+  async ({ notebookId, forceRefresh = false }, { rejectWithValue, getState }) => {
+    try {
+      // Check if we already have documents cached (unless force refresh)
+      const state = getState();
+      const existingDocs = state.notebooks.documents[notebookId];
+      if (!forceRefresh && existingDocs && existingDocs.length > 0) {
+        console.log(`Documents already loaded for notebook ${notebookId}, using cache`);
+        return { notebookId, documents: existingDocs, total: existingDocs.length, fromCache: true };
+      }
+
+      console.log(`Fetching documents for notebook: ${notebookId}`);
+      const response = await aetherApi.documents.getByNotebook(notebookId);
+      console.log(`Raw API response for notebook ${notebookId}:`, response);
+
+      const documents = response.data?.documents || [];
+      const totalCount = response.data?.total || documents.length;
+
+      console.log(`Fetched ${documents.length} documents (Total: ${totalCount})`);
+      return { notebookId, documents, total: totalCount };
+    } catch (error) {
+      console.error('Failed to fetch notebook documents:', error);
+      return rejectWithValue(error.message || 'Failed to fetch documents');
+    }
+  }
+);
+
 // Team sharing operations
 export const shareNotebookWithTeam = createAsyncThunk(
   'notebooks/shareNotebookWithTeam',
@@ -299,6 +328,10 @@ const initialState = {
   loading: false,
   error: null,
   selectedNotebook: null,
+  // Documents state - keyed by notebook ID
+  documents: {}, // { notebookId: [documents] }
+  documentsLoading: false,
+  documentsError: null,
   notebookTeams: {}, // { notebookId: [teams] }
   notebookUsers: {}, // { notebookId: [users] }
   notebookOrganizations: {}, // { notebookId: [organizations] }
@@ -339,6 +372,17 @@ const notebooksSlice = createSlice({
       }
       // Rebuild tree to reflect changes
       state.tree = buildNotebookTree(state.data);
+    },
+    clearNotebookDocuments: (state, action) => {
+      const notebookId = action.payload;
+      if (notebookId) {
+        delete state.documents[notebookId];
+      } else {
+        state.documents = {};
+      }
+    },
+    clearDocumentsError: (state) => {
+      state.documentsError = null;
     }
   },
   extraReducers: (builder) => {
@@ -507,16 +551,47 @@ const notebooksSlice = createSlice({
       .addCase(fetchNotebookTeams.rejected, (state, action) => {
         state.sharingLoading = false;
         state.sharingError = action.payload || 'Failed to fetch notebook teams';
+      })
+
+      // Fetch notebook documents
+      .addCase(fetchNotebookDocuments.pending, (state) => {
+        state.documentsLoading = true;
+        state.documentsError = null;
+      })
+      .addCase(fetchNotebookDocuments.fulfilled, (state, action) => {
+        state.documentsLoading = false;
+        const { notebookId, documents, total } = action.payload;
+        state.documents[notebookId] = documents;
+        // Also update the document count on the notebook
+        const notebook = state.data.find(nb => nb.id === notebookId);
+        if (notebook) {
+          notebook.documentCount = total;
+          notebook.document_count = total;
+        }
+        // Update selected notebook if it matches
+        if (state.selectedNotebook?.id === notebookId) {
+          state.selectedNotebook = {
+            ...state.selectedNotebook,
+            documentCount: total,
+            document_count: total
+          };
+        }
+      })
+      .addCase(fetchNotebookDocuments.rejected, (state, action) => {
+        state.documentsLoading = false;
+        state.documentsError = action.payload || 'Failed to fetch documents';
       });
   }
 });
 
-export const { 
-  setSelectedNotebook, 
-  clearSelectedNotebook, 
-  clearError, 
+export const {
+  setSelectedNotebook,
+  clearSelectedNotebook,
+  clearError,
   clearSharingError,
-  updateNotebookDocumentCount
+  updateNotebookDocumentCount,
+  clearNotebookDocuments,
+  clearDocumentsError
 } = notebooksSlice.actions;
 
 // Selectors
@@ -525,6 +600,19 @@ export const selectNotebookTree = (state) => state.notebooks.tree;
 export const selectSelectedNotebook = (state) => state.notebooks.selectedNotebook;
 export const selectNotebooksLoading = (state) => state.notebooks.loading;
 export const selectNotebooksError = (state) => state.notebooks.error;
+
+// Document selectors
+export const selectAllDocuments = (state) => state.notebooks.documents;
+export const selectDocumentsLoading = (state) => state.notebooks.documentsLoading;
+export const selectDocumentsError = (state) => state.notebooks.documentsError;
+export const selectNotebookDocuments = createSelector(
+  [
+    (state) => state.notebooks.documents,
+    (state, notebookId) => notebookId
+  ],
+  (documents, notebookId) => documents[notebookId] || []
+);
+
 export const selectNotebookTeams = createSelector(
   [
     (state) => state.notebooks.notebookTeams,

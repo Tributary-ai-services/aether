@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
 import { useSpace } from '../contexts/SpaceContext.jsx';
 import { aetherApi } from '../services/aetherApi.js';
-import { 
-  useAppDispatch, 
+import {
+  useAppDispatch,
   useAppSelector,
   fetchNotebooks,
   createNotebook as createNotebookAction,
-  updateNotebook as updateNotebookAction, 
+  updateNotebook as updateNotebookAction,
   deleteNotebook as deleteNotebookAction,
   setSelectedNotebook,
   updateNotebookDocumentCount,
+  fetchNotebookDocuments,
+  selectAllDocuments,
+  selectDocumentsLoading,
   openModal,
   closeModal,
   setViewMode,
@@ -52,13 +55,28 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
     setError(null);
     try {
       const result = await aetherApi.documents.getById(document.id);
-      setDocumentDetails(result.data);
-      
+      let docData = result.data;
+
       // If it's an image, load the image preview
-      const mimeType = result.data.mime_type || '';
+      const mimeType = docData.mime_type || '';
       if (mimeType.startsWith('image/')) {
         loadImagePreview(document.id);
       }
+
+      // If document is processed but has no extracted_text, fetch it from audimodal
+      if (docData.status === 'processed' && !docData.extracted_text) {
+        try {
+          const textResult = await aetherApi.documents.getExtractedText(document.id);
+          if (textResult?.data?.extracted_text) {
+            docData = { ...docData, extracted_text: textResult.data.extracted_text };
+          }
+        } catch (textErr) {
+          console.warn('Failed to fetch extracted text:', textErr);
+          // Don't fail the whole request, just continue without text
+        }
+      }
+
+      setDocumentDetails(docData);
     } catch (err) {
       setError(err.message || 'Failed to load document details');
       console.error('Failed to fetch document details:', err);
@@ -359,18 +377,22 @@ const NotebooksPage = () => {
 
   // Redux selectors
   const dispatch = useAppDispatch();
-  const { 
-    data: notebooks, 
-    tree: notebookTree, 
-    loading, 
-    error, 
+  const {
+    data: notebooks,
+    tree: notebookTree,
+    loading,
+    error,
     selectedNotebook,
-    metadata 
+    metadata
   } = useAppSelector(state => state.notebooks);
-  
-  const { 
-    modals, 
-    viewMode: currentViewMode 
+
+  // Documents from Redux
+  const notebookDocuments = useAppSelector(selectAllDocuments);
+  const loadingDocuments = useAppSelector(selectDocumentsLoading);
+
+  const {
+    modals,
+    viewMode: currentViewMode
   } = useAppSelector(state => state.ui);
   
   const { filterNotebooks } = useFilters();
@@ -397,8 +419,6 @@ const NotebooksPage = () => {
   
   // Document-related state
   const [notebookDocumentCounts, setNotebookDocumentCounts] = useState({});
-  const [notebookDocuments, setNotebookDocuments] = useState({});
-  const [loadingDocuments, setLoadingDocuments] = useState(false);
   
   // Bulk selection state
   const [selectedDocuments, setSelectedDocuments] = useState(new Set());
@@ -434,69 +454,41 @@ const NotebooksPage = () => {
       fetchNotebookDocumentCounts();
     }
   }, [notebooks]);
-  
+
+  // Fetch documents for selected notebook when component mounts with existing selection
+  // This handles the case where user navigates away and back
+  useEffect(() => {
+    if (selectedNotebook && initialized && !notebookDocuments[selectedNotebook.id]) {
+      console.log(`Component mounted with selectedNotebook: ${selectedNotebook.name}, fetching documents...`);
+      dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: false }));
+    }
+  }, [selectedNotebook, initialized, dispatch, notebookDocuments]);
+
   // Fetch document counts from aether backend
   const fetchNotebookDocumentCounts = async () => {
     // Extract document counts directly from notebook data (backend already provides this)
     const counts = {};
-    
+
     try {
       for (const notebook of notebooks) {
         // Use the document count from the notebook object if available, otherwise default to 0
         counts[notebook.id] = notebook.documentCount || notebook.document_count || 0;
         console.log(`Document count for ${notebook.name}: ${counts[notebook.id]} files (from notebook data)`);
       }
-      
+
       setNotebookDocumentCounts(counts);
     } catch (error) {
       console.error('Failed to extract document counts from notebook data:', error);
     }
   };
-  
-  // Fetch documents for a specific notebook
-  const fetchNotebookDocuments = async (notebook, forceRefresh = false) => {
-    if (!forceRefresh && notebookDocuments[notebook.id] && notebookDocuments[notebook.id].length > 0) {
-      console.log(`Documents already loaded for notebook ${notebook.name}:`, notebookDocuments[notebook.id].length);
-      // Return cached documents with the count from notebookDocumentCounts
-      return { 
-        documents: notebookDocuments[notebook.id], 
-        total: notebookDocumentCounts[notebook.id] || notebookDocuments[notebook.id].length 
-      };
-    }
-    
-    console.log(`Fetching documents for notebook: ${notebook.name} (ID: ${notebook.id})`);
-    setLoadingDocuments(true);
-    try {
-      // Get documents for this notebook from aether backend
-      const documentsResponse = await aetherApi.documents.getByNotebook(notebook.id);
-      console.log(`Raw API response for ${notebook.name}:`, documentsResponse);
-      console.log(`Response data:`, documentsResponse.data);
-      console.log(`Documents in response:`, documentsResponse.data?.documents);
-      
-      const documents = documentsResponse.data?.documents || [];
-      const totalCount = documentsResponse.data?.total || documents.length;
-      
-      console.log(`Fetched ${documents.length} documents for notebook ${notebook.name} (Total: ${totalCount})`);
-      console.log(`Sample documents:`, documents.slice(0, 3).map(d => ({ id: d.id, name: d.name, original_name: d.original_name })));
-      console.log(`Setting notebookDocuments[${notebook.id}] with ${documents.length} documents`);
-      
-      setNotebookDocuments(prev => {
-        const newState = {
-          ...prev,
-          [notebook.id]: documents
-        };
-        console.log(`New notebookDocuments state:`, newState);
-        return newState;
-      });
-      
-      // Return an object with both the documents and the total count
-      return { documents, total: totalCount };
-    } catch (error) {
-      console.error('Failed to fetch notebook documents:', error);
-      return { documents: [], total: 0 };
-    } finally {
-      setLoadingDocuments(false);
-    }
+
+  // Helper to dispatch fetchNotebookDocuments and return the result
+  const dispatchFetchDocuments = async (notebook, forceRefresh = false) => {
+    const result = await dispatch(fetchNotebookDocuments({
+      notebookId: notebook.id,
+      forceRefresh
+    })).unwrap();
+    return { documents: result.documents, total: result.total };
   };
 
   // Listen for reset to list view event from top nav
@@ -519,15 +511,15 @@ const NotebooksPage = () => {
         if (notebooks.length > 0) {
           fetchNotebookDocumentCounts();
           if (selectedNotebook) {
-            fetchNotebookDocuments(selectedNotebook, true);
+            dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
           }
         }
         setPendingRefreshAfterUpload(false);
       }, 500);
-      
+
       return () => clearTimeout(timeoutId);
     }
-  }, [modals.uploadDocument, pendingRefreshAfterUpload, notebooks.length, selectedNotebook, fetchNotebookDocumentCounts, fetchNotebookDocuments]);
+  }, [modals.uploadDocument, pendingRefreshAfterUpload, notebooks.length, selectedNotebook, dispatch]);
 
   // Apply filters to notebooks
   const allFilteredNotebooks = filterNotebooks(notebooks);
@@ -585,7 +577,7 @@ const NotebooksPage = () => {
     
     // Fetch documents for the selected notebook (force refresh to ensure latest data)
     console.log(`📂 About to fetch documents for: ${notebook.name}`);
-    await fetchNotebookDocuments(notebook, true);
+    await dispatch(fetchNotebookDocuments({ notebookId: notebook.id, forceRefresh: true }));
     console.log(`✅ Finished fetching documents for: ${notebook.name}`);
   };
 
@@ -614,7 +606,16 @@ const NotebooksPage = () => {
     if (!confirm(`Are you sure you want to delete "${document.name || document.original_name || 'Unknown file'}"?`)) {
       return;
     }
-    
+
+    // Debug logging for delete operation
+    const spaceContext = localStorage.getItem('currentSpace');
+    console.log('Delete document request:', {
+      documentId: document.id,
+      documentName: document.name || document.original_name,
+      notebookId: notebookId,
+      spaceContext: spaceContext ? JSON.parse(spaceContext) : null
+    });
+
     try {
       // Call the aether API to delete the document
       await aetherApi.documents.delete(document.id);
@@ -622,7 +623,7 @@ const NotebooksPage = () => {
       // Refresh the documents list
       const notebook = notebooks.find(nb => nb.id === notebookId);
       if (notebook) {
-        const result = await fetchNotebookDocuments(notebook, true);
+        const result = await dispatchFetchDocuments(notebook, true);
         const newDocumentCount = result.total; // Use the total count, not the array length
         
         // Update the notebook document count in Redux state (for the cards view)
@@ -653,10 +654,21 @@ const NotebooksPage = () => {
       }));
     } catch (error) {
       console.error('Failed to delete document:', error);
+
+      // Provide more specific error messages
+      let errorMessage = error.message || 'Failed to delete document. Please try again.';
+      if (error.message?.includes('403') || error.response?.status === 403) {
+        errorMessage = 'Access denied. You may not have permission to delete this document, or it may belong to a different workspace.';
+        console.error('403 Error details:', {
+          documentId: document.id,
+          currentSpaceInStorage: localStorage.getItem('currentSpace')
+        });
+      }
+
       dispatch(addNotification({
         type: 'error',
         title: 'Delete Failed',
-        message: error.message || 'Failed to delete document. Please try again.'
+        message: errorMessage
       }));
     }
   };
@@ -733,7 +745,7 @@ const NotebooksPage = () => {
       
       // Refresh the current notebook's documents
       if (selectedNotebook) {
-        const result = await fetchNotebookDocuments(selectedNotebook, true);
+        const result = await dispatchFetchDocuments(selectedNotebook, true);
         const newDocumentCount = result.total;
         
         dispatch(updateNotebookDocumentCount({
@@ -821,19 +833,23 @@ const NotebooksPage = () => {
       setAnalysisDocument(document);
       setAnalysisData(null);
       setAnalysisModalOpen(true);
-      
-      // Fetch ML analysis for this specific document (placeholder for future implementation)
-      const analysis = { status: 'Analysis not yet implemented in Aether backend' };
-      setAnalysisData(analysis);
-      
+
+      // Fetch ML analysis from AudiModal via aether-be
+      const response = await aetherApi.documents.getAnalysis(document.id);
+      console.log('ML Analysis response:', response);
+
+      // The modal expects { data: {...} } structure
+      if (response?.data?.analysis) {
+        setAnalysisData({ data: response.data.analysis });
+      } else if (response?.analysis) {
+        setAnalysisData({ data: response.analysis });
+      } else {
+        setAnalysisData({ status: 'No analysis data available yet. Document may still be processing.' });
+      }
+
     } catch (error) {
       console.error('Failed to fetch ML stats:', error);
-      setAnalysisModalOpen(false);
-      dispatch(addNotification({
-        type: 'error',
-        title: 'Analysis Unavailable',
-        message: 'Unable to fetch ML analysis for this document.'
-      }));
+      setAnalysisData({ status: 'Analysis unavailable', error: error.message });
     }
   };
 
@@ -1584,7 +1600,7 @@ const NotebooksPage = () => {
             fetchNotebookDocumentCounts();
             // Refresh documents for selected notebook if any
             if (selectedNotebook) {
-              fetchNotebookDocuments(selectedNotebook, true); // Force refresh
+              dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
             }
           }
           

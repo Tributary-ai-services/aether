@@ -10,7 +10,16 @@ export {
   setSelectedNotebook,
   clearSelectedNotebook,
   updateNotebookDocumentCount,
-  clearError as clearNotebooksError
+  clearError as clearNotebooksError,
+  // Document actions
+  fetchNotebookDocuments,
+  clearNotebookDocuments,
+  clearDocumentsError,
+  // Document selectors
+  selectAllDocuments,
+  selectDocumentsLoading,
+  selectDocumentsError,
+  selectNotebookDocuments
 } from './slices/notebooksSlice.js';
 
 export {
