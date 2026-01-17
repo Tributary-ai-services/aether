@@ -1,0 +1,132 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      // Custom sizing for the specific sizes used in the project
+      size: {
+        '10': '2.5rem',
+        '12': '3rem',
+        '14': '3.5rem',
+        '16': '4rem',
+        '18': '4.5rem',
+        '20': '5rem',
+        '48': '12rem',
+      },
+      // Ensure all colors used in the project are available
+      colors: {
+        gray: {
+          50: '#f9fafb',
+          100: '#f3f4f6',
+          200: '#e5e7eb',
+          300: '#d1d5db',
+          400: '#9ca3af',
+          500: '#6b7280',
+          600: '#4b5563',
+          700: '#374151',
+          800: '#1f2937',
+          900: '#111827',
+        },
+        blue: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+        },
+        green: {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+        },
+        purple: {
+          50: '#faf5ff',
+          100: '#f3e8ff',
+          600: '#9333ea',
+          700: '#7c3aed',
+          800: '#6b21a8',
+        },
+        yellow: {
+          50: '#fefce8',
+          100: '#fef3c7',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+        },
+        red: {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+        },
+        orange: {
+          50: '#fff7ed',
+          100: '#ffedd5',
+          600: '#ea580c',
+        },
+        indigo: {
+          600: '#4f46e5',
+        },
+      },
+      // Custom spacing for better consistency
+      spacing: {
+        '18': '4.5rem',
+      },
+    },
+  },
+  plugins: [],
+  // Safelist important classes to ensure they're included in the build
+  safelist: [
+    'animate-pulse',
+    'rotate-180',
+    'fill-current',
+    'opacity-50',
+    'space-y-2',
+    'space-y-3',
+    'space-y-4',
+    'tracking-wide',
+    'uppercase',
+    'capitalize',
+    // Hover states
+    'hover:bg-gray-50',
+    'hover:bg-gray-200',
+    'hover:bg-blue-700',
+    'hover:bg-green-700',
+    'hover:bg-purple-700',
+    'hover:border-gray-300',
+    'hover:text-blue-600',
+    'hover:text-blue-800',
+    'hover:text-gray-600',
+    'hover:text-gray-800',
+    'hover:text-green-600',
+    'hover:text-red-800',
+    'hover:shadow-md',
+    // Transitions
+    'transition-all',
+    'transition-colors',
+    'transition-shadow',
+    // Responsive breakpoints
+    'md:block',
+    'md:grid-cols-2',
+    'md:grid-cols-4',
+    'md:grid-cols-5',
+    'lg:grid-cols-2',
+    'lg:grid-cols-3',
+    'lg:grid-cols-4',
+  ],
+}

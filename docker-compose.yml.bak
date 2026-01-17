@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Aether Frontend Application
+  aether-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_AETHER_API_BASE=http://localhost:8080
+        - VITE_AETHER_API_URL=http://localhost:8080/api/v1
+        - VITE_AGENT_BUILDER_API_URL=http://localhost:8087/api/v1
+        - VITE_KEYCLOAK_URL=http://localhost:8081
+        - VITE_KEYCLOAK_REALM=master
+        - VITE_KEYCLOAK_CLIENT_ID=aether-frontend
+        - VITE_DEV_MODE=true
+        - VITE_DEV_USERNAME=john@scharber.com
+        - VITE_DEV_PASSWORD=test123
+        - VITE_AUDIMODAL_API_URL=http://localhost:8084/api/v1
+        - VITE_AUDIMODAL_API_KEY=dev-api-key
+        - VITE_AUDIMODAL_TENANT_ID=9855e094-36a6-4d3a-a4f5-d77da4614439
+        - VITE_DEEPLAKE_API_URL=http://localhost:8000/api/v1
+        - VITE_DEEPLAKE_API_KEY=dev-api-key
+    ports:
+      - "3001:80"
+    environment:
+      - NODE_ENV=production
+      - VITE_AETHER_API_BASE=http://localhost:8080
+      - VITE_AETHER_API_URL=http://localhost:8080/api/v1
+      - VITE_AGENT_BUILDER_API_URL=http://localhost:8087/api/v1
+      - VITE_KEYCLOAK_URL=http://localhost:8081
+      - VITE_KEYCLOAK_REALM=master
+      - VITE_KEYCLOAK_CLIENT_ID=aether-frontend
+      - VITE_DEV_MODE=true
+      - VITE_AUDIMODAL_API_URL=http://localhost:8084/api/v1
+      - VITE_AUDIMODAL_API_KEY=dev-api-key
+      - VITE_AUDIMODAL_TENANT_ID=test-tenant-001
+      - VITE_DEEPLAKE_API_URL=http://localhost:8000/api/v1
+      - VITE_DEEPLAKE_API_KEY=dev-api-key
+      - PORT=80
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # depends_on:
+    #   - aether-backend  # Backend runs as separate service in TAS network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aether-frontend.rule=Host(`aether.local`)"
+      - "traefik.http.routers.aether-frontend.tls=true"
+      - "traefik.http.services.aether-frontend.loadbalancer.server.port=80"
+
+  # Development service (alternative to production build)
+  aether-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_AETHER_API_BASE=
+      - VITE_AETHER_API_URL=/api/v1
+      - VITE_KEYCLOAK_URL=http://localhost:8081
+      - VITE_DEV_MODE=true
+    profiles:
+      - dev
+
+networks:
+  default:
+    name: tas-shared-network
+    external: true

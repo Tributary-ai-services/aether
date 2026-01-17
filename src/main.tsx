@@ -1,0 +1,55 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { Provider } from 'react-redux'
+import { store } from './store/index.js'
+import { ThemeProvider } from './context/ThemeContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
+import { AuditProvider } from './context/AuditContext.jsx'
+import { CollaborationProvider } from './context/CollaborationContext.jsx'
+import { NavigationProvider } from './context/NavigationContext.jsx'
+import { AuthProvider } from './contexts/AuthContext.jsx'
+import App from './App.tsx'
+import './index.css'
+
+// Initialize frontend logging service (sends logs to backend → Loki)
+import { logger } from './services/logging.ts'
+logger.info('Application started', {
+  version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+  environment: import.meta.env.MODE,
+  user_agent: navigator.userAgent,
+})
+
+// Import dev helpers in development mode
+if (import.meta.env.VITE_DEV_MODE === 'true') {
+  import('./utils/getDevToken.js');
+  import('./utils/quickAuth.js');
+  import('./utils/fixKeycloakCors.js');
+}
+
+const root = document.getElementById('root')
+if (!root) {
+  console.error('Root element not found!')
+} else {
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider>
+              <NavigationProvider>
+                <NotificationProvider>
+                  <AuditProvider>
+                    <CollaborationProvider>
+                      <App />
+                    </CollaborationProvider>
+                  </AuditProvider>
+                </NotificationProvider>
+              </NavigationProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </Provider>
+    </React.StrictMode>,
+  )
+}

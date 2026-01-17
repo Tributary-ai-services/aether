@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Notebook Tree</title>
+    <script>
+        // Mock notebook data with parent-child relationships
+        const mockNotebooks = [
+            {
+                id: '1',
+                name: 'Root Notebook 1',
+                description: 'First root notebook',
+                visibility: 'private',
+                owner_id: 'user1',
+                // No parent_id - this is a root
+            },
+            {
+                id: '2',
+                name: 'Root Notebook 2', 
+                description: 'Second root notebook',
+                visibility: 'public',
+                owner_id: 'user1',
+                // No parent_id - this is a root
+            },
+            {
+                id: '3',
+                name: 'Child Notebook 1.1',
+                description: 'Child of first root',
+                visibility: 'private',
+                owner_id: 'user1',
+                parent_id: '1'  // Child of notebook 1
+            },
+            {
+                id: '4',
+                name: 'Child Notebook 1.2',
+                description: 'Another child of first root',
+                visibility: 'private', 
+                owner_id: 'user1',
+                parent_id: '1'  // Child of notebook 1
+            },
+            {
+                id: '5',
+                name: 'Grandchild Notebook 1.1.1',
+                description: 'Child of child',
+                visibility: 'private',
+                owner_id: 'user1',
+                parent_id: '3'  // Child of notebook 3
+            }
+        ];
+
+        // Build tree function from Redux
+        const buildNotebookTree = (notebooks) => {
+            if (!notebooks || notebooks.length === 0) {
+                return [];
+            }
+            
+            const buildTree = (parentId = null) => {
+                return notebooks
+                    .filter(nb => {
+                        const parent = nb.parent_id || nb.parentId;
+                        // For root nodes, look for null, undefined, or empty string
+                        if (parentId === null) {
+                            return !parent || parent === '' || parent === null || parent === undefined;
+                        }
+                        // For child nodes, match exact parent ID
+                        return parent === parentId;
+                    })
+                    .map(notebook => ({
+                        ...notebook,
+                        parentId: notebook.parent_id || notebook.parentId,
+                        children: buildTree(notebook.id)
+                    }));
+            };
+            
+            return buildTree(null);
+        };
+
+        // Test the tree building
+        const tree = buildNotebookTree(mockNotebooks);
+        console.log('Built tree:', tree);
+
+        // Display results
+        window.onload = () => {
+            document.getElementById('flat').textContent = JSON.stringify(mockNotebooks, null, 2);
+            document.getElementById('tree').textContent = JSON.stringify(tree, null, 2);
+            
+            // Show tree structure visually
+            const renderTree = (notebooks, container, level = 0) => {
+                notebooks.forEach(notebook => {
+                    const div = document.createElement('div');
+                    div.style.marginLeft = (level * 20) + 'px';
+                    div.textContent = notebook.name + (notebook.children.length > 0 ? ` (${notebook.children.length} children)` : '');
+                    container.appendChild(div);
+                    
+                    if (notebook.children.length > 0) {
+                        renderTree(notebook.children, container, level + 1);
+                    }
+                });
+            };
+            
+            renderTree(tree, document.getElementById('visual'));
+        };
+    </script>
+</head>
+<body>
+    <h1>Notebook Tree Test</h1>
+    
+    <h2>Visual Tree:</h2>
+    <div id="visual"></div>
+    
+    <h2>Flat Notebooks:</h2>
+    <pre id="flat"></pre>
+    
+    <h2>Tree Structure:</h2>
+    <pre id="tree"></pre>
+</body>
+</html>
