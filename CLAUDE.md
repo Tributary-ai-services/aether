@@ -202,3 +202,116 @@ Setting API URLs to relative paths ensures the frontend works through NGINX ingr
 **Problem**: `imagePullPolicy: Always` ignored
 **Cause**: This is expected behavior - the policy forces registry pulls
 **Fix**: Push images to registry, don't rely on local imports
+
+## Frontend Logging Implementation
+
+### Browser-to-Backend Logging Pattern
+The Aether frontend uses a centralized logging service that batches logs and sends them to the backend API for collection by Loki/Alloy.
+
+**Logging Service**: `src/services/logging.ts`
+
+```typescript
+import { logger } from './services/logging.ts'
+
+// Log user actions
+logger.info('User navigated to notebook', {
+  event_type: 'navigation',
+  notebook_id: notebookId,
+  target_url: window.location.href,
+})
+
+// Log errors with stack traces
+logger.error('Failed to save document', {
+  error_message: error.message,
+  stack_trace: error.stack,
+  component: 'DocumentEditor',
+  document_id: documentId,
+})
+
+// Log API calls
+logger.logApiCall('/api/v1/notebooks', 'POST', 201)
+logger.logApiCall('/api/v1/documents', 'GET', undefined, error)
+
+// Log component lifecycle (dev/debug only)
+logger.logComponentLifecycle('NotebookEditor', 'mount', { notebook_id: id })
+```
+
+### Logging Service Features
+- **Auto-capture**: Automatically captures JavaScript errors and unhandled promise rejections
+- **Buffering**: Buffers logs and flushes every 5 seconds or when buffer reaches 20 entries
+- **Immediate flush**: Error-level logs are sent immediately for rapid incident detection
+- **Reliable delivery**: Uses `navigator.sendBeacon` for guaranteed log delivery on page unload
+- **Context enrichment**: Automatically adds URL, user agent, and session ID to all logs
+
+### Log Levels
+- `error` - Critical errors (failed API calls, JavaScript exceptions, unhandled rejections)
+- `warn` - Warning conditions (deprecated features, slow operations)
+- `info` - General informational messages (user actions, navigation, component lifecycle)
+- `debug` - Detailed debugging information (state changes, API request/response data)
+
+### Backend Integration
+Frontend logs are sent to `POST /api/v1/logs` on the Aether backend, which enriches them with user context (user_id, tenant_id, space_id from JWT) and logs to stdout with `source="frontend"` for Loki collection.
+
+**Request Format**:
+```typescript
+{
+  logs: [
+    {
+      level: "error",
+      message: "Failed to load notebook",
+      timestamp: new Date(),
+      url: window.location.href,
+      user_agent: navigator.userAgent,
+      session_id: "1234567890-abc123",
+      stack_trace: error.stack,
+      extra: {
+        notebook_id: "123",
+        error_code: "NETWORK_ERROR"
+      }
+    }
+  ]
+}
+```
+
+### Initialization
+The logging service is initialized in `src/main.tsx` before the React app renders:
+
+```typescript
+import { logger } from './services/logging.ts'
+
+logger.info('Application started', {
+  version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+  environment: import.meta.env.MODE,
+  user_agent: navigator.userAgent,
+})
+```
+
+### Viewing Frontend Logs
+
+**Grafana Dashboard**: "TAS Applications Logs" → "Frontend Errors & Warnings" panel
+
+**LogQL Queries**:
+```logql
+# All frontend logs
+{namespace="aether-be", source="frontend"}
+
+# Frontend errors only
+{namespace="aether-be", source="frontend"} | json | level="error"
+
+# Logs for specific session
+{namespace="aether-be", source="frontend"} | json | session_id="1234567890-abc123"
+
+# Logs from specific component
+{namespace="aether-be", source="frontend"} | json | extra_component="NotebookEditor"
+```
+
+### Development Mode
+In development (`import.meta.env.DEV`), the logger is exposed on `window.logger` for debugging:
+
+```javascript
+// Open browser console
+window.logger.info('Debug message', { custom_field: 'value' })
+window.logger.flush() // Manually flush buffer
+window.logger.disable() // Temporarily disable logging
+window.logger.enable() // Re-enable logging
+```

@@ -160,7 +160,9 @@ const DocumentAnalysisModal = ({
                   <div>
                     <span className="font-medium text-gray-700">File Size:</span>
                     <span className="ml-2 text-gray-600">
-                      {document?.size ? `${(document.size / 1024).toFixed(1)} KB` : 'Unknown'}
+                      {(document?.size_bytes || document?.size)
+                        ? `${((document.size_bytes || document.size) / 1024).toFixed(1)} KB`
+                        : 'Unknown'}
                     </span>
                   </div>
                 </div>

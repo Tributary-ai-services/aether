@@ -12,6 +12,14 @@ import { AuthProvider } from './contexts/AuthContext.jsx'
 import App from './App.tsx'
 import './index.css'
 
+// Initialize frontend logging service (sends logs to backend → Loki)
+import { logger } from './services/logging.ts'
+logger.info('Application started', {
+  version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+  environment: import.meta.env.MODE,
+  user_agent: navigator.userAgent,
+})
+
 // Import dev helpers in development mode
 if (import.meta.env.VITE_DEV_MODE === 'true') {
   import('./utils/getDevToken.js');

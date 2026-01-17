@@ -608,6 +608,10 @@ class AetherApiService {
       body: JSON.stringify(data)
     }),
     delete: (id) => this.request(`/documents/${id}`, { method: 'DELETE' }),
+    // ML Analysis - fetches analysis summary from AudiModal via aether-be proxy
+    getAnalysis: (id) => this.request(`/documents/${id}/analysis`),
+    // Extracted text - fetches text content from AudiModal chunks
+    getExtractedText: (id) => this.request(`/documents/${id}/text`),
   };
 
   // Download method with proper context
@@ -746,7 +750,7 @@ class AetherApiService {
     delete: (id) => this.request(`/teams/${id}`, {
       method: 'DELETE',
     }),
-    
+
     // Team member operations
     getMembers: (teamId) => this.request(`/teams/${teamId}/members`),
     inviteMember: (teamId, data) => this.request(`/teams/${teamId}/members`, {
@@ -760,14 +764,14 @@ class AetherApiService {
     removeMember: (teamId, userId) => this.request(`/teams/${teamId}/members/${userId}`, {
       method: 'DELETE',
     }),
-    
+
     // Team settings
     getSettings: (teamId) => this.request(`/teams/${teamId}/settings`),
     updateSettings: (teamId, data) => this.request(`/teams/${teamId}/settings`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-    
+
     // Team invitations
     getInvitations: (teamId) => this.request(`/teams/${teamId}/invitations`),
     acceptInvitation: (invitationId) => this.request(`/team-invitations/${invitationId}/accept`, {
@@ -776,6 +780,71 @@ class AetherApiService {
     declineInvitation: (invitationId) => this.request(`/team-invitations/${invitationId}/decline`, {
       method: 'POST',
     }),
+  };
+
+  // Vector Search API - RAG-only lookup for testing vector store
+  vectorSearch = {
+    /**
+     * Perform text-based vector search on a notebook's indexed documents
+     * @param {string} notebookId - The notebook ID to search within
+     * @param {string} queryText - The search query text
+     * @param {object} options - Search options (top_k, min_score, deduplicate, rerank, etc.)
+     * @returns {Promise} Search results with scores, distances, and content
+     */
+    textSearch: (notebookId, queryText, options = {}) => this.request(`/notebooks/${notebookId}/vector-search/text`, {
+      method: 'POST',
+      body: JSON.stringify({
+        query_text: queryText,
+        options: {
+          top_k: options.topK || 10,
+          min_score: options.minScore || 0.0,
+          threshold: options.threshold || null,
+          max_distance: options.maxDistance || null,
+          deduplicate: options.deduplicate || false,
+          group_by_document: options.groupByDocument || false,
+          rerank: options.rerank || false,
+          include_content: options.includeContent !== false,
+          include_metadata: options.includeMetadata !== false,
+          filters: options.filters || null,
+        },
+      }),
+    }),
+
+    /**
+     * Perform hybrid search combining vector and text search
+     * @param {string} notebookId - The notebook ID to search within
+     * @param {string} queryText - The search query text
+     * @param {object} options - Search options including vector_weight and text_weight
+     * @returns {Promise} Search results with scores, distances, and content
+     */
+    hybridSearch: (notebookId, queryText, options = {}) => this.request(`/notebooks/${notebookId}/vector-search/hybrid`, {
+      method: 'POST',
+      body: JSON.stringify({
+        query_text: queryText,
+        options: {
+          top_k: options.topK || 10,
+          min_score: options.minScore || 0.0,
+          threshold: options.threshold || null,
+          max_distance: options.maxDistance || null,
+          deduplicate: options.deduplicate || false,
+          group_by_document: options.groupByDocument || false,
+          rerank: options.rerank || false,
+          include_content: options.includeContent !== false,
+          include_metadata: options.includeMetadata !== false,
+          filters: options.filters || null,
+        },
+        vector_weight: options.vectorWeight || 0.5,
+        text_weight: options.textWeight || 0.5,
+        fusion_method: options.fusionMethod || 'weighted_sum',
+      }),
+    }),
+
+    /**
+     * Get vector store info for a notebook (document count, vector count, etc.)
+     * @param {string} notebookId - The notebook ID
+     * @returns {Promise} Vector store information
+     */
+    getInfo: (notebookId) => this.request(`/notebooks/${notebookId}/vector-search/info`),
   };
 }
 

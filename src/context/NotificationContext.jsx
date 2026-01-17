@@ -34,9 +34,9 @@ export const NotificationProvider = ({ children }) => {
   ]);
   const [toastNotifications, setToastNotifications] = useState([]);
   const [notificationsPaused, setNotificationsPaused] = useState(() => {
-    // Load pause state from localStorage
+    // Load pause state from localStorage - paused by default until user enables
     const saved = localStorage.getItem('notificationsPaused');
-    return saved === 'true';
+    return saved !== 'false'; // Default to paused (true) unless explicitly set to 'false'
   });
 
   const addNotification = useCallback((notification) => {
