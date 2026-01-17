@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal.jsx';
 import ComplianceSettings from './ComplianceSettings.jsx';
+import VectorSearchTab from './VectorSearchTab.jsx';
 import notebookService from '../../services/notebookService.js';
-import { 
+import {
   Settings,
   Save,
   X,
@@ -14,7 +15,9 @@ import {
   Shield,
   FileText,
   Trash2,
-  Archive
+  Archive,
+  Search,
+  AlertTriangle
 } from 'lucide-react';
 
 const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) => {
@@ -217,6 +220,18 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('vectorSearch')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'vectorSearch'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Search size={16} />
+              Vector Search
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('advanced')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'advanced'
@@ -397,6 +412,10 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
               disabled={isSaving}
             />
           </div>
+        )}
+
+        {activeTab === 'vectorSearch' && (
+          <VectorSearchTab notebook={notebook} />
         )}
 
         {activeTab === 'advanced' && (
