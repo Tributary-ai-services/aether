@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import { useSpaceRole } from '../../hooks/useSpaceRole.js';
 import { RequirePermission } from '../auth/RequirePermission.jsx';
 import { ProtectedButton } from '../auth/ProtectedButton.jsx';

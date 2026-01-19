@@ -6,7 +6,7 @@
  */
 import { useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from './useSpaces.js';
 import { PERMISSIONS, PermissionManager } from '../utils/permissions.js';
 
 // Role hierarchy levels (higher number = more permissions)

@@ -7,7 +7,7 @@
  */
 import { useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from './useSpaces.js';
 import { PermissionManager, PERMISSIONS, PermissionUtils } from '../utils/permissions.js';
 
 /**

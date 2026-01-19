@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
 import { api } from '../../services/api.js';
 import Modal from '../ui/Modal.jsx';

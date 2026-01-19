@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from '../hooks/useSpaces.js';
 import { aetherApi } from '../services/aetherApi.js';
 import {
   useAppDispatch,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import ManageSpacesModal from '../modals/ManageSpacesModal.jsx';
 import {
   ChevronDown,

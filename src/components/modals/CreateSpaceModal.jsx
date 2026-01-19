@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { aetherApi } from '../../services/aetherApi.js';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import {
   X,
   Loader2,

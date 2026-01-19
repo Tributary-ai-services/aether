@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { analyticsData, mlModels, experiments } from '../data/mockData.js';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from '../hooks/useSpaces.js';
 import { getTrendIcon, getModelStatusColor, getExperimentStatusColor, getMediaIcon } from '../utils/helpers.jsx';
 import { PerformanceTrendChart, ProcessingDistributionChart, InfrastructureChart } from '../components/charts/index.js';
 import { 
