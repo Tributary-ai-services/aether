@@ -5,7 +5,6 @@
  * Supports multiple permission checking strategies.
  */
 import React from 'react';
-import PropTypes from 'prop-types';
 import { usePermission } from '../../hooks/usePermission.js';
 import { useSpaceRole } from '../../hooks/useSpaceRole.js';
 import { useResourceAccess } from '../../hooks/useResourceAccess.js';
@@ -100,17 +99,6 @@ export function RequirePermission({
   return null;
 }
 
-RequirePermission.propTypes = {
-  permission: PropTypes.string,
-  action: PropTypes.string,
-  entityType: PropTypes.string,
-  role: PropTypes.oneOf(['owner', 'admin', 'member', 'viewer']),
-  resource: PropTypes.object,
-  resourcePermission: PropTypes.oneOf(['admin', 'edit', 'view']),
-  fallback: PropTypes.node,
-  showFallback: PropTypes.bool,
-  children: PropTypes.node.isRequired
-};
 
 /**
  * Inverse of RequirePermission - shows content only when user LACKS permission
@@ -154,15 +142,6 @@ export function RequireNoPermission({
   return null;
 }
 
-RequireNoPermission.propTypes = {
-  permission: PropTypes.string,
-  action: PropTypes.string,
-  entityType: PropTypes.string,
-  role: PropTypes.oneOf(['owner', 'admin', 'member', 'viewer']),
-  resource: PropTypes.object,
-  resourcePermission: PropTypes.oneOf(['admin', 'edit', 'view']),
-  children: PropTypes.node.isRequired
-};
 
 /**
  * Higher-order component version of RequirePermission

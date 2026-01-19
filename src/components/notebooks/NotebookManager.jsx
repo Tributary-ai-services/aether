@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNotebooks, useNotebookStats, useNotebookOperations } from '../../hooks/index.js';
+import { useNotebooks, useNotebookStats, useNotebookOperations, usePermission } from '../../hooks/index.js';
 import ExportDataModal from '../modals/ExportDataModal.jsx';
-import { 
-  Download, 
-  Upload, 
-  Trash2, 
-  Copy, 
-  Move, 
+import { ProtectedButton } from '../auth/ProtectedButton.jsx';
+import { RequirePermission } from '../auth/RequirePermission.jsx';
+import {
+  Download,
+  Upload,
+  Trash2,
+  Copy,
+  Move,
   Archive,
   RefreshCw,
   BarChart3,
@@ -218,8 +220,9 @@ const NotebookManager = ({
             )}
           </div>
 
-          {/* Actions */}
+          {/* Actions with Permission Checks */}
           <div className="flex flex-wrap gap-3 mb-6">
+            {/* Export - available to all users who can view */}
             <button
               onClick={handleExport}
               disabled={loading || parentLoading}
@@ -228,30 +231,37 @@ const NotebookManager = ({
               <Download size={16} />
               Export {selectedNotebooks.size > 0 ? `(${selectedNotebooks.size})` : 'All'}
             </button>
-            
-            <label className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer">
-              <Upload size={16} />
-              Import
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-                disabled={loading || parentLoading}
-              />
-            </label>
-            
+
+            {/* Import - requires create permission */}
+            <RequirePermission permission="create">
+              <label className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer">
+                <Upload size={16} />
+                Import
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                  disabled={loading || parentLoading}
+                />
+              </label>
+            </RequirePermission>
+
+            {/* Bulk Delete - requires delete permission */}
             {selectedNotebooks.size > 0 && (
-              <button
+              <ProtectedButton
+                permission="delete"
                 onClick={handleBulkDelete}
                 disabled={loading || parentLoading}
                 className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabledClassName="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg opacity-50 cursor-not-allowed"
+                disabledTitle="You need delete permission to remove notebooks"
               >
                 <Trash2 size={16} />
                 Delete ({selectedNotebooks.size})
-              </button>
+              </ProtectedButton>
             )}
-            
+
             <button
               onClick={onRefetch}
               disabled={parentLoading}
@@ -360,22 +370,31 @@ const NotebookManager = ({
                       }
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
+                      {/* Duplicate - requires create permission in space */}
+                      <ProtectedButton
+                        permission="create"
                         onClick={() => handleDuplicate(notebook)}
                         disabled={loading || parentLoading}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        className="text-blue-600 hover:text-blue-900 mr-3 p-1"
+                        disabledClassName="text-gray-400 mr-3 p-1 cursor-not-allowed"
+                        disabledTitle="You need create permission to duplicate"
                         title="Duplicate"
                       >
                         <Copy size={16} />
-                      </button>
-                      <button
+                      </ProtectedButton>
+                      {/* Delete - requires admin permission on notebook */}
+                      <ProtectedButton
+                        resource={notebook}
+                        resourcePermission="admin"
                         onClick={() => handleDeleteSingle(notebook)}
                         disabled={loading || parentLoading}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 p-1"
+                        disabledClassName="text-gray-400 p-1 cursor-not-allowed"
+                        disabledTitle="You need admin permission to delete"
                         title="Delete"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </ProtectedButton>
                     </td>
                   </tr>
                 ))}

@@ -5,7 +5,6 @@
  * Provides consistent permission-aware button behavior across the application.
  */
 import React from 'react';
-import PropTypes from 'prop-types';
 import { usePermission } from '../../hooks/usePermission.js';
 import { useSpaceRole } from '../../hooks/useSpaceRole.js';
 import { useResourceAccess } from '../../hooks/useResourceAccess.js';
@@ -113,24 +112,6 @@ export function ProtectedButton({
   );
 }
 
-ProtectedButton.propTypes = {
-  permission: PropTypes.string,
-  action: PropTypes.string,
-  entityType: PropTypes.string,
-  role: PropTypes.oneOf(['owner', 'admin', 'member', 'viewer']),
-  resource: PropTypes.object,
-  resourcePermission: PropTypes.oneOf(['admin', 'edit', 'view']),
-  hideWhenDisabled: PropTypes.bool,
-  disabledTitle: PropTypes.string,
-  disabledClassName: PropTypes.string,
-  onClick: PropTypes.func,
-  disabled: PropTypes.bool,
-  className: PropTypes.string,
-  title: PropTypes.string,
-  type: PropTypes.oneOf(['button', 'submit', 'reset']),
-  children: PropTypes.node.isRequired
-};
-
 /**
  * Protected icon button variant
  * Same as ProtectedButton but with icon-specific styling defaults
@@ -148,11 +129,6 @@ export function ProtectedIconButton({
     />
   );
 }
-
-ProtectedIconButton.propTypes = {
-  className: PropTypes.string,
-  disabledClassName: PropTypes.string
-};
 
 /**
  * Protected action menu item
@@ -213,21 +189,6 @@ export function ProtectedMenuItem({
     </button>
   );
 }
-
-ProtectedMenuItem.propTypes = {
-  permission: PropTypes.string,
-  action: PropTypes.string,
-  entityType: PropTypes.string,
-  role: PropTypes.oneOf(['owner', 'admin', 'member', 'viewer']),
-  resource: PropTypes.object,
-  resourcePermission: PropTypes.oneOf(['admin', 'edit', 'view']),
-  hideWhenDisabled: PropTypes.bool,
-  onClick: PropTypes.func,
-  icon: PropTypes.elementType,
-  className: PropTypes.string,
-  disabledClassName: PropTypes.string,
-  children: PropTypes.node.isRequired
-};
 
 /**
  * Protected link component
@@ -297,21 +258,5 @@ export function ProtectedLink({
     </a>
   );
 }
-
-ProtectedLink.propTypes = {
-  permission: PropTypes.string,
-  action: PropTypes.string,
-  entityType: PropTypes.string,
-  role: PropTypes.oneOf(['owner', 'admin', 'member', 'viewer']),
-  resource: PropTypes.object,
-  resourcePermission: PropTypes.oneOf(['admin', 'edit', 'view']),
-  hideWhenDisabled: PropTypes.bool,
-  disabledTitle: PropTypes.string,
-  href: PropTypes.string,
-  onClick: PropTypes.func,
-  className: PropTypes.string,
-  disabledClassName: PropTypes.string,
-  children: PropTypes.node.isRequired
-};
 
 export default ProtectedButton;

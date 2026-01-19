@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Folder, 
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
   FolderOpen,
   BookOpen,
   MoreVertical,
@@ -15,6 +15,111 @@ import {
   Globe,
   Users
 } from 'lucide-react';
+import { useNotebookAccess } from '../../hooks/useResourceAccess.js';
+import { ProtectedMenuItem } from '../auth/ProtectedButton.jsx';
+
+/**
+ * Context menu with permission-based action visibility
+ */
+const NotebookContextMenu = ({
+  notebook,
+  position,
+  onClose,
+  onCreateSubNotebook,
+  onEditNotebook,
+  onDeleteNotebook
+}) => {
+  const { canEdit, canDelete, canShare } = useNotebookAccess(notebook);
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-transparent"
+        onClick={onClose}
+      />
+      <div
+        className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-48"
+        style={{
+          left: position.x,
+          top: position.y,
+        }}
+      >
+        {/* Create Sub-notebook - requires edit permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="edit"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onCreateSubNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Plus}
+        >
+          Create Sub-notebook
+        </ProtectedMenuItem>
+
+        {/* Edit - requires edit permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="edit"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onEditNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Edit}
+        >
+          Edit
+        </ProtectedMenuItem>
+
+        {/* Duplicate - requires view permission (anyone can duplicate to their space) */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="view"
+          hideWhenDisabled={true}
+          onClick={() => {
+            // Handle duplicate
+            onClose();
+          }}
+          icon={Copy}
+        >
+          Duplicate
+        </ProtectedMenuItem>
+
+        {/* Share - requires admin permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="admin"
+          hideWhenDisabled={true}
+          onClick={() => {
+            // Handle share
+            onClose();
+          }}
+          icon={Share2}
+        >
+          Share
+        </ProtectedMenuItem>
+
+        <div className="border-t border-gray-200 my-1" />
+
+        {/* Delete - requires admin permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="admin"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onDeleteNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Trash2}
+          className="text-red-700 hover:bg-red-50"
+        >
+          Delete
+        </ProtectedMenuItem>
+      </div>
+    </>
+  );
+};
 
 const NotebookTreeView = ({ 
   notebooks = [], 
@@ -147,78 +252,16 @@ const NotebookTreeView = ({
         {notebooks.map(notebook => renderNotebook(notebook))}
       </div>
 
-      {/* Context Menu */}
+      {/* Context Menu with Permission Checks */}
       {contextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-transparent"
-            onClick={closeContextMenu}
-          />
-          <div
-            className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-48"
-            style={{
-              left: contextMenu.x,
-              top: contextMenu.y,
-            }}
-          >
-            <button
-              onClick={() => {
-                onCreateSubNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Plus size={16} />
-              Create Sub-notebook
-            </button>
-            
-            <button
-              onClick={() => {
-                onEditNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Edit size={16} />
-              Edit
-            </button>
-
-            <button
-              onClick={() => {
-                // Handle duplicate
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Copy size={16} />
-              Duplicate
-            </button>
-
-            <button
-              onClick={() => {
-                // Handle share
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Share2 size={16} />
-              Share
-            </button>
-
-            <div className="border-t border-gray-200 my-1" />
-
-            <button
-              onClick={() => {
-                onDeleteNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-            >
-              <Trash2 size={16} />
-              Delete
-            </button>
-          </div>
-        </>
+        <NotebookContextMenu
+          notebook={contextMenu.notebook}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={closeContextMenu}
+          onCreateSubNotebook={onCreateSubNotebook}
+          onEditNotebook={onEditNotebook}
+          onDeleteNotebook={onDeleteNotebook}
+        />
       )}
 
       {/* Empty State */}
