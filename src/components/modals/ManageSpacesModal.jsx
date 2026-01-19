@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpaceRole } from '../../hooks/useSpaceRole.js';
+import { RequirePermission } from '../auth/RequirePermission.jsx';
+import { ProtectedButton } from '../auth/ProtectedButton.jsx';
 import { aetherApi } from '../../services/aetherApi.js';
 import CreateSpaceModal from './CreateSpaceModal.jsx';
+import SpaceMembersPanel from '../spaces/SpaceMembersPanel.jsx';
+import InviteMemberModal from '../spaces/InviteMemberModal.jsx';
 import {
   X,
   Building2,
@@ -21,18 +26,22 @@ import {
 } from 'lucide-react';
 
 const ManageSpacesModal = ({ onClose }) => {
-  const { 
-    availableSpaces, 
-    currentSpace, 
-    loadAvailableSpaces, 
-    setCurrentSpace 
+  const {
+    availableSpaces,
+    currentSpace,
+    loadAvailableSpaces,
+    setCurrentSpace
   } = useSpace();
-  
+  const { role: currentUserRole, isOwner, isAdmin } = useSpaceRole();
+
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
   const [createSpaceType, setCreateSpaceType] = useState('personal'); // 'personal' or 'organization'
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedSpaceForMembers, setSelectedSpaceForMembers] = useState(null);
+  const [showMembersPanel, setShowMembersPanel] = useState(false);
 
   const handleCreateSpace = (spaceType) => {
     setCreateSpaceType(spaceType);
@@ -43,6 +52,22 @@ const ManageSpacesModal = ({ onClose }) => {
     // Refresh spaces after creation
     await loadAvailableSpaces();
     setShowCreateSpaceModal(false);
+  };
+
+  const handleShowMembers = (space) => {
+    setSelectedSpaceForMembers(space);
+    setShowMembersPanel(true);
+  };
+
+  const handleInviteMember = (space) => {
+    setSelectedSpaceForMembers(space);
+    setShowInviteModal(true);
+  };
+
+  const handleInviteComplete = async () => {
+    setShowInviteModal(false);
+    // Optionally refresh spaces if needed
+    await loadAvailableSpaces();
   };
 
   const renderPersonalSpace = () => {
@@ -163,26 +188,43 @@ const ManageSpacesModal = ({ onClose }) => {
                     {isActive && (
                       <Check size={20} className="text-green-600" />
                     )}
+                    {/* Members button - shown to all members */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // TODO: Navigate to space settings
+                        handleShowMembers(space);
                       }}
                       className="p-1 hover:bg-gray-100 rounded"
-                      title="Space settings"
+                      title="View members"
                     >
-                      <Settings size={16} className="text-gray-400" />
+                      <Users size={16} className="text-gray-400" />
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // TODO: Edit space
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded"
-                      title="Edit space"
-                    >
-                      <Edit2 size={16} className="text-gray-400" />
-                    </button>
+                    {/* Settings button - admin+ only */}
+                    {(space.user_role === 'owner' || space.user_role === 'admin') && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowMembers(space);
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Space settings"
+                      >
+                        <Settings size={16} className="text-gray-400" />
+                      </button>
+                    )}
+                    {/* Edit button - admin+ only */}
+                    {(space.user_role === 'owner' || space.user_role === 'admin') && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Edit space
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Edit space"
+                      >
+                        <Edit2 size={16} className="text-gray-400" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -269,10 +311,56 @@ const ManageSpacesModal = ({ onClose }) => {
       
       {/* Create Space Modal */}
       {showCreateSpaceModal && (
-        <CreateSpaceModal 
+        <CreateSpaceModal
           onClose={() => setShowCreateSpaceModal(false)}
           organizationId={createSpaceType === 'organization' ? null : null}
           onComplete={handleCreateSpaceComplete}
+        />
+      )}
+
+      {/* Members Panel Modal */}
+      {showMembersPanel && selectedSpaceForMembers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedSpaceForMembers.space_name} - Members
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Manage who has access to this space
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowMembersPanel(false);
+                  setSelectedSpaceForMembers(null);
+                }}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <SpaceMembersPanel
+                spaceId={selectedSpaceForMembers.space_id}
+                onInvite={() => handleInviteMember(selectedSpaceForMembers)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Member Modal */}
+      {showInviteModal && selectedSpaceForMembers && (
+        <InviteMemberModal
+          spaceId={selectedSpaceForMembers.space_id}
+          spaceName={selectedSpaceForMembers.space_name}
+          onClose={() => setShowInviteModal(false)}
+          onSuccess={handleInviteComplete}
         />
       )}
     </div>
