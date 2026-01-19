@@ -59,6 +59,8 @@ const initialState = {
     error: null
   },
   notifications: [],
+  // Permission error state for 403 handling
+  permissionError: null, // { message, action, resource, timestamp }
   theme: 'light',
   sidebarCollapsed: false,
   viewMode: 'cards', // cards, tree, detail
@@ -169,16 +171,29 @@ const uiSlice = createSlice({
       if (savedTheme) {
         state.theme = savedTheme;
       }
-      
+
       const savedSidebarState = localStorage.getItem('aether_sidebar_collapsed');
       if (savedSidebarState !== null) {
         state.sidebarCollapsed = JSON.parse(savedSidebarState);
       }
-      
+
       const savedViewMode = localStorage.getItem('aether_view_mode');
       if (savedViewMode) {
         state.viewMode = savedViewMode;
       }
+    },
+
+    // Permission error management (403 responses)
+    showPermissionError: (state, action) => {
+      state.permissionError = {
+        message: action.payload.message || 'You do not have permission for this action',
+        action: action.payload.action || null,
+        resource: action.payload.resource || null,
+        timestamp: Date.now()
+      };
+    },
+    clearPermissionError: (state) => {
+      state.permissionError = null;
     }
   },
   extraReducers: (builder) => {
@@ -247,7 +262,9 @@ export const {
   setGlobalLoading,
   setNotebooksLoading,
   setAuthLoading,
-  initializeUI
+  initializeUI,
+  showPermissionError,
+  clearPermissionError
 } = uiSlice.actions;
 
 // Selectors
@@ -257,6 +274,7 @@ export const selectTheme = (state) => state.ui.theme;
 export const selectSidebarCollapsed = (state) => state.ui.sidebarCollapsed;
 export const selectViewMode = (state) => state.ui.viewMode;
 export const selectLoading = (state) => state.ui.loading;
+export const selectPermissionError = (state) => state.ui.permissionError;
 
 // Onboarding selectors
 export const selectOnboardingModal = (state) => state.ui.modals.onboarding;

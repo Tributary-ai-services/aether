@@ -26,6 +26,7 @@ import ThemeCustomizer from './components/ui/ThemeCustomizer.jsx';
 import Settings from './components/ui/Settings.jsx';
 import NotificationCenter from './components/notifications/NotificationCenter.jsx';
 import ToastNotification from './components/notifications/ToastNotification.jsx';
+import PermissionErrorToast from './components/ui/PermissionErrorToast.jsx';
 import AuditTrail from './components/audit/AuditTrail.jsx';
 import LeftNavigation from './components/navigation/LeftNavigation.jsx';
 import NotebooksPage from './pages/NotebooksPage.jsx';
@@ -464,6 +465,9 @@ const App = () => {
 
       {/* Toast Notifications */}
       <ToastNotification />
+
+      {/* Permission Error Toast (403 handling) */}
+      <PermissionErrorToast />
         </div>
       </SpaceProvider>
     </FilterProvider>

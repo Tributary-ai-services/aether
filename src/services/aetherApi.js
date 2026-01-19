@@ -111,6 +111,32 @@ class AetherApiService {
       
       if (!response.ok) {
         const errorText = await response.text();
+
+        // Handle 403 Forbidden - permission denied
+        if (response.status === 403) {
+          let errorMessage = 'You do not have permission for this action';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } catch (e) {
+            // Use text as-is if not JSON
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          }
+
+          // Trigger permission error event
+          this.triggerPermissionError({
+            message: errorMessage,
+            action: config.method || 'GET',
+            resource: endpoint
+          });
+
+          const error = new Error(errorMessage);
+          error.response = { status: 403, data: { error: errorMessage } };
+          throw error;
+        }
+
         const error = new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
         error.response = { status: response.status };
         throw error;
@@ -169,8 +195,22 @@ class AetherApiService {
 
   // Trigger authentication error event for the UI to handle
   triggerAuthenticationError(reason = 'unknown') {
-    const event = new CustomEvent('authenticationError', { 
-      detail: { reason, timestamp: Date.now() } 
+    const event = new CustomEvent('authenticationError', {
+      detail: { reason, timestamp: Date.now() }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Trigger permission denied error event for the UI to handle (403)
+  triggerPermissionError(details = {}) {
+    const event = new CustomEvent('permissionError', {
+      detail: {
+        message: details.message || 'You do not have permission for this action',
+        action: details.action || null,
+        resource: details.resource || null,
+        status: 403,
+        timestamp: Date.now()
+      }
     });
     window.dispatchEvent(event);
   }
