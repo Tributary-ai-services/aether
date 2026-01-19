@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -121,16 +121,62 @@ const NotebookContextMenu = ({
   );
 };
 
-const NotebookTreeView = ({ 
-  notebooks = [], 
-  onSelectNotebook, 
+const NotebookTreeView = ({
+  notebooks = [],
+  onSelectNotebook,
   onCreateSubNotebook,
   onEditNotebook,
   onDeleteNotebook,
-  selectedNotebookId 
+  selectedNotebookId,
+  autoExpandParentId = null // Auto-expand this node when set
 }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [contextMenu, setContextMenu] = useState(null);
+
+  // Debug: Log when component renders with notebooks
+  console.log('NotebookTreeView RENDER - notebooks count:', notebooks.length, 'notebooks:', notebooks.map(nb => ({
+    id: nb.id,
+    name: nb.name,
+    childrenCount: nb.children?.length || 0
+  })));
+
+  // Auto-expand parent when a new child is added
+  useEffect(() => {
+    if (autoExpandParentId && !expandedNodes.has(autoExpandParentId)) {
+      console.log('NotebookTreeView: Auto-expanding parent node:', autoExpandParentId);
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        newSet.add(autoExpandParentId);
+        return newSet;
+      });
+    }
+  }, [autoExpandParentId]);
+
+  // Auto-expand all notebooks that have children (to show nested structure)
+  useEffect(() => {
+    console.log('NotebookTreeView useEffect [notebooks] - checking for parents with children');
+    const parentsWithChildren = notebooks
+      .filter(nb => nb.children && nb.children.length > 0)
+      .map(nb => nb.id);
+
+    console.log('NotebookTreeView: Parents with children:', parentsWithChildren);
+    console.log('NotebookTreeView: Currently expanded:', Array.from(expandedNodes));
+
+    if (parentsWithChildren.length > 0) {
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        let hasNewExpansion = false;
+        parentsWithChildren.forEach(id => {
+          if (!newSet.has(id)) {
+            console.log('NotebookTreeView: Auto-expanding node with new children:', id);
+            newSet.add(id);
+            hasNewExpansion = true;
+          }
+        });
+        return hasNewExpansion ? newSet : prev;
+      });
+    }
+  }, [notebooks]);
 
   const toggleExpanded = (nodeId) => {
     const newExpanded = new Set(expandedNodes);

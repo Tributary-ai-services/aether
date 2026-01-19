@@ -300,25 +300,38 @@ const buildNotebookTree = (notebooks) => {
   if (!notebooks || notebooks.length === 0) {
     return [];
   }
-  
+
+  console.log('buildNotebookTree - input notebooks:', notebooks.map(nb => ({
+    id: nb.id,
+    name: nb.name,
+    parentId: nb.parentId,
+    parent_id: nb.parent_id,
+    effectiveParent: nb.parent_id || nb.parentId
+  })));
+
   const buildTree = (parentId = null) => {
-    return notebooks
-      .filter(nb => {
-        const parent = nb.parent_id || nb.parentId;
-        // For root nodes, look for null, undefined, or empty string
-        if (parentId === null) {
-          return !parent || parent === '' || parent === null || parent === undefined;
-        }
-        // For child nodes, match exact parent ID
-        return parent === parentId;
-      })
-      .map(notebook => ({
-        ...notebook,
-        parentId: notebook.parent_id || notebook.parentId,
-        children: buildTree(notebook.id)
-      }));
+    const filtered = notebooks.filter(nb => {
+      const parent = nb.parent_id || nb.parentId;
+      // For root nodes, look for null, undefined, or empty string
+      if (parentId === null) {
+        const isRoot = !parent || parent === '' || parent === null || parent === undefined;
+        return isRoot;
+      }
+      // For child nodes, match exact parent ID
+      return parent === parentId;
+    });
+
+    if (parentId !== null && filtered.length > 0) {
+      console.log(`buildNotebookTree - found ${filtered.length} children for parent ${parentId}:`, filtered.map(nb => nb.name));
+    }
+
+    return filtered.map(notebook => ({
+      ...notebook,
+      parentId: notebook.parent_id || notebook.parentId,
+      children: buildTree(notebook.id)
+    }));
   };
-  
+
   return buildTree(null);
 };
 
@@ -431,7 +444,7 @@ const notebooksSlice = createSlice({
       })
       .addCase(createNotebook.fulfilled, (state, action) => {
         state.loading = false;
-        
+
         // Parse complianceSettings if it's a string
         const newNotebook = { ...action.payload };
         if (typeof newNotebook.complianceSettings === 'string') {
@@ -441,9 +454,45 @@ const notebooksSlice = createSlice({
             console.error('Failed to parse new notebook compliance settings:', e);
           }
         }
-        
+
+        // Debug logging for subnotebook creation
+        console.log('createNotebook.fulfilled - action.payload:', action.payload);
+        console.log('createNotebook.fulfilled - newNotebook.parentId:', newNotebook.parentId);
+        console.log('createNotebook.fulfilled - newNotebook.parent_id:', newNotebook.parent_id);
+
         state.data.push(newNotebook);
+
+        console.log('createNotebook.fulfilled - state.data after push:', state.data.map(nb => ({ id: nb.id, name: nb.name, parentId: nb.parentId || nb.parent_id })));
+
         state.tree = buildNotebookTree(state.data);
+
+        console.log('createNotebook.fulfilled - state.tree after buildNotebookTree:', JSON.stringify(state.tree.map(nb => ({ id: nb.id, name: nb.name, parentId: nb.parentId, children: nb.children?.map(c => ({ id: c.id, name: c.name })) })), null, 2));
+
+        // If this notebook is a child of the currently selected notebook, update selectedNotebook.children
+        const parentId = newNotebook.parentId || newNotebook.parent_id;
+        if (parentId && state.selectedNotebook?.id === parentId) {
+          console.log('createNotebook.fulfilled - updating selectedNotebook.children with new child:', newNotebook.name);
+          // Find the updated parent from the tree to get the full children array
+          const findNotebookInTree = (tree, id) => {
+            for (const nb of tree) {
+              if (nb.id === id) return nb;
+              if (nb.children) {
+                const found = findNotebookInTree(nb.children, id);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+          const updatedParent = findNotebookInTree(state.tree, parentId);
+          if (updatedParent) {
+            state.selectedNotebook = {
+              ...state.selectedNotebook,
+              children: updatedParent.children || []
+            };
+            console.log('createNotebook.fulfilled - selectedNotebook.children updated:', state.selectedNotebook.children?.map(c => c.name));
+          }
+        }
+
         state.metadata.total += 1;
       })
       .addCase(createNotebook.rejected, (state, action) => {
