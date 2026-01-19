@@ -1,8 +1,15 @@
 // Custom hooks for the Aether AI platform
+
+// Permission and access control hooks
+export { usePermission } from './usePermission.js';
+export { useSpaceRole } from './useSpaceRole.js';
+export { useResourceAccess, useNotebookAccess, useDocumentAccess } from './useResourceAccess.js';
+
+// Feature hooks
 export { useNotebooks, useNotebook, useNotebookTree, useNotebookStats } from './useNotebooks.js';
 export { useNotebookOperations } from './useNotebookOperations.js';
-export { 
-  useAgentBuilder, 
+export {
+  useAgentBuilder,
   useAgent,
   useAgentExecution,
   useAgentStats,
