@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Folder, 
+import React, { useState, useEffect } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
   FolderOpen,
   BookOpen,
   MoreVertical,
@@ -15,17 +15,168 @@ import {
   Globe,
   Users
 } from 'lucide-react';
+import { useNotebookAccess } from '../../hooks/useResourceAccess.js';
+import { ProtectedMenuItem } from '../auth/ProtectedButton.jsx';
 
-const NotebookTreeView = ({ 
-  notebooks = [], 
-  onSelectNotebook, 
+/**
+ * Context menu with permission-based action visibility
+ */
+const NotebookContextMenu = ({
+  notebook,
+  position,
+  onClose,
+  onCreateSubNotebook,
+  onEditNotebook,
+  onDeleteNotebook
+}) => {
+  const { canEdit, canDelete, canShare } = useNotebookAccess(notebook);
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-transparent"
+        onClick={onClose}
+      />
+      <div
+        className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-48"
+        style={{
+          left: position.x,
+          top: position.y,
+        }}
+      >
+        {/* Create Sub-notebook - requires edit permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="edit"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onCreateSubNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Plus}
+        >
+          Create Sub-notebook
+        </ProtectedMenuItem>
+
+        {/* Edit - requires edit permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="edit"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onEditNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Edit}
+        >
+          Edit
+        </ProtectedMenuItem>
+
+        {/* Duplicate - requires view permission (anyone can duplicate to their space) */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="view"
+          hideWhenDisabled={true}
+          onClick={() => {
+            // Handle duplicate
+            onClose();
+          }}
+          icon={Copy}
+        >
+          Duplicate
+        </ProtectedMenuItem>
+
+        {/* Share - requires admin permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="admin"
+          hideWhenDisabled={true}
+          onClick={() => {
+            // Handle share
+            onClose();
+          }}
+          icon={Share2}
+        >
+          Share
+        </ProtectedMenuItem>
+
+        <div className="border-t border-gray-200 my-1" />
+
+        {/* Delete - requires admin permission */}
+        <ProtectedMenuItem
+          resource={notebook}
+          resourcePermission="admin"
+          hideWhenDisabled={true}
+          onClick={() => {
+            onDeleteNotebook?.(notebook);
+            onClose();
+          }}
+          icon={Trash2}
+          className="text-red-700 hover:bg-red-50"
+        >
+          Delete
+        </ProtectedMenuItem>
+      </div>
+    </>
+  );
+};
+
+const NotebookTreeView = ({
+  notebooks = [],
+  onSelectNotebook,
   onCreateSubNotebook,
   onEditNotebook,
   onDeleteNotebook,
-  selectedNotebookId 
+  selectedNotebookId,
+  autoExpandParentId = null // Auto-expand this node when set
 }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [contextMenu, setContextMenu] = useState(null);
+
+  // Debug: Log when component renders with notebooks
+  console.log('NotebookTreeView RENDER - notebooks count:', notebooks.length, 'notebooks:', notebooks.map(nb => ({
+    id: nb.id,
+    name: nb.name,
+    childrenCount: nb.children?.length || 0
+  })));
+
+  // Auto-expand parent when a new child is added
+  useEffect(() => {
+    if (autoExpandParentId && !expandedNodes.has(autoExpandParentId)) {
+      console.log('NotebookTreeView: Auto-expanding parent node:', autoExpandParentId);
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        newSet.add(autoExpandParentId);
+        return newSet;
+      });
+    }
+  }, [autoExpandParentId]);
+
+  // Auto-expand all notebooks that have children (to show nested structure)
+  useEffect(() => {
+    console.log('NotebookTreeView useEffect [notebooks] - checking for parents with children');
+    const parentsWithChildren = notebooks
+      .filter(nb => nb.children && nb.children.length > 0)
+      .map(nb => nb.id);
+
+    console.log('NotebookTreeView: Parents with children:', parentsWithChildren);
+    console.log('NotebookTreeView: Currently expanded:', Array.from(expandedNodes));
+
+    if (parentsWithChildren.length > 0) {
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        let hasNewExpansion = false;
+        parentsWithChildren.forEach(id => {
+          if (!newSet.has(id)) {
+            console.log('NotebookTreeView: Auto-expanding node with new children:', id);
+            newSet.add(id);
+            hasNewExpansion = true;
+          }
+        });
+        return hasNewExpansion ? newSet : prev;
+      });
+    }
+  }, [notebooks]);
 
   const toggleExpanded = (nodeId) => {
     const newExpanded = new Set(expandedNodes);
@@ -147,78 +298,16 @@ const NotebookTreeView = ({
         {notebooks.map(notebook => renderNotebook(notebook))}
       </div>
 
-      {/* Context Menu */}
+      {/* Context Menu with Permission Checks */}
       {contextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-transparent"
-            onClick={closeContextMenu}
-          />
-          <div
-            className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-48"
-            style={{
-              left: contextMenu.x,
-              top: contextMenu.y,
-            }}
-          >
-            <button
-              onClick={() => {
-                onCreateSubNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Plus size={16} />
-              Create Sub-notebook
-            </button>
-            
-            <button
-              onClick={() => {
-                onEditNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Edit size={16} />
-              Edit
-            </button>
-
-            <button
-              onClick={() => {
-                // Handle duplicate
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Copy size={16} />
-              Duplicate
-            </button>
-
-            <button
-              onClick={() => {
-                // Handle share
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Share2 size={16} />
-              Share
-            </button>
-
-            <div className="border-t border-gray-200 my-1" />
-
-            <button
-              onClick={() => {
-                onDeleteNotebook?.(contextMenu.notebook);
-                closeContextMenu();
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-            >
-              <Trash2 size={16} />
-              Delete
-            </button>
-          </div>
-        </>
+        <NotebookContextMenu
+          notebook={contextMenu.notebook}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={closeContextMenu}
+          onCreateSubNotebook={onCreateSubNotebook}
+          onEditNotebook={onEditNotebook}
+          onDeleteNotebook={onDeleteNotebook}
+        />
       )}
 
       {/* Empty State */}

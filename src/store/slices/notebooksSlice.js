@@ -6,10 +6,8 @@ import { PERMISSIONS } from '../../utils/permissions.js';
 export const fetchNotebooks = createAsyncThunk(
   'notebooks/fetchNotebooks',
   async (options = { limit: 20, offset: 0 }, { rejectWithValue }) => {
-    console.log('fetchNotebooks called with options:', options);
     try {
       const response = await aetherApi.notebooks.getAll(options);
-      console.log('fetchNotebooks response:', response);
       if (response.success) {
         return response.data;
       } else {
@@ -38,7 +36,7 @@ export const createNotebook = createAsyncThunk(
 );
 
 export const updateNotebook = createAsyncThunk(
-  'notebooks/updateNotebook', 
+  'notebooks/updateNotebook',
   async ({ id, updates }, { rejectWithValue, getState }) => {
     try {
       const response = await aetherApi.notebooks.update(id, updates);
@@ -46,9 +44,17 @@ export const updateNotebook = createAsyncThunk(
         // Merge the updates with the backend response since backend doesn't return complete data
         const state = getState();
         const existingNotebook = state.notebooks.data.find(nb => nb.id === id) || {};
-        
-        // Parse complianceSettings if it was sent as string
+
+        // Normalize field names: compliance_settings (sent) -> complianceSettings (local state)
         const parsedUpdates = { ...updates };
+
+        // Handle compliance_settings -> complianceSettings normalization
+        if (parsedUpdates.compliance_settings !== undefined) {
+          parsedUpdates.complianceSettings = parsedUpdates.compliance_settings;
+          delete parsedUpdates.compliance_settings;
+        }
+
+        // Parse complianceSettings if it was sent as string (legacy support)
         if (typeof parsedUpdates.complianceSettings === 'string') {
           try {
             parsedUpdates.complianceSettings = JSON.parse(parsedUpdates.complianceSettings);
@@ -56,7 +62,7 @@ export const updateNotebook = createAsyncThunk(
             console.error('Failed to parse compliance settings in update:', e);
           }
         }
-        
+
         return { ...existingNotebook, ...response.data, ...parsedUpdates };
       } else {
         return rejectWithValue(response.error || 'Failed to update notebook');
@@ -92,18 +98,13 @@ export const fetchNotebookDocuments = createAsyncThunk(
       const state = getState();
       const existingDocs = state.notebooks.documents[notebookId];
       if (!forceRefresh && existingDocs && existingDocs.length > 0) {
-        console.log(`Documents already loaded for notebook ${notebookId}, using cache`);
         return { notebookId, documents: existingDocs, total: existingDocs.length, fromCache: true };
       }
 
-      console.log(`Fetching documents for notebook: ${notebookId}`);
       const response = await aetherApi.documents.getByNotebook(notebookId);
-      console.log(`Raw API response for notebook ${notebookId}:`, response);
-
       const documents = response.data?.documents || [];
       const totalCount = response.data?.total || documents.length;
 
-      console.log(`Fetched ${documents.length} documents (Total: ${totalCount})`);
       return { notebookId, documents, total: totalCount };
     } catch (error) {
       console.error('Failed to fetch notebook documents:', error);
@@ -118,7 +119,6 @@ export const shareNotebookWithTeam = createAsyncThunk(
   async ({ notebookId, teamId, permission }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.shareWithTeam(notebookId, { teamId, permission }).catch(() => {
-        console.log('Using mock share notebook with team');
         return {
           success: true,
           data: { notebookId, teamId, permission, sharedAt: new Date().toISOString() }
@@ -140,7 +140,6 @@ export const unshareNotebookFromTeam = createAsyncThunk(
   async ({ notebookId, teamId }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.unshareFromTeam(notebookId, teamId).catch(() => {
-        console.log('Using mock unshare notebook from team');
         return { success: true, data: { notebookId, teamId } };
       });
       if (response.success) {
@@ -159,7 +158,6 @@ export const fetchNotebookTeams = createAsyncThunk(
   async (notebookId, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.getTeams(notebookId).catch(() => {
-        console.log('Using mock notebook teams data');
         return {
           success: true,
           data: [
@@ -185,7 +183,6 @@ export const shareNotebookWithUser = createAsyncThunk(
   async ({ notebookId, userId, permission }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.shareWithUser(notebookId, { userId, permission }).catch(() => {
-        console.log('Using mock share notebook with user');
         return {
           success: true,
           data: { notebookId, userId, permission, sharedAt: new Date().toISOString() }
@@ -207,7 +204,6 @@ export const unshareNotebookFromUser = createAsyncThunk(
   async ({ notebookId, userId }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.unshareFromUser(notebookId, userId).catch(() => {
-        console.log('Using mock unshare notebook from user');
         return { success: true, data: { notebookId, userId } };
       });
       if (response.success) {
@@ -227,7 +223,6 @@ export const shareNotebookWithOrganization = createAsyncThunk(
   async ({ notebookId, organizationId, permission }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.shareWithOrganization(notebookId, { organizationId, permission }).catch(() => {
-        console.log('Using mock share notebook with organization');
         return {
           success: true,
           data: { notebookId, organizationId, permission, sharedAt: new Date().toISOString() }
@@ -249,7 +244,6 @@ export const unshareNotebookFromOrganization = createAsyncThunk(
   async ({ notebookId, organizationId }, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.unshareFromOrganization(notebookId, organizationId).catch(() => {
-        console.log('Using mock unshare notebook from organization');
         return { success: true, data: { notebookId, organizationId } };
       });
       if (response.success) {
@@ -269,7 +263,6 @@ export const fetchNotebookSharing = createAsyncThunk(
   async (notebookId, { rejectWithValue }) => {
     try {
       const response = await aetherApi.notebooks.getSharing(notebookId).catch(() => {
-        console.log('Using mock notebook sharing data');
         return {
           success: true,
           data: {
@@ -300,25 +293,26 @@ const buildNotebookTree = (notebooks) => {
   if (!notebooks || notebooks.length === 0) {
     return [];
   }
-  
+
   const buildTree = (parentId = null) => {
-    return notebooks
-      .filter(nb => {
-        const parent = nb.parent_id || nb.parentId;
-        // For root nodes, look for null, undefined, or empty string
-        if (parentId === null) {
-          return !parent || parent === '' || parent === null || parent === undefined;
-        }
-        // For child nodes, match exact parent ID
-        return parent === parentId;
-      })
-      .map(notebook => ({
-        ...notebook,
-        parentId: notebook.parent_id || notebook.parentId,
-        children: buildTree(notebook.id)
-      }));
+    const filtered = notebooks.filter(nb => {
+      const parent = nb.parent_id || nb.parentId;
+      // For root nodes, look for null, undefined, or empty string
+      if (parentId === null) {
+        const isRoot = !parent || parent === '' || parent === null || parent === undefined;
+        return isRoot;
+      }
+      // For child nodes, match exact parent ID
+      return parent === parentId;
+    });
+
+    return filtered.map(notebook => ({
+      ...notebook,
+      parentId: notebook.parent_id || notebook.parentId,
+      children: buildTree(notebook.id)
+    }));
   };
-  
+
   return buildTree(null);
 };
 
@@ -431,7 +425,7 @@ const notebooksSlice = createSlice({
       })
       .addCase(createNotebook.fulfilled, (state, action) => {
         state.loading = false;
-        
+
         // Parse complianceSettings if it's a string
         const newNotebook = { ...action.payload };
         if (typeof newNotebook.complianceSettings === 'string') {
@@ -441,9 +435,33 @@ const notebooksSlice = createSlice({
             console.error('Failed to parse new notebook compliance settings:', e);
           }
         }
-        
+
         state.data.push(newNotebook);
         state.tree = buildNotebookTree(state.data);
+
+        // If this notebook is a child of the currently selected notebook, update selectedNotebook.children
+        const parentId = newNotebook.parentId || newNotebook.parent_id;
+        if (parentId && state.selectedNotebook?.id === parentId) {
+          // Find the updated parent from the tree to get the full children array
+          const findNotebookInTree = (tree, id) => {
+            for (const nb of tree) {
+              if (nb.id === id) return nb;
+              if (nb.children) {
+                const found = findNotebookInTree(nb.children, id);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+          const updatedParent = findNotebookInTree(state.tree, parentId);
+          if (updatedParent) {
+            state.selectedNotebook = {
+              ...state.selectedNotebook,
+              children: updatedParent.children || []
+            };
+          }
+        }
+
         state.metadata.total += 1;
       })
       .addCase(createNotebook.rejected, (state, action) => {

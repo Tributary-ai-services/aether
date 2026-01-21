@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { aetherApi } from '../../services/aetherApi.js';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import {
   X,
   Loader2,
@@ -13,7 +13,7 @@ import {
   Shield
 } from 'lucide-react';
 
-const CreateSpaceModal = ({ onClose, organizationId = null, onComplete }) => {
+const CreateSpaceModal = ({ onClose, organizationId = null, spaceType = 'organization', onComplete }) => {
   const { loadAvailableSpaces } = useSpace();
   const [formData, setFormData] = useState({
     name: '',
@@ -22,13 +22,41 @@ const CreateSpaceModal = ({ onClose, organizationId = null, onComplete }) => {
     organizationId: organizationId || ''
   });
   const [loading, setLoading] = useState(false);
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [organizations, setOrganizations] = useState([]);
   const [error, setError] = useState(null);
+
+  // Load user's organizations on mount
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      try {
+        setLoadingOrgs(true);
+        const response = await aetherApi.organizations.list();
+        if (response.organizations) {
+          setOrganizations(response.organizations);
+        }
+      } catch (err) {
+        console.error('Failed to load organizations:', err);
+        // Don't set error - org selection is optional
+      } finally {
+        setLoadingOrgs(false);
+      }
+    };
+
+    loadOrganizations();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       setError('Space name is required');
+      return;
+    }
+
+    // Organization ID is REQUIRED - spaces must belong to an organization
+    if (!formData.organizationId) {
+      setError('Please select an organization for this space');
       return;
     }
 
@@ -40,28 +68,28 @@ const CreateSpaceModal = ({ onClose, organizationId = null, onComplete }) => {
         name: formData.name,
         description: formData.description,
         visibility: formData.visibility,
-        organizationId: formData.organizationId || null
+        organization_id: formData.organizationId
       };
 
       // Create space via API
       const response = await aetherApi.spaces.create(spaceData);
-      
+
       if (response.success) {
         // Refresh available spaces
         await loadAvailableSpaces();
-        
+
         // Call completion callback if provided
         if (onComplete) {
           await onComplete();
         }
-        
+
         // Show success message
         alert(`Space "${formData.name}" created successfully!`);
         onClose();
       } else {
         throw new Error('Failed to create space');
       }
-      
+
     } catch (err) {
       setError(err.message || 'Failed to create space');
     } finally {
@@ -182,25 +210,52 @@ const CreateSpaceModal = ({ onClose, organizationId = null, onComplete }) => {
             </div>
           </div>
 
-          {/* Organization Selection (if not creating within an org) */}
+          {/* Organization Selection - REQUIRED for space creation */}
           {!organizationId && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Organization (optional)
+                Organization <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.organizationId}
                 onChange={(e) => handleInputChange('organizationId', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={loading}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  !formData.organizationId && !loadingOrgs ? 'border-amber-300' : 'border-gray-300'
+                }`}
+                disabled={loading || loadingOrgs}
+                required
               >
-                <option value="">Personal Space</option>
-                {/* TODO: Load user's organizations */}
-                <option value="demo-org">Demo Organization</option>
+                <option value="">Select an organization *</option>
+                {loadingOrgs ? (
+                  <option disabled>Loading organizations...</option>
+                ) : organizations.length === 0 ? (
+                  <option disabled>No organizations available - create one first</option>
+                ) : (
+                  organizations.map(org => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))
+                )}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Choose an organization to create the space under, or leave empty for a personal space.
-              </p>
+              {organizations.length === 0 && !loadingOrgs && (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    You need to create an organization before creating a space.
+                  </p>
+                  <a
+                    href="/organizations"
+                    className="text-sm text-blue-600 hover:underline font-medium"
+                  >
+                    Go to Organizations →
+                  </a>
+                </div>
+              )}
+              {organizations.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Spaces belong to organizations for team collaboration and access control.
+                </p>
+              )}
             </div>
           )}
 
@@ -224,8 +279,9 @@ const CreateSpaceModal = ({ onClose, organizationId = null, onComplete }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
-              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              disabled={loading || (!organizationId && organizations.length === 0)}
+              title={organizations.length === 0 ? 'Create an organization first' : ''}
             >
               {loading && <Loader2 size={16} className="animate-spin" />}
               <span>{loading ? 'Creating...' : 'Create Space'}</span>

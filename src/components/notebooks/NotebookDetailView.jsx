@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch, setViewMode } from '../../store/index.js';
-import { 
+import {
   BookOpen,
   Upload,
   Search,
@@ -33,6 +33,9 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
+import { useNotebookAccess } from '../../hooks/useResourceAccess.js';
+import { RequirePermission } from '../auth/RequirePermission.jsx';
+import { ProtectedButton } from '../auth/ProtectedButton.jsx';
 
 const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
   const dispatch = useAppDispatch();
@@ -288,14 +291,18 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <ProtectedButton
+              resource={notebook}
+              resourcePermission="edit"
               onClick={() => onUploadDocuments?.(notebook)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabledClassName="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-50 cursor-not-allowed"
+              disabledTitle="You need edit access to upload documents"
             >
               <Upload size={16} />
               Upload Documents
-            </button>
-            
+            </ProtectedButton>
+
             <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
               <MoreVertical size={20} />
             </button>

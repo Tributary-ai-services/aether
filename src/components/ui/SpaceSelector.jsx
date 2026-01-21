@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSpace } from '../../contexts/SpaceContext.jsx';
+import { useSpace } from '../../hooks/useSpaces.js';
 import ManageSpacesModal from '../modals/ManageSpacesModal.jsx';
 import {
   ChevronDown,
@@ -101,7 +101,7 @@ const SpaceSelector = ({ className = "" }) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            loadAvailableSpaces();
+            loadAvailableSpaces(true); // Force reload, bypass cooldown
           }}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
         >

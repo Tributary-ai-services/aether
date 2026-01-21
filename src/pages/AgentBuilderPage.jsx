@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from '../hooks/useSpaces.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useAgentBuilder, useAgentProviders } from '../hooks/useAgentBuilder.js';
 import { useFilters } from '../context/FilterContext.jsx';

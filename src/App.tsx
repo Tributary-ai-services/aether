@@ -6,7 +6,6 @@ import { FilterProvider } from './context/FilterContext.jsx';
 import { useTheme } from './context/ThemeContext.jsx';
 import { useNavigation } from './context/NavigationContext.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
-import { SpaceProvider } from './contexts/SpaceContext.jsx';
 import {
   openModal,
   closeModal,
@@ -26,6 +25,7 @@ import ThemeCustomizer from './components/ui/ThemeCustomizer.jsx';
 import Settings from './components/ui/Settings.jsx';
 import NotificationCenter from './components/notifications/NotificationCenter.jsx';
 import ToastNotification from './components/notifications/ToastNotification.jsx';
+import PermissionErrorToast from './components/ui/PermissionErrorToast.jsx';
 import AuditTrail from './components/audit/AuditTrail.jsx';
 import LeftNavigation from './components/navigation/LeftNavigation.jsx';
 import NotebooksPage from './pages/NotebooksPage.jsx';
@@ -251,8 +251,7 @@ const App = () => {
 
   return (
     <FilterProvider>
-      <SpaceProvider>
-        <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -464,8 +463,10 @@ const App = () => {
 
       {/* Toast Notifications */}
       <ToastNotification />
-        </div>
-      </SpaceProvider>
+
+      {/* Permission Error Toast (403 handling) */}
+      <PermissionErrorToast />
+      </div>
     </FilterProvider>
   );
 };

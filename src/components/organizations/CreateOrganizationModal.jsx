@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import Modal from '../ui/Modal.jsx';
 import { Building, Globe, Lock, Mail, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
 
 const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
+  // Get user email from Redux auth state
+  const userEmail = useSelector(state => state.auth?.user?.email || '');
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     website: '',
     location: '',
     visibility: 'private',
-    billingEmail: ''
+    billingEmail: userEmail
   });
+
+  // Update billingEmail when userEmail becomes available (e.g., after auth loads)
+  useEffect(() => {
+    if (userEmail && !formData.billingEmail) {
+      setFormData(prev => ({ ...prev, billingEmail: userEmail }));
+    }
+  }, [userEmail]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -59,14 +70,14 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
     setLoading(true);
     try {
       await onCreateOrganization(formData);
-      // Reset form
+      // Reset form (keep billing email as user's email)
       setFormData({
         name: '',
         description: '',
         website: '',
         location: '',
         visibility: 'private',
-        billingEmail: ''
+        billingEmail: userEmail
       });
       setErrors({});
     } catch (error) {
@@ -83,7 +94,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
       website: '',
       location: '',
       visibility: 'private',
-      billingEmail: ''
+      billingEmail: userEmail
     });
     setErrors({});
     onClose();

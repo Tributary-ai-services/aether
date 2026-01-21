@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../ui/Modal.jsx';
 import ComplianceSettings from './ComplianceSettings.jsx';
 import notebookService from '../../services/notebookService.js';
@@ -35,6 +35,23 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
   const [isCreating, setIsCreating] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Track component instance for debugging
+  const instanceId = useRef(Math.random().toString(36).substr(2, 9));
+  console.log('CreateNotebookModal RENDER - instance:', instanceId.current, 'parentNotebook:', parentNotebook?.id);
+
+  // Store parentId in sessionStorage to survive component remounts
+  // This is a workaround for React remounting the component
+  useEffect(() => {
+    console.log('CreateNotebookModal useEffect - instance:', instanceId.current, 'parentNotebook:', parentNotebook?.id, 'isOpen:', isOpen);
+    if (isOpen && parentNotebook?.id) {
+      console.log('CreateNotebookModal: Storing parentId in sessionStorage:', parentNotebook.id);
+      sessionStorage.setItem('createNotebook_parentId', parentNotebook.id);
+    } else if (!isOpen) {
+      console.log('CreateNotebookModal: Modal closed, clearing sessionStorage parentId');
+      sessionStorage.removeItem('createNotebook_parentId');
+    }
+  }, [parentNotebook, isOpen]);
+
   // Mock parent notebook hierarchy for display
   const getNotebookPath = () => {
     if (!parentNotebook) return [];
@@ -70,17 +87,23 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
     
     try {
       // Create notebook using the persistence service
+      // Read parentId from sessionStorage - this survives component remounts
+      const effectiveParentId = sessionStorage.getItem('createNotebook_parentId');
+      console.log('Creating notebook - using sessionStorage parentId:', effectiveParentId);
+
       const notebookData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         visibility: formData.visibility,
         tags: formData.tags,
-        parentId: formData.parentId,
+        parentId: effectiveParentId,
         // Send complianceSettings as JSON string to avoid Neo4j Map{} error
         complianceSettings: JSON.stringify(formData.complianceSettings || {})
       };
 
       console.log('Creating notebook:', notebookData);
+      console.log('DEBUG sessionStorage parentId:', effectiveParentId);
+      console.log('DEBUG notebookData.parentId:', notebookData.parentId);
       console.log('Form compliance settings before stringify:', formData.complianceSettings);
       console.log('Stringified compliance settings:', JSON.stringify(formData.complianceSettings || {}));
       

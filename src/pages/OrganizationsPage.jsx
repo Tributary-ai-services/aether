@@ -21,8 +21,13 @@ const OrganizationsPage = () => {
   const error = useSelector(selectOrganizationsError);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedOrganization, setSelectedOrganization] = useState(null);
+  const [selectedOrgId, setSelectedOrgId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get selected organization from Redux state (stays fresh after updates)
+  const selectedOrganization = selectedOrgId
+    ? organizations.find(org => org.id === selectedOrgId)
+    : null;
   const [filterBy, setFilterBy] = useState('all'); // all, owner, admin, member
   const [viewMode, setViewMode] = useState('grid'); // grid, list
 
@@ -84,7 +89,7 @@ const OrganizationsPage = () => {
 
   const handleOrganizationClick = (org) => {
     dispatch(setCurrentOrganization(org));
-    setSelectedOrganization(org);
+    setSelectedOrgId(org.id);
   };
 
   return (
@@ -397,8 +402,8 @@ const OrganizationsPage = () => {
 
       {/* Organization Details Modal */}
       <OrganizationDetailsModal
-        isOpen={selectedOrganization !== null}
-        onClose={() => setSelectedOrganization(null)}
+        isOpen={selectedOrgId !== null}
+        onClose={() => setSelectedOrgId(null)}
         organization={selectedOrganization}
       />
     </div>

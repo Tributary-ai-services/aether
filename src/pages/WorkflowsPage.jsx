@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { workflows } from '../data/mockData.js';
 import WorkflowBuilder from '../components/workflow/WorkflowBuilder.jsx';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from '../hooks/useSpaces.js';
 import { Workflow } from 'lucide-react';
 
 const WorkflowsPage = () => {

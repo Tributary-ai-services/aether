@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSpace } from '../contexts/SpaceContext.jsx';
+import { useSpace } from './useSpaces.js';
 import { api } from '../services/api.js';
 
 /**
