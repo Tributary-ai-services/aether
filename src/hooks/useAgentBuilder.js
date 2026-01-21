@@ -19,10 +19,11 @@ export const useAgentBuilder = (filter = {}) => {
       setError(null);
       
       // Combine space context with custom filter
+      const spaceId = currentSpace?.space_id || currentSpace?.id;
       const requestFilter = {
         ...filter,
         ...customFilter,
-        ...(currentSpace?.id && { space_id: currentSpace.id })
+        ...(spaceId && { space_id: spaceId })
       };
       
       const response = await api.agentBuilder.getAll(requestFilter);
@@ -49,17 +50,18 @@ export const useAgentBuilder = (filter = {}) => {
   useEffect(() => {
     // Fetch agents even without a space - the backend will handle filtering
     fetchAgents();
-  }, [currentSpace?.id]);
+  }, [currentSpace?.space_id, currentSpace?.id]);
 
   // Agent CRUD Operations
   const createAgent = async (agentData) => {
     try {
       setError(null);
-      
-      // Add current space context
+
+      // Add current space context (space_id is the correct property)
+      const spaceId = currentSpace?.space_id || currentSpace?.id || agentData.space_id;
       const requestData = {
         ...agentData,
-        space_id: currentSpace?.id || agentData.space_id
+        space_id: spaceId
       };
       
       const response = await api.agentBuilder.create(requestData);

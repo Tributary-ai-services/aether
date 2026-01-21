@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSpace } from '../hooks/useSpaces.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useAgentBuilder, useAgentProviders } from '../hooks/useAgentBuilder.js';
@@ -32,6 +32,67 @@ const AgentBuilderPage = () => {
     providers: 'checking',
     database: 'checking'
   });
+  const [creatingDefaultAgent, setCreatingDefaultAgent] = useState(false);
+  const defaultAgentCreationAttempted = useRef(false);
+
+  // Auto-create default agent if none exist for the current space
+  useEffect(() => {
+    const createDefaultAgentIfNeeded = async () => {
+      // Only proceed if:
+      // - Not loading
+      // - No agents exist
+      // - Haven't already attempted creation
+      // - Have a valid space (space_id is the correct property)
+      // - Not currently creating
+      const spaceId = currentSpace?.space_id || currentSpace?.id;
+
+      if (
+        !agentsLoading &&
+        !creatingDefaultAgent &&
+        !defaultAgentCreationAttempted.current &&
+        Array.isArray(agents) &&
+        agents.length === 0 &&
+        spaceId
+      ) {
+        defaultAgentCreationAttempted.current = true;
+        setCreatingDefaultAgent(true);
+
+        console.log('Creating default Personal Assistant agent for space:', currentSpace?.name || spaceId);
+
+        try {
+          await createAgent({
+            name: 'Personal Assistant',
+            description: 'Your personal AI assistant for answering questions and helping with tasks. This is your default agent for the Agent Builder.',
+            type: 'conversational',
+            system_prompt: 'You are a helpful AI assistant. You provide clear, accurate, and thoughtful responses to questions. You are friendly, professional, and always aim to be useful.',
+            llm_config: {
+              provider: 'anthropic',
+              model: 'claude-3-5-sonnet-20241022',
+              temperature: 0.7,
+              max_tokens: 2000,
+              optimization_level: 'balanced'
+            },
+            is_public: false,
+            is_template: false,
+            tags: ['assistant', 'default']
+          });
+          console.log('Default Personal Assistant agent created successfully');
+        } catch (error) {
+          console.error('Failed to create default agent:', error);
+          // Don't throw - user can still create agents manually
+        } finally {
+          setCreatingDefaultAgent(false);
+        }
+      }
+    };
+
+    createDefaultAgentIfNeeded();
+  }, [agents, agentsLoading, currentSpace?.space_id, currentSpace?.id, createAgent, creatingDefaultAgent]);
+
+  // Reset the creation attempt flag when space changes
+  useEffect(() => {
+    defaultAgentCreationAttempted.current = false;
+  }, [currentSpace?.space_id, currentSpace?.id]);
 
   // Initialize spaces - but don't block on it
   useEffect(() => {
@@ -140,10 +201,13 @@ const AgentBuilderPage = () => {
   const backendConnected = integrationStatus.backend === 'connected';
   const hasAgents = Array.isArray(agents) && agents.length > 0;
 
-  if (isLoading) {
+  if (isLoading || creatingDefaultAgent) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        {creatingDefaultAgent && (
+          <p className="mt-4 text-gray-600">Creating your Personal Assistant agent...</p>
+        )}
       </div>
     );
   }
@@ -343,25 +407,6 @@ const AgentBuilderPage = () => {
           </div>
         )}
 
-        {/* Implementation Progress */}
-        <div className="mt-4 space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 0: Mock cleanup completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 1: Real API integration completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 2: Enhanced UI components completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="text-yellow-500" size={16} />
-            <span>Backend deployment: Ready for activation</span>
-          </div>
-        </div>
       </div>
 
       {/* Modals */}
