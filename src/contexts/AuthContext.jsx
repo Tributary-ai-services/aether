@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { aetherApi } from '../services/aetherApi.js';
 import { tokenStorage } from '../services/tokenStorage.js';
+import { initializeAuth } from '../store/slices/authSlice.js';
 
 const AuthContext = createContext();
 
@@ -13,11 +15,24 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const dispatch = useDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
+
+  // Initialize Redux auth state on mount and when tokens change
+  useEffect(() => {
+    dispatch(initializeAuth());
+  }, [dispatch]);
+
+  // Re-sync Redux when local auth state changes
+  useEffect(() => {
+    if (!isLoading) {
+      dispatch(initializeAuth());
+    }
+  }, [isAuthenticated, isLoading, dispatch]);
 
   // Check authentication status on mount
   useEffect(() => {

@@ -119,8 +119,8 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
         description: formData.description.trim(),
         visibility: formData.visibility,
         tags: formData.tags,
-        // Send complianceSettings as JSON string to match backend expectations
-        complianceSettings: JSON.stringify(formData.complianceSettings || {}),
+        // Send compliance_settings as object (snake_case to match backend)
+        compliance_settings: formData.complianceSettings || {},
         allowedCollaborators: formData.allowedCollaborators,
         updatedAt: new Date().toISOString()
       };

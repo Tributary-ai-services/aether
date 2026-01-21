@@ -101,7 +101,7 @@ const SpaceSelector = ({ className = "" }) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            loadAvailableSpaces();
+            loadAvailableSpaces(true); // Force reload, bypass cooldown
           }}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
         >

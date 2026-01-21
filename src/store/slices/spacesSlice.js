@@ -10,21 +10,10 @@ export const SPACE_TYPES = {
 // Async thunks for space operations
 export const loadAvailableSpaces = createAsyncThunk(
   'spaces/loadAvailableSpaces',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     // Don't try to load spaces if not authenticated
     if (!aetherApi.isAuthenticated()) {
       return rejectWithValue('User not authenticated');
-    }
-
-    // Check if already loading to prevent duplicate requests
-    const state = getState();
-    if (state.spaces.loading) {
-      return rejectWithValue('Already loading');
-    }
-
-    // Limit loading attempts to prevent infinite loops
-    if (state.spaces.loadingAttempts >= 3) {
-      return rejectWithValue('Too many loading attempts');
     }
 
     try {
@@ -36,6 +25,25 @@ export const loadAvailableSpaces = createAsyncThunk(
         return rejectWithValue('Authentication failed');
       }
       return rejectWithValue(error.message || 'Failed to load available spaces');
+    }
+  },
+  {
+    // condition runs BEFORE the pending action is dispatched
+    // Return false to cancel the thunk
+    condition: (_, { getState }) => {
+      const state = getState();
+
+      // Don't start if already loading
+      if (state.spaces.loading) {
+        return false;
+      }
+
+      // Limit loading attempts to prevent infinite loops
+      if (state.spaces.loadingAttempts >= 3) {
+        return false;
+      }
+
+      return true;
     }
   }
 );

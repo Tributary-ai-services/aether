@@ -1,143 +1,16 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { aetherApi } from '../../services/aetherApi.js';
-import { PERMISSIONS } from '../../utils/permissions.js';
-
-// Mock organizations data following GitHub pattern
-const mockOrganizations = [
-  {
-    id: '1',
-    name: 'Acme Corporation',
-    slug: 'acme-corp',
-    description: 'Leading provider of AI-powered enterprise solutions',
-    avatarUrl: null,
-    website: 'https://acme.com',
-    location: 'San Francisco, CA',
-    visibility: 'public',
-    billing: {
-      plan: 'enterprise',
-      seats: 500,
-      billingEmail: 'billing@acme.com'
-    },
-    settings: {
-      membersCanCreateRepositories: true,
-      membersCanCreateTeams: true,
-      membersCanFork: true,
-      defaultMemberPermissions: 'read',
-      twoFactorRequired: true
-    },
-    memberCount: 47,
-    teamCount: 12,
-    repositoryCount: 156,
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-    createdAt: '2023-06-15T10:00:00Z',
-    updatedAt: '2024-08-08T14:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'DataTech Labs',
-    slug: 'datatech-labs',
-    description: 'Research and development in machine learning',
-    avatarUrl: null,
-    website: 'https://datatech.io',
-    location: 'Austin, TX',
-    visibility: 'private',
-    billing: {
-      plan: 'pro',
-      seats: 25,
-      billingEmail: 'admin@datatech.io'
-    },
-    settings: {
-      membersCanCreateRepositories: false,
-      membersCanCreateTeams: false,
-      membersCanFork: true,
-      defaultMemberPermissions: 'read',
-      twoFactorRequired: false
-    },
-    memberCount: 18,
-    teamCount: 5,
-    repositoryCount: 89,
-    userRole: PERMISSIONS.ENTITY_ROLES.ADMIN,
-    createdAt: '2023-09-22T15:30:00Z',
-    updatedAt: '2024-08-07T11:45:00Z'
-  }
-];
-
-// Standardized members data - removed redundant 'id' field, using userId as primary key
-const mockMembers = {
-  '1': [
-    { 
-      userId: '1', 
-      name: 'John Doe', 
-      email: 'john@acme.com', 
-      role: PERMISSIONS.ENTITY_ROLES.OWNER,
-      teams: ['1', '3'], // Use team IDs instead of names
-      joinedAt: '2023-06-15T10:00:00Z',
-      invitedBy: null,
-      title: 'CEO',
-      department: 'Executive' 
-    },
-    { 
-      userId: '2', 
-      name: 'Jane Smith', 
-      email: 'jane@acme.com', 
-      role: PERMISSIONS.ENTITY_ROLES.ADMIN,
-      teams: ['1', '2'], // Use team IDs instead of names
-      joinedAt: '2023-06-16T09:00:00Z',
-      invitedBy: '1',
-      title: 'CTO',
-      department: 'Engineering' 
-    },
-    { 
-      userId: '3', 
-      name: 'Bob Wilson', 
-      email: 'bob@acme.com', 
-      role: PERMISSIONS.ENTITY_ROLES.MEMBER,
-      teams: ['1'], // Use team IDs instead of names
-      joinedAt: '2023-07-01T14:00:00Z',
-      invitedBy: '2',
-      title: 'Senior Engineer',
-      department: 'Engineering' 
-    }
-  ],
-  '2': [
-    { 
-      userId: '1', 
-      name: 'John Doe', 
-      email: 'john@datatech.io', 
-      role: PERMISSIONS.ENTITY_ROLES.ADMIN,
-      teams: ['4'], 
-      joinedAt: '2023-09-01T12:00:00Z',
-      invitedBy: null,
-      title: 'Advisor',
-      department: 'Advisory' 
-    },
-    { 
-      userId: '8', 
-      name: 'Maria Garcia', 
-      email: 'maria@datatech.io', 
-      role: PERMISSIONS.ENTITY_ROLES.OWNER,
-      teams: ['4', '5'], 
-      joinedAt: '2023-09-22T15:30:00Z',
-      invitedBy: null,
-      title: 'Founder & CEO',
-      department: 'Executive' 
-    }
-  ]
-};
 
 // Async thunks
 export const fetchOrganizations = createAsyncThunk(
   'organizations/fetchOrganizations',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.getAll().catch(() => {
-        console.log('Using mock organizations data');
-        return { data: mockOrganizations };
-      });
+      const response = await aetherApi.organizations.getAll();
       return response.data;
     } catch (error) {
-      console.log('Using mock organizations data due to error');
-      return mockOrganizations;
+      console.error('Failed to fetch organizations:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch organizations');
     }
   }
 );
@@ -146,16 +19,11 @@ export const fetchOrganization = createAsyncThunk(
   'organizations/fetchOrganization',
   async (orgId, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.get(orgId).catch(() => {
-        console.log('Using mock organization data');
-        const org = mockOrganizations.find(o => o.id === orgId);
-        return { data: org };
-      });
+      const response = await aetherApi.organizations.get(orgId);
       return response.data;
     } catch (error) {
-      console.log('Using mock organization data due to error');
-      const org = mockOrganizations.find(o => o.id === orgId);
-      return org || rejectWithValue('Organization not found');
+      console.error('Failed to fetch organization:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Organization not found');
     }
   }
 );
@@ -164,58 +32,24 @@ export const createOrganization = createAsyncThunk(
   'organizations/createOrganization',
   async (orgData, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.create(orgData).catch(() => {
-        console.log('Using mock create organization');
-        const newOrg = {
-          id: Date.now().toString(),
-          ...orgData,
-          slug: orgData.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          memberCount: 1,
-          teamCount: 0,
-          repositoryCount: 0,
-          userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-          billing: {
-            plan: 'free',
-            seats: 3,
-            billingEmail: orgData.billingEmail || ''
-          },
-          settings: {
-            membersCanCreateRepositories: true,
-            membersCanCreateTeams: true,
-            membersCanFork: true,
-            defaultMemberPermissions: 'read',
-            twoFactorRequired: false
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        return { data: newOrg };
-      });
+      const response = await aetherApi.organizations.create(orgData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to create organization:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create organization');
     }
   }
 );
 
 export const updateOrganization = createAsyncThunk(
   'organizations/updateOrganization',
-  async ({ orgId, updates }, { getState, rejectWithValue }) => {
+  async ({ orgId, updates }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.update(orgId, updates).catch(() => {
-        console.log('Using mock update organization');
-        const state = getState();
-        const org = state.organizations.organizations.find(o => o.id === orgId);
-        const updatedOrg = {
-          ...org,
-          ...updates,
-          updatedAt: new Date().toISOString()
-        };
-        return { data: updatedOrg };
-      });
+      const response = await aetherApi.organizations.update(orgId, updates);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to update organization:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update organization');
     }
   }
 );
@@ -224,13 +58,11 @@ export const deleteOrganization = createAsyncThunk(
   'organizations/deleteOrganization',
   async (orgId, { rejectWithValue }) => {
     try {
-      await aetherApi.organizations.delete(orgId).catch(() => {
-        console.log('Using mock delete organization');
-        return { data: {} };
-      });
+      await aetherApi.organizations.delete(orgId);
       return orgId;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to delete organization:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to delete organization');
     }
   }
 );
@@ -240,14 +72,11 @@ export const fetchOrganizationMembers = createAsyncThunk(
   'organizations/fetchMembers',
   async (orgId, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.getMembers(orgId).catch(() => {
-        console.log('Using mock organization members data');
-        return { data: mockMembers[orgId] || [] };
-      });
+      const response = await aetherApi.organizations.getMembers(orgId);
       return { orgId, members: response.data };
     } catch (error) {
-      console.log('Using mock organization members data due to error');
-      return { orgId, members: mockMembers[orgId] || [] };
+      console.error('Failed to fetch organization members:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch organization members');
     }
   }
 );
@@ -256,24 +85,11 @@ export const inviteOrganizationMember = createAsyncThunk(
   'organizations/inviteMember',
   async ({ orgId, email, role }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.inviteMember(orgId, { email, role }).catch(() => {
-        console.log('Using mock invite organization member');
-        const newMember = {
-          userId: Date.now().toString(),
-          name: email.split('@')[0],
-          email,
-          role,
-          teams: [],
-          joinedAt: new Date().toISOString(),
-          invitedBy: null, // Should be set to current user ID
-          title: '',
-          department: ''
-        };
-        return { data: newMember };
-      });
+      const response = await aetherApi.organizations.inviteMember(orgId, { email, role });
       return { orgId, member: response.data };
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to invite organization member:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to invite member');
     }
   }
 );
@@ -282,13 +98,11 @@ export const updateOrganizationMemberRole = createAsyncThunk(
   'organizations/updateMemberRole',
   async ({ orgId, userId, role }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.organizations.updateMemberRole(orgId, userId, { role }).catch(() => {
-        console.log('Using mock update organization member role');
-        return { data: { orgId, userId, role } };
-      });
+      await aetherApi.organizations.updateMemberRole(orgId, userId, { role });
       return { orgId, userId, role };
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to update member role:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update member role');
     }
   }
 );
@@ -297,13 +111,11 @@ export const removeOrganizationMember = createAsyncThunk(
   'organizations/removeMember',
   async ({ orgId, userId }, { rejectWithValue }) => {
     try {
-      await aetherApi.organizations.removeMember(orgId, userId).catch(() => {
-        console.log('Using mock remove organization member');
-        return { data: {} };
-      });
+      await aetherApi.organizations.removeMember(orgId, userId);
       return { orgId, userId };
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      console.error('Failed to remove organization member:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to remove member');
     }
   }
 );

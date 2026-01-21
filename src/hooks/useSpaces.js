@@ -30,6 +30,12 @@ import {
   hasSpacePermission
 } from '../store/slices/spacesSlice.js';
 
+// Selector for auth state
+const selectAuthState = (state) => ({
+  isAuthenticated: state.auth?.isAuthenticated ?? false,
+  initialized: state.auth?.initialized ?? false
+});
+
 /**
  * useSpaces - Redux-based hook for space management
  *
@@ -40,7 +46,10 @@ export const useSpaces = () => {
   const dispatch = useDispatch();
   const lastLoadAttempt = useRef(0);
 
-  // Select state from Redux
+  // Select auth state from Redux - this triggers re-render when auth changes
+  const authState = useSelector(selectAuthState);
+
+  // Select space state from Redux
   const currentSpace = useSelector(selectCurrentSpace);
   const availableSpaces = useSelector(selectAvailableSpaces);
   const loading = useSelector(selectSpacesLoading);
@@ -51,14 +60,18 @@ export const useSpaces = () => {
   const currentRole = useSelector(selectCurrentSpaceRole);
 
   // Load available spaces with cooldown
-  const loadSpaces = useCallback(async () => {
-    // Add cooldown period between attempts (5 seconds)
+  const loadSpaces = useCallback(async (force = false) => {
+    // Add cooldown period between attempts (5 seconds) unless forced
     const now = Date.now();
-    if (now - lastLoadAttempt.current < 5000) {
-      console.log('Too soon since last attempt, waiting for cooldown');
+    if (!force && now - lastLoadAttempt.current < 5000) {
       return;
     }
     lastLoadAttempt.current = now;
+
+    // Reset loading attempts if forcing
+    if (force) {
+      dispatch(resetLoadingAttempts());
+    }
 
     dispatch(loadAvailableSpaces());
   }, [dispatch]);
@@ -106,40 +119,42 @@ export const useSpaces = () => {
     dispatch(resetSpaceState());
   }, [dispatch]);
 
-  // Initialize spaces on mount
+  // Initialize spaces when auth state changes
   useEffect(() => {
-    if (aetherApi.isAuthenticated()) {
+    // Wait for auth to be initialized before acting
+    if (!authState.initialized) {
+      return;
+    }
+
+    if (authState.isAuthenticated) {
       // Initialize from localStorage first
       dispatch(initializeFromStorage());
 
-      // Then load available spaces
+      // Then load available spaces - force on initial mount to bypass cooldown
       const timeoutId = setTimeout(() => {
-        loadSpaces();
+        loadSpaces(true); // Force initial load
       }, 100);
 
       return () => clearTimeout(timeoutId);
     } else {
       resetState();
     }
-  }, [dispatch, loadSpaces, resetState]);
+  }, [dispatch, loadSpaces, resetState, authState.isAuthenticated, authState.initialized]);
 
   // Listen for authentication events
   useEffect(() => {
     const handleAuthChange = (event) => {
-      console.log('Auth event received:', event.type, event.detail);
-
       if (event.type === 'userLoggedOut') {
-        console.log('User logged out, resetting space state');
         resetState();
       } else if (event.type === 'tokenRefreshed' && aetherApi.isAuthenticated()) {
-        console.log('Token refreshed, reloading spaces');
         dispatch(resetLoadingAttempts());
+        // Reset cooldown ref so we can retry immediately
+        lastLoadAttempt.current = 0;
         // Add small delay to ensure token is fully refreshed
         setTimeout(() => {
           loadSpaces();
         }, 200);
       } else if (event.type === 'authenticationError') {
-        console.log('Authentication error, resetting space state:', event.detail?.reason);
         resetState();
       }
     };

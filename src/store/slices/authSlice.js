@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { tokenStorage } from '../../services/tokenStorage.js';
 
 // Async thunks for auth operations
 export const loginUser = createAsyncThunk(
@@ -119,30 +120,30 @@ export const initializeAuth = createAsyncThunk(
   'auth/initializeAuth',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const refreshTokenValue = localStorage.getItem('refresh_token');
-      
+      // Use tokenStorage which uses the correct keys (aether_access_token, aether_refresh_token)
+      const token = tokenStorage.getAccessToken();
+      const refreshTokenValue = tokenStorage.getRefreshToken();
+
       if (!token) {
         return null;
       }
-      
-      // Check if token is expired (basic check)
-      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-      const now = Date.now() / 1000;
-      
-      if (tokenPayload.exp < now) {
+
+      // Check if token is expired using tokenStorage
+      if (tokenStorage.isAccessTokenExpired()) {
         // Token expired, try to refresh
-        if (refreshTokenValue) {
+        if (refreshTokenValue && !tokenStorage.isRefreshTokenExpired()) {
           // This will trigger a refresh
           throw new Error('Token expired, needs refresh');
         } else {
-          // No refresh token, clear everything
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          // No valid refresh token, clear everything
+          tokenStorage.clearTokens();
           return null;
         }
       }
-      
+
+      // Parse user info from token
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+
       return {
         token,
         refreshToken: refreshTokenValue,
