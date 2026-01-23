@@ -10,16 +10,20 @@ import AgentTestModal from '../components/modals/AgentTestModal.jsx';
 import { LoadingWrapper, AgentCardSkeleton } from '../components/skeletons/index.js';
 import { Bot, Plus, Settings, Zap, Brain, Cpu, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
+// Module-level protection against duplicate default agent creation
+// This survives component remounts (e.g., from React StrictMode double-mounting)
+const defaultAgentCreationAttempts = new Set();
+
 /**
  * Agent Builder Page - Advanced agent creation and management platform
- * 
+ *
  * This page provides comprehensive agent management with real backend integration,
  * including creation, testing, configuration, and analytics.
  */
 const AgentBuilderPage = () => {
   const { currentSpace, loadAvailableSpaces, initialized, loading: spacesLoading } = useSpace();
   const { user } = useAuth();
-  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent } = useAgentBuilder();
+  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent, refetch: refetchAgents } = useAgentBuilder();
   const { providers, loading: providersLoading, error: providersError } = useAgentProviders();
   const { filterAgents } = useFilters();
   const [isLoading, setIsLoading] = useState(true);
@@ -33,66 +37,120 @@ const AgentBuilderPage = () => {
     database: 'checking'
   });
   const [creatingDefaultAgent, setCreatingDefaultAgent] = useState(false);
-  const defaultAgentCreationAttempted = useRef(false);
+
+  // Synchronous lock to prevent race conditions - refs update immediately unlike state
+  const creationInProgress = useRef(false);
+  // Track which spaces we've already attempted or completed default agent creation for
+  const spacesWithDefaultAgentAttempted = useRef(new Set());
 
   // Auto-create default agent if none exist for the current space
+  // IMPORTANT: This only runs once per space to prevent duplicate creation
+  // Uses multiple layers of protection:
+  // 1. Check if "Personal Assistant" already exists BY NAME (persists across sessions)
+  // 2. Module-level Set (survives remounts from React StrictMode)
+  // 3. Ref-level Set (survives re-renders)
+  // 4. Ref-level boolean lock (prevents concurrent async operations)
+  // 5. Cleanup flag (prevents state updates after unmount)
   useEffect(() => {
+    let isCancelled = false;
+
     const createDefaultAgentIfNeeded = async () => {
-      // Only proceed if:
-      // - Not loading
-      // - No agents exist
-      // - Haven't already attempted creation
-      // - Have a valid space (space_id is the correct property)
-      // - Not currently creating
-      const spaceId = currentSpace?.space_id || currentSpace?.id;
+      // Use space_id consistently - it's the primary identifier
+      const spaceId = currentSpace?.space_id;
 
-      if (
-        !agentsLoading &&
-        !creatingDefaultAgent &&
-        !defaultAgentCreationAttempted.current &&
-        Array.isArray(agents) &&
-        agents.length === 0 &&
-        spaceId
-      ) {
-        defaultAgentCreationAttempted.current = true;
+      // Skip if no space or still loading agents
+      if (!spaceId || agentsLoading) {
+        return;
+      }
+
+      // Module-level check - survives component remounts (React StrictMode)
+      if (defaultAgentCreationAttempts.has(spaceId)) {
+        return;
+      }
+
+      // Synchronous check using ref - prevents race conditions from concurrent renders
+      if (creationInProgress.current) {
+        return;
+      }
+
+      // Skip if we've already attempted creation for this space (ref-level)
+      if (spacesWithDefaultAgentAttempted.current.has(spaceId)) {
+        return;
+      }
+
+      // Skip if agents array is not ready yet
+      if (!Array.isArray(agents)) {
+        return;
+      }
+
+      // PRIMARY CHECK: If a "Personal Assistant" agent already exists, skip creation
+      // This check persists across sessions (page reloads, logout/login)
+      const hasPersonalAssistant = agents.some(
+        agent => agent.name === 'Personal Assistant' &&
+                 agent.tags?.includes('personal-assistant')
+      );
+
+      if (hasPersonalAssistant) {
+        console.log('Personal Assistant agent already exists, skipping creation');
+        defaultAgentCreationAttempts.add(spaceId);
+        spacesWithDefaultAgentAttempted.current.add(spaceId);
+        return;
+      }
+
+      // SECONDARY CHECK: If user has any agents at all, mark space as handled and skip
+      // (They may have deleted the default and don't want it recreated)
+      if (agents.length > 0) {
+        defaultAgentCreationAttempts.add(spaceId);
+        spacesWithDefaultAgentAttempted.current.add(spaceId);
+        return;
+      }
+
+      // Set ALL locks IMMEDIATELY before any async operation
+      defaultAgentCreationAttempts.add(spaceId);
+      creationInProgress.current = true;
+      spacesWithDefaultAgentAttempted.current.add(spaceId);
+
+      if (!isCancelled) {
         setCreatingDefaultAgent(true);
+      }
 
-        console.log('Creating default Personal Assistant agent for space:', currentSpace?.name || spaceId);
+      console.log('Creating default Personal Assistant agent for space:', spaceId);
 
-        try {
-          await createAgent({
-            name: 'Personal Assistant',
-            description: 'Your personal AI assistant for answering questions and helping with tasks. This is your default agent for the Agent Builder.',
-            type: 'conversational',
-            system_prompt: 'You are a helpful AI assistant. You provide clear, accurate, and thoughtful responses to questions. You are friendly, professional, and always aim to be useful.',
-            llm_config: {
-              provider: 'anthropic',
-              model: 'claude-3-5-sonnet-20241022',
-              temperature: 0.7,
-              max_tokens: 2000,
-              optimization_level: 'balanced'
-            },
-            is_public: false,
-            is_template: false,
-            tags: ['assistant', 'default']
-          });
-          console.log('Default Personal Assistant agent created successfully');
-        } catch (error) {
-          console.error('Failed to create default agent:', error);
-          // Don't throw - user can still create agents manually
-        } finally {
+      try {
+        await createAgent({
+          name: 'Personal Assistant',
+          description: 'Your personal AI assistant for answering questions and helping with tasks. This is your default agent for the Agent Builder.',
+          type: 'conversational',
+          system_prompt: 'You are a helpful AI assistant. You provide clear, accurate, and thoughtful responses to questions. You are friendly, professional, and always aim to be useful.',
+          llm_config: {
+            provider: 'anthropic',
+            model: 'claude-3-haiku-20240307',
+            temperature: 0.7,
+            max_tokens: 2000,
+            optimization_level: 'balanced'
+          },
+          is_public: false,
+          is_template: false,
+          tags: ['assistant', 'default', 'personal-assistant']
+        });
+        console.log('Default Personal Assistant agent created successfully');
+      } catch (error) {
+        console.error('Failed to create default agent:', error);
+      } finally {
+        creationInProgress.current = false;
+        if (!isCancelled) {
           setCreatingDefaultAgent(false);
         }
       }
     };
 
     createDefaultAgentIfNeeded();
-  }, [agents, agentsLoading, currentSpace?.space_id, currentSpace?.id, createAgent, creatingDefaultAgent]);
 
-  // Reset the creation attempt flag when space changes
-  useEffect(() => {
-    defaultAgentCreationAttempted.current = false;
-  }, [currentSpace?.space_id, currentSpace?.id]);
+    // Cleanup function - prevents state updates after unmount
+    return () => {
+      isCancelled = true;
+    };
+  }, [agents, agentsLoading, currentSpace?.space_id, createAgent]);
 
   // Initialize spaces - but don't block on it
   useEffect(() => {
@@ -178,10 +236,20 @@ const AgentBuilderPage = () => {
 
   const handleDeleteAgent = async (agent) => {
     if (window.confirm(`Are you sure you want to delete ${agent.name}?`)) {
+      // Close the modal immediately for better UX
+      setDetailModalOpen(false);
+      setSelectedAgent(null);
+
       try {
         await deleteAgent(agent.id);
+        // Small delay to ensure backend has processed the delete
+        await new Promise(resolve => setTimeout(resolve, 300));
+        // Refetch agents to ensure list is up to date
+        await refetchAgents();
       } catch (error) {
         console.error('Failed to delete agent:', error);
+        // Refetch anyway to show current state
+        await refetchAgents();
       }
     }
   };
@@ -246,7 +314,7 @@ const AgentBuilderPage = () => {
       {true ? (
         <LoadingWrapper
           loading={agentsLoading}
-          error={agentsError}
+          error={null}
           SkeletonComponent={AgentCardSkeleton}
           skeletonCount={6}
           loadingText="Loading agents..."

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSpace } from './useSpaces.js';
 import { api } from '../services/api.js';
 
@@ -17,7 +17,7 @@ export const useAgentBuilder = (filter = {}) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Combine space context with custom filter
       const spaceId = currentSpace?.space_id || currentSpace?.id;
       const requestFilter = {
@@ -25,11 +25,11 @@ export const useAgentBuilder = (filter = {}) => {
         ...customFilter,
         ...(spaceId && { space_id: spaceId })
       };
-      
+
       const response = await api.agentBuilder.getAll(requestFilter);
       const agentsData = response.agents || response.data || [];
       setAgents(agentsData);
-      
+
       // Fetch user stats if available
       try {
         const userStats = await api.agentStats.getUser();
@@ -37,7 +37,7 @@ export const useAgentBuilder = (filter = {}) => {
       } catch (statsError) {
         console.warn('Failed to fetch user stats:', statsError);
       }
-      
+
     } catch (err) {
       console.error('Failed to fetch agents:', err);
       setError(err.message || 'Failed to fetch agents');
@@ -53,7 +53,7 @@ export const useAgentBuilder = (filter = {}) => {
   }, [currentSpace?.space_id, currentSpace?.id]);
 
   // Agent CRUD Operations
-  const createAgent = async (agentData) => {
+  const createAgent = useCallback(async (agentData) => {
     try {
       setError(null);
 
@@ -63,7 +63,7 @@ export const useAgentBuilder = (filter = {}) => {
         ...agentData,
         space_id: spaceId
       };
-      
+
       const response = await api.agentBuilder.create(requestData);
       const newAgent = response.data || response;
       setAgents(prev => [newAgent, ...prev]);
@@ -73,14 +73,14 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to create agent');
       throw err;
     }
-  };
+  }, [currentSpace?.space_id, currentSpace?.id]);
 
-  const updateAgent = async (id, agentData) => {
+  const updateAgent = useCallback(async (id, agentData) => {
     try {
       setError(null);
       const response = await api.agentBuilder.update(id, agentData);
       const updatedAgent = response.data || response;
-      setAgents(prev => prev.map(agent => 
+      setAgents(prev => prev.map(agent =>
         agent.id === id ? { ...agent, ...updatedAgent } : agent
       ));
       return updatedAgent;
@@ -89,9 +89,9 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to update agent');
       throw err;
     }
-  };
+  }, []);
 
-  const deleteAgent = async (id) => {
+  const deleteAgent = useCallback(async (id) => {
     try {
       setError(null);
       await api.agentBuilder.delete(id);
@@ -101,14 +101,14 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to delete agent');
       throw err;
     }
-  };
+  }, []);
 
   // Agent Publishing
-  const publishAgent = async (id) => {
+  const publishAgent = useCallback(async (id) => {
     try {
       setError(null);
       await api.agentBuilder.publish(id);
-      setAgents(prev => prev.map(agent => 
+      setAgents(prev => prev.map(agent =>
         agent.id === id ? { ...agent, status: 'published' } : agent
       ));
     } catch (err) {
@@ -116,13 +116,13 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to publish agent');
       throw err;
     }
-  };
+  }, []);
 
-  const unpublishAgent = async (id) => {
+  const unpublishAgent = useCallback(async (id) => {
     try {
       setError(null);
       await api.agentBuilder.unpublish(id);
-      setAgents(prev => prev.map(agent => 
+      setAgents(prev => prev.map(agent =>
         agent.id === id ? { ...agent, status: 'draft' } : agent
       ));
     } catch (err) {
@@ -130,10 +130,10 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to unpublish agent');
       throw err;
     }
-  };
+  }, []);
 
   // Agent Duplication
-  const duplicateAgent = async (sourceId, newName) => {
+  const duplicateAgent = useCallback(async (sourceId, newName) => {
     try {
       setError(null);
       const response = await api.agentBuilder.duplicate(sourceId, newName);
@@ -145,7 +145,7 @@ export const useAgentBuilder = (filter = {}) => {
       setError(err.message || 'Failed to duplicate agent');
       throw err;
     }
-  };
+  }, []);
 
   return {
     agents,
@@ -249,40 +249,59 @@ export const useAgentExecution = (agentId = null) => {
 
 /**
  * Hook for agent statistics and analytics
+ * Returns stats, executions, loading state, and refreshStats function
  */
 export const useAgentStats = (agentId = null) => {
   const [stats, setStats] = useState(null);
+  const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchStats = async () => {
+  const refreshStats = useCallback(async () => {
     if (!agentId) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      const response = await api.agentStats.getAgent(agentId);
-      setStats(response.data || response);
+
+      // Fetch both stats and executions in parallel
+      const [statsResponse, executionsResponse] = await Promise.all([
+        api.agentStats.getAgent(agentId).catch(err => {
+          console.error('Failed to fetch agent stats:', err);
+          return null;
+        }),
+        api.agentExecution.getByAgent(agentId, 50).catch(err => {
+          console.error('Failed to fetch agent executions:', err);
+          return { executions: [] };
+        })
+      ]);
+
+      setStats(statsResponse?.data || statsResponse);
+      setExecutions(executionsResponse?.executions || executionsResponse?.data || []);
     } catch (err) {
       console.error('Failed to fetch agent stats:', err);
       setError(err.message || 'Failed to fetch agent stats');
       setStats(null);
+      setExecutions([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId]);
 
   useEffect(() => {
     if (agentId) {
-      fetchStats();
+      refreshStats();
     }
-  }, [agentId]);
+  }, [agentId, refreshStats]);
 
   return {
     stats,
+    executions,
     loading,
     error,
-    refetch: fetchStats
+    refreshStats,
+    // Keep refetch as alias for backwards compatibility
+    refetch: refreshStats
   };
 };
 
@@ -351,7 +370,7 @@ export const useAgentProviders = () => {
     }
   };
 
-  const validateConfig = async (config) => {
+  const validateConfig = useCallback(async (config) => {
     try {
       setError(null);
       const response = await api.agentRouter.validateConfig(config);
@@ -361,7 +380,7 @@ export const useAgentProviders = () => {
       setError(err.message || 'Failed to validate config');
       throw err;
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProviders();
