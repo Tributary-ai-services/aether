@@ -886,6 +886,313 @@ class AetherApiService {
      */
     getInfo: (notebookId) => this.request(`/notebooks/${notebookId}/vector-search/info`),
   };
+
+  // ============================================================================
+  // Data Sources API
+  // ============================================================================
+  dataSources = {
+    /**
+     * Get all data sources for the current space
+     * @param {Object} options - Pagination and filter options
+     * @returns {Promise} List of data sources
+     */
+    getAll: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      if (options.type) params.append('type', options.type);
+      const queryString = params.toString();
+      return this.request(`/data-sources${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get a single data source by ID
+     * @param {string} id - Data source ID
+     * @returns {Promise} Data source details
+     */
+    get: (id) => this.request(`/data-sources/${id}`),
+
+    /**
+     * Create a new data source
+     * @param {Object} data - Data source configuration
+     * @returns {Promise} Created data source
+     */
+    create: (data) => this.request('/data-sources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update an existing data source
+     * @param {string} id - Data source ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated data source
+     */
+    update: (id, updates) => this.request(`/data-sources/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a data source
+     * @param {string} id - Data source ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/data-sources/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test a data source connection
+     * @param {string} id - Data source ID
+     * @returns {Promise} Connection test result
+     */
+    testConnection: (id) => this.request(`/data-sources/${id}/test`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Trigger a sync for a data source
+     * @param {string} id - Data source ID
+     * @param {Object} options - Sync options (full, incremental, etc.)
+     * @returns {Promise} Sync job info
+     */
+    triggerSync: (id, options = {}) => this.request(`/data-sources/${id}/sync`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    }),
+
+    /**
+     * Get sync status for a data source
+     * @param {string} id - Data source ID
+     * @returns {Promise} Sync status
+     */
+    getSyncStatus: (id) => this.request(`/data-sources/${id}/sync/status`),
+
+    /**
+     * List files/items in a data source (for browsing)
+     * @param {string} id - Data source ID
+     * @param {string} path - Path within the data source
+     * @returns {Promise} List of files/items
+     */
+    listFiles: (id, path = '/') => this.request(`/data-sources/${id}/files?path=${encodeURIComponent(path)}`),
+
+    /**
+     * Probe a URL to detect AI-friendly content
+     * @param {string} url - URL to probe
+     * @returns {Promise} Probe results (llms.txt, ai.txt, robots.txt, paywall detection)
+     */
+    probeUrl: (url) => this.request('/data-sources/probe-url', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+    /**
+     * Scrape a URL using the recommended or specified scraper
+     * @param {string} url - URL to scrape
+     * @param {string} scraperType - Scraper type (crawl4ai, direct_fetch, archive_org, etc.)
+     * @param {Object} options - Scraping options
+     * @returns {Promise} Scraped content
+     */
+    scrapeUrl: (url, scraperType, options = {}) => this.request('/data-sources/scrape-url', {
+      method: 'POST',
+      body: JSON.stringify({ url, scraper_type: scraperType, options }),
+    }),
+  };
+
+  // ============================================================================
+  // Database Connections API
+  // ============================================================================
+  databases = {
+    /**
+     * Get all database connections
+     * @returns {Promise} List of database connections
+     */
+    getAll: () => this.request('/databases'),
+
+    /**
+     * Get a single database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Connection details
+     */
+    get: (id) => this.request(`/databases/${id}`),
+
+    /**
+     * Create a new database connection
+     * @param {Object} data - Connection configuration
+     * @returns {Promise} Created connection
+     */
+    create: (data) => this.request('/databases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update an existing database connection
+     * @param {string} id - Connection ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated connection
+     */
+    update: (id, updates) => this.request(`/databases/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/databases/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test an existing database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Connection test result
+     */
+    testConnection: (id) => this.request(`/databases/${id}/test`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Test a new database connection without saving
+     * @param {Object} connectionParams - Connection parameters to test
+     * @returns {Promise} Connection test result
+     */
+    testNewConnection: (connectionParams) => this.request('/databases/test', {
+      method: 'POST',
+      body: JSON.stringify(connectionParams),
+    }),
+
+    /**
+     * Get database schema (tables, views, etc.)
+     * @param {string} id - Connection ID
+     * @returns {Promise} Schema information
+     */
+    getSchema: (id) => this.request(`/databases/${id}/schema`),
+
+    /**
+     * Execute a query on a database connection
+     * @param {string} id - Connection ID
+     * @param {string} query - SQL/query to execute
+     * @param {Object} params - Query parameters
+     * @returns {Promise} Query results
+     */
+    query: (id, query, params = {}) => this.request(`/databases/${id}/query`, {
+      method: 'POST',
+      body: JSON.stringify({ query, params }),
+    }),
+  };
+
+  // ============================================================================
+  // Credentials API
+  // ============================================================================
+  credentials = {
+    /**
+     * List all credentials (metadata only, no secrets)
+     * @returns {Promise} List of credentials
+     */
+    list: () => this.request('/credentials'),
+
+    /**
+     * Create a new credential
+     * @param {Object} data - Credential data (secrets encrypted server-side)
+     * @returns {Promise} Created credential metadata
+     */
+    create: (data) => this.request('/credentials', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Delete a credential
+     * @param {string} id - Credential ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/credentials/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test a credential
+     * @param {string} id - Credential ID
+     * @returns {Promise} Test result
+     */
+    test: (id) => this.request(`/credentials/${id}/test`, {
+      method: 'POST',
+    }),
+  };
+
+  // ============================================================================
+  // OAuth API
+  // ============================================================================
+  oauth = {
+    /**
+     * Initiate OAuth flow for a provider
+     * @param {string} provider - OAuth provider (google, microsoft, dropbox, etc.)
+     * @returns {Promise} OAuth authorization URL and state
+     */
+    initiateFlow: (provider) => this.request(`/oauth/${provider}/authorize`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Handle OAuth callback
+     * @param {string} provider - OAuth provider
+     * @param {string} code - Authorization code
+     * @param {string} state - CSRF state token
+     * @returns {Promise} Created credential from OAuth
+     */
+    callback: (provider, code, state) => this.request(`/oauth/${provider}/callback`, {
+      method: 'POST',
+      body: JSON.stringify({ code, state }),
+    }),
+  };
+
+  // ============================================================================
+  // MCP (Model Context Protocol) API
+  // ============================================================================
+  mcp = {
+    /**
+     * List available MCP servers
+     * @returns {Promise} List of MCP servers
+     */
+    listServers: () => this.request('/mcp/servers'),
+
+    /**
+     * List available MCP database servers
+     * @returns {Promise} List of database-specific MCP servers
+     */
+    listDatabaseServers: () => this.request('/mcp/servers?type=database'),
+
+    /**
+     * Invoke an MCP tool
+     * @param {string} serverId - MCP server ID
+     * @param {string} tool - Tool name
+     * @param {Object} params - Tool parameters
+     * @returns {Promise} Tool result
+     */
+    invokeTool: (serverId, tool, params) => this.request('/mcp/invoke', {
+      method: 'POST',
+      body: JSON.stringify({ server_id: serverId, tool, params }),
+    }),
+
+    /**
+     * Get an MCP resource
+     * @param {string} uri - Resource URI
+     * @returns {Promise} Resource content
+     */
+    getResource: (uri) => this.request(`/mcp/resources?uri=${encodeURIComponent(uri)}`),
+
+    /**
+     * List tools for a specific MCP server
+     * @param {string} serverId - MCP server ID
+     * @returns {Promise} List of available tools
+     */
+    listTools: (serverId) => this.request(`/mcp/servers/${serverId}/tools`),
+  };
 }
 
 // Create singleton instance
