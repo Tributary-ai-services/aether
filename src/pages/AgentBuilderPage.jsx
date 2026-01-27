@@ -111,6 +111,10 @@ const AgentBuilderPage = () => {
   };
 
   const handleEditAgent = (agent) => {
+    // Log the agent data to see what fields are present
+    console.log('Editing agent - full data from list:', JSON.stringify(agent, null, 2));
+    console.log('system_prompt:', agent.system_prompt);
+    console.log('llm_config:', agent.llm_config);
     setSelectedAgent(agent);
     setCreateModalOpen(true);
   };

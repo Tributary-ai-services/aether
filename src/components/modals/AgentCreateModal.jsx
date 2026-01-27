@@ -6,11 +6,13 @@ import Modal from '../ui/Modal.jsx';
 import ConfigurationTemplateSelector from '../agent/ConfigurationTemplateSelector.jsx';
 import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
 import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
-import { 
-  Bot, 
-  Settings, 
-  Zap, 
-  DollarSign, 
+import { AIAssistLabel } from '../agent/AIAssistButton.jsx';
+import PromptAssistDialog from '../agent/PromptAssistDialog.jsx';
+import {
+  Bot,
+  Settings,
+  Zap,
+  DollarSign,
   Brain,
   Save,
   X,
@@ -67,6 +69,10 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [configValidation, setConfigValidation] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('Balanced');
+
+  // Prompt Assist Dialog state
+  const [promptAssistOpen, setPromptAssistOpen] = useState(false);
+  const [promptAssistField, setPromptAssistField] = useState('description'); // 'description' or 'system_prompt'
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -149,9 +155,11 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   // Validate configuration when it changes
   useEffect(() => {
     const validateConfiguration = async () => {
+      console.log('Validating config:', { provider: formData.llm_config.provider, model: formData.llm_config.model });
       if (formData.llm_config.provider && formData.llm_config.model) {
         try {
           const validation = await validateConfig(formData.llm_config);
+          console.log('Validation result:', validation);
           setConfigValidation(validation);
         } catch (err) {
           console.warn('Config validation failed:', err);
@@ -159,14 +167,17 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           setConfigValidation({ valid: true, errors: [] });
         }
       } else {
-        // Reset validation if required fields are missing
+        // Reset validation if required fields are missing - show as valid (no config yet)
+        console.log('No provider/model, setting valid');
         setConfigValidation({ valid: true, errors: [] });
       }
     };
 
     const timeoutId = setTimeout(validateConfiguration, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.llm_config, validateConfig]);
+    // Note: validateConfig excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.llm_config.provider, formData.llm_config.model]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -488,10 +499,18 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
+          <AIAssistLabel
+            htmlFor="description"
+            label="Description"
+            onAssistClick={() => {
+              setPromptAssistField('description');
+              setPromptAssistOpen(true);
+            }}
+            assistTooltip="Get AI help with description"
+            className="mb-2"
+          />
           <textarea
+            id="description"
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
             rows={3}
@@ -507,10 +526,19 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
         {/* System Prompt */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            System Prompt *
-          </label>
+          <AIAssistLabel
+            htmlFor="system_prompt"
+            label="System Prompt"
+            required={true}
+            onAssistClick={() => {
+              setPromptAssistField('system_prompt');
+              setPromptAssistOpen(true);
+            }}
+            assistTooltip="Get AI help with system prompt"
+            className="mb-2"
+          />
           <textarea
+            id="system_prompt"
             value={formData.system_prompt}
             onChange={(e) => handleInputChange('system_prompt', e.target.value)}
             rows={4}
@@ -799,6 +827,23 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           </button>
         </div>
       </form>
+
+      {/* Prompt Assist Dialog */}
+      <PromptAssistDialog
+        isOpen={promptAssistOpen}
+        onClose={() => setPromptAssistOpen(false)}
+        onApply={(suggestion) => {
+          if (promptAssistField === 'description') {
+            handleInputChange('description', suggestion);
+          } else if (promptAssistField === 'system_prompt') {
+            handleInputChange('system_prompt', suggestion);
+          }
+        }}
+        assistFor={promptAssistField}
+        agentName={formData.name}
+        agentType={formData.type}
+        currentValue={promptAssistField === 'description' ? formData.description : formData.system_prompt}
+      />
     </Modal>
   );
 };

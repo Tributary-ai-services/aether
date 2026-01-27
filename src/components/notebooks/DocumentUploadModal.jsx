@@ -265,7 +265,18 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           
           console.log('Upload debug - Space context:', spaceContext);
 
-          // Prepare base64 upload payload
+          // Get compliance settings from notebook (parse if string)
+          let complianceSettings = notebook.complianceSettings || notebook.compliance_settings || {};
+          if (typeof complianceSettings === 'string') {
+            try {
+              complianceSettings = JSON.parse(complianceSettings);
+            } catch (e) {
+              console.warn('Failed to parse compliance settings:', e);
+              complianceSettings = {};
+            }
+          }
+
+          // Prepare base64 upload payload with compliance settings
           const uploadPayload = {
             name: fileData.name,
             description: `Uploaded document: ${fileData.name}`,
@@ -273,7 +284,15 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             file_name: fileData.name,
             mime_type: fileData.type || 'application/octet-stream',
             file_content: fileContent,
-            tags: [`notebook:${notebook.name.replace(/\s+/g, '_').toLowerCase()}`, 'document']
+            tags: [`notebook:${notebook.name.replace(/\s+/g, '_').toLowerCase()}`, 'document'],
+            // Include compliance settings for DLP scanning and redaction
+            compliance_settings: {
+              dlp_scan_enabled: complianceSettings.piiDetection !== false,
+              redaction_mode: complianceSettings.redactionMode || 'mask',
+              hipaa_compliant: complianceSettings.hipaaCompliant || false,
+              pii_detection: complianceSettings.piiDetection !== false,
+              compliance_frameworks: complianceSettings.complianceFrameworks || []
+            }
           };
 
           console.log('Upload debug - Base64 payload:', {

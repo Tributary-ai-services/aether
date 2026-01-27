@@ -284,6 +284,100 @@ export const api = {
     }
   },
 
+  // Internal Agents endpoints - System agents like Prompt Assistant
+  internalAgents: {
+    // Get all internal (system) agents
+    getAll: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/agents/internal`, {
+        headers: {
+          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch internal agents');
+      return await response.json();
+    },
+
+    // Get a specific internal agent by ID
+    getById: async (id) => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/agents/internal/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch internal agent');
+      return await response.json();
+    },
+
+    // Execute an internal agent (e.g., Prompt Assistant)
+    execute: async (input, history = [], sessionId = null, context = null) => {
+      // The Prompt Assistant agent ID (seeded in database)
+      const PROMPT_ASSISTANT_ID = '00000000-0000-0000-0000-000000000001';
+
+      const payload = {
+        input,
+        history: history.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp
+        })),
+        ...(sessionId && { session_id: sessionId }),
+        ...(context && { context })
+      };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_AETHER_API_URL}/agents/internal/${PROMPT_ASSISTANT_ID}/execute`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to execute internal agent');
+      }
+      return await response.json();
+    },
+
+    // Execute any internal agent by ID
+    executeById: async (agentId, input, history = [], sessionId = null, context = null) => {
+      const payload = {
+        input,
+        history: history.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp
+        })),
+        ...(sessionId && { session_id: sessionId }),
+        ...(context && { context })
+      };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_AETHER_API_URL}/agents/internal/${agentId}/execute`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to execute internal agent');
+      }
+      return await response.json();
+    }
+  },
+
   // Agent Execution endpoints
   agentExecution: {
     start: async (agentId, input, sessionId = null) => {
@@ -493,7 +587,7 @@ export const api = {
 
     validateConfig: async (config) => {
       // Skip API call entirely - validation endpoint not implemented yet
-      console.log('⚠️ Config validation endpoint not implemented, returning default valid response');
+      // Return default valid response without logging to avoid console spam
       await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to simulate API call
       return {
         valid: true,

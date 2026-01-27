@@ -8,6 +8,7 @@ import usersReducer from './slices/usersSlice.js';
 import spacesReducer from './slices/spacesSlice.js';
 import dataSourcesReducer from './slices/dataSourcesSlice.js';
 import databaseConnectionsReducer from './slices/databaseConnectionsSlice.js';
+import complianceReducer from './slices/complianceSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -20,7 +21,8 @@ const store = configureStore({
     users: usersReducer,
     spaces: spacesReducer,
     dataSources: dataSourcesReducer,
-    databaseConnections: databaseConnectionsReducer
+    databaseConnections: databaseConnectionsReducer,
+    compliance: complianceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

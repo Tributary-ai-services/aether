@@ -887,6 +887,68 @@ class AetherApiService {
     getInfo: (notebookId) => this.request(`/notebooks/${notebookId}/vector-search/info`),
   };
 
+// Compliance API - DLP violations from AudiModal
+  compliance = {
+    /**
+     * Get paginated list of DLP violations
+     * @param {object} params - Filter and pagination parameters
+     * @param {string} params.severity - Filter by severity (critical, high, medium, low)
+     * @param {string} params.status - Filter by status (detected, resolved, acknowledged)
+     * @param {boolean} params.acknowledged - Filter by acknowledged status
+     * @param {string} params.complianceType - Filter by compliance type (pii, hipaa, pci-dss, gdpr)
+     * @param {string} params.from - Time range start (ISO 8601 or relative like 'now-24h')
+     * @param {string} params.to - Time range end (ISO 8601 or 'now')
+     * @param {number} params.page - Page number (default: 1)
+     * @param {number} params.pageSize - Page size (default: 20, max: 100)
+     * @returns {Promise} Paginated list of violations
+     */
+    getViolations: (params = {}) => {
+      const searchParams = new URLSearchParams();
+      if (params.severity) searchParams.append('severity', params.severity);
+      if (params.status) searchParams.append('status', params.status);
+      if (params.acknowledged !== undefined) searchParams.append('acknowledged', params.acknowledged);
+      if (params.complianceType) searchParams.append('compliance_type', params.complianceType);
+      if (params.from) searchParams.append('from', params.from);
+      if (params.to) searchParams.append('to', params.to);
+      if (params.page) searchParams.append('page', params.page);
+      if (params.pageSize) searchParams.append('page_size', params.pageSize);
+      const queryString = searchParams.toString();
+      return this.request(`/compliance/violations${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get a specific DLP violation by ID
+     * @param {string} id - Violation ID
+     * @returns {Promise} Violation details
+     */
+    getViolation: (id) => this.request(`/compliance/violations/${id}`),
+
+    /**
+     * Get compliance summary statistics
+     * @returns {Promise} Summary with total violations, score, counts by severity/type
+     */
+    getSummary: () => this.request('/compliance/summary'),
+
+    /**
+     * Acknowledge a DLP violation
+     * @param {string} id - Violation ID to acknowledge
+     * @returns {Promise} Updated violation
+     */
+    acknowledgeViolation: (id) => this.request(`/compliance/violations/${id}/acknowledge`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Bulk acknowledge multiple DLP violations
+     * @param {string[]} violationIds - Array of violation IDs to acknowledge
+     * @returns {Promise} Results of bulk acknowledge operation
+     */
+    bulkAcknowledge: (violationIds) => this.request('/compliance/violations/acknowledge-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ violation_ids: violationIds }),
+    }),
+  };
+
   // ============================================================================
   // Data Sources API
   // ============================================================================
@@ -1122,6 +1184,66 @@ class AetherApiService {
      */
     test: (id) => this.request(`/credentials/${id}/test`, {
       method: 'POST',
+    }),
+  };
+
+  // ============================================================================
+  // Compliance API - DLP Violations from AudiModal
+  // ============================================================================
+  compliance = {
+    /**
+     * Get paginated list of DLP violations
+     * @param {Object} params - Query parameters
+     * @param {string} params.severity - Filter by severity (critical, high, medium, low)
+     * @param {string} params.status - Filter by status (detected, resolved, acknowledged)
+     * @param {boolean} params.acknowledged - Filter by acknowledged status
+     * @param {string} params.compliance_type - Filter by compliance type (pii, hipaa, pci-dss, gdpr)
+     * @param {number} params.page - Page number (default: 1)
+     * @param {number} params.page_size - Page size (default: 20, max: 100)
+     * @returns {Promise} Paginated list of violations
+     */
+    getViolations: (params = {}) => {
+      const queryParams = new URLSearchParams();
+      if (params.severity) queryParams.append('severity', params.severity);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.acknowledged !== undefined) queryParams.append('acknowledged', params.acknowledged);
+      if (params.compliance_type) queryParams.append('compliance_type', params.compliance_type);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      const queryString = queryParams.toString();
+      return this.request(`/compliance/violations${queryString ? '?' + queryString : ''}`);
+    },
+
+    /**
+     * Get a specific DLP violation by ID
+     * @param {string} id - Violation ID
+     * @returns {Promise} Violation details
+     */
+    getViolation: (id) => this.request(`/compliance/violations/${id}`),
+
+    /**
+     * Get compliance summary statistics
+     * @returns {Promise} Compliance summary with violation counts and score
+     */
+    getSummary: () => this.request('/compliance/summary'),
+
+    /**
+     * Acknowledge a DLP violation
+     * @param {string} id - Violation ID
+     * @returns {Promise} Acknowledged violation
+     */
+    acknowledgeViolation: (id) => this.request(`/compliance/violations/${id}/acknowledge`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Bulk acknowledge multiple DLP violations
+     * @param {string[]} violationIds - Array of violation IDs to acknowledge
+     * @returns {Promise} Bulk acknowledge result
+     */
+    bulkAcknowledge: (violationIds) => this.request('/compliance/violations/acknowledge-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ violation_ids: violationIds }),
     }),
   };
 

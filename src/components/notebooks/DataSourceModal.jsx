@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { X, Upload, Globe, Database, Folder, ExternalLink, FileText, AlertCircle, Cloud } from 'lucide-react';
-import { TextInputSource, WebScrapingSource } from './data-sources/index.js';
+import { TextInputSource, WebScrapingSource, DatabaseSource } from './data-sources/index.js';
 
 // Source type constants
 const SOURCE_TYPES = {
@@ -109,8 +109,8 @@ const DataSourceModal = ({
       bgColor: 'bg-orange-50',
       hoverColor: 'hover:bg-orange-100',
       borderColor: 'border-orange-200',
-      available: false, // Phase 1.5 (after basic infra)
-      onClick: onSelectDatabase
+      available: true,
+      onClick: () => setActiveSource(SOURCE_TYPES.DATABASE)
     },
     {
       id: SOURCE_TYPES.CLOUD_STORAGE,
@@ -159,6 +159,16 @@ const DataSourceModal = ({
       case SOURCE_TYPES.WEB_SCRAPING:
         return (
           <WebScrapingSource
+            notebook={notebook}
+            onBack={handleBack}
+            onSuccess={handleSuccess}
+            onClose={handleClose}
+          />
+        );
+
+      case SOURCE_TYPES.DATABASE:
+        return (
+          <DatabaseSource
             notebook={notebook}
             onBack={handleBack}
             onSuccess={handleSuccess}
@@ -262,8 +272,8 @@ const DataSourceModal = ({
             <div>
               <h4 className="font-medium text-blue-900 text-sm">Data Source Options</h4>
               <p className="text-blue-700 text-sm mt-1">
-                <strong>File Upload</strong>, <strong>Text Input</strong>, and <strong>Web Scraping</strong> are now available.
-                More integrations including Google Drive, database connections, and cloud storage are coming soon.
+                <strong>File Upload</strong>, <strong>Text Input</strong>, <strong>Web Scraping</strong>, and <strong>Database</strong> connections are now available.
+                More integrations including Google Drive and cloud storage are coming soon.
               </p>
             </div>
           </div>

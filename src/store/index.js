@@ -61,3 +61,21 @@ export {
   initializeUI,
   selectModals
 } from './slices/uiSlice.js';
+
+export {
+  fetchViolations,
+  fetchSummary,
+  acknowledgeViolation,
+  bulkAcknowledgeViolations,
+  setFilters,
+  clearFilters,
+  selectViolations,
+  selectViolationsLoading,
+  selectSummary,
+  selectSummaryLoading,
+  selectUnacknowledgedCount,
+  selectFilters,
+  selectViolationsMeta,
+  selectAcknowledgeLoading,
+  selectBulkAcknowledgeLoading
+} from './slices/complianceSlice.js';

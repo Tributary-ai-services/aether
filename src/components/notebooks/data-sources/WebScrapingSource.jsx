@@ -469,9 +469,9 @@ const WebScrapingSource = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-[90vh]">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center space-x-4">
           <button
             onClick={onBack}
@@ -500,7 +500,7 @@ const WebScrapingSource = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 min-h-0 p-6 overflow-y-auto">
         {/* URL Input Form */}
         <form onSubmit={handleProbe}>
           <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
@@ -573,7 +573,7 @@ const WebScrapingSource = ({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
         <button
           onClick={onBack}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"

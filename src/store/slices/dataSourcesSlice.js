@@ -148,9 +148,11 @@ export const probeUrl = createAsyncThunk(
     try {
       const response = await aetherApi.dataSources.probeUrl(url);
       if (response.success) {
-        return response.data;
+        // Backend returns { success: true, data: {...} }, so unwrap the nested data
+        const result = response.data?.data || response.data;
+        return result;
       } else {
-        return rejectWithValue(response.error || 'Failed to probe URL');
+        return rejectWithValue(response.error || response.data?.error || 'Failed to probe URL');
       }
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to probe URL');
@@ -165,9 +167,11 @@ export const scrapeUrl = createAsyncThunk(
     try {
       const response = await aetherApi.dataSources.scrapeUrl(url, scraperType, options);
       if (response.success) {
-        return response.data;
+        // Backend returns { success: true, data: {...} }, so unwrap the nested data
+        const result = response.data?.data || response.data;
+        return result;
       } else {
-        return rejectWithValue(response.error || 'Failed to scrape URL');
+        return rejectWithValue(response.error || response.data?.error || 'Failed to scrape URL');
       }
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to scrape URL');

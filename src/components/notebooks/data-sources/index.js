@@ -8,11 +8,11 @@
 export { default as TextInputSource } from './TextInputSource.jsx';
 export { default as WebScrapingSource } from './WebScrapingSource.jsx';
 
+// Phase 1.5: Database sources
+export { default as DatabaseSource } from './DatabaseSource.jsx';
+
 // Phase 2: OAuth sources (coming soon)
 // export { default as GoogleDriveSource } from './GoogleDriveSource.jsx';
-
-// Phase 3: Database sources (coming soon)
-// export { default as DatabaseSource } from './DatabaseSource.jsx';
 
 // Phase 4: API and cloud storage (coming soon)
 // export { default as ApiIntegrationSource } from './ApiIntegrationSource.jsx';
