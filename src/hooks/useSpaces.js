@@ -159,14 +159,32 @@ export const useSpaces = () => {
       }
     };
 
+    // Handle space context restoration from API error recovery
+    const handleSpaceContextRestored = (event) => {
+      const restoredSpace = event.detail;
+      if (restoredSpace) {
+        console.log('Space context restored by API, syncing Redux state:', restoredSpace);
+        dispatch(setCurrentSpace({
+          space_type: restoredSpace.space_type,
+          space_id: restoredSpace.space_id || restoredSpace.id,
+        }));
+        // Also reload available spaces to ensure full sync
+        dispatch(resetLoadingAttempts());
+        lastLoadAttempt.current = 0;
+        loadSpaces(true);
+      }
+    };
+
     window.addEventListener('userLoggedOut', handleAuthChange);
     window.addEventListener('tokenRefreshed', handleAuthChange);
     window.addEventListener('authenticationError', handleAuthChange);
+    window.addEventListener('spaceContextRestored', handleSpaceContextRestored);
 
     return () => {
       window.removeEventListener('userLoggedOut', handleAuthChange);
       window.removeEventListener('tokenRefreshed', handleAuthChange);
       window.removeEventListener('authenticationError', handleAuthChange);
+      window.removeEventListener('spaceContextRestored', handleSpaceContextRestored);
     };
   }, [dispatch, loadSpaces, resetState]);
 

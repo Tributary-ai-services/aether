@@ -3,7 +3,7 @@ import Modal from '../ui/Modal.jsx';
 import Comments from '../collaboration/Comments.jsx';
 import ShareDialog from '../collaboration/ShareDialog.jsx';
 import AgentTestModal from './AgentTestModal.jsx';
-import { useAgentBuilder, useAgentStats } from '../../hooks/useAgentBuilder.js';
+import { useAgentBuilder, useAgentStats, useAgentExecution } from '../../hooks/useAgentBuilder.js';
 import { 
   Bot, 
   Play, 
@@ -34,13 +34,16 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { updateAgent } = useAgentBuilder();
-  const { stats, executions, loading: statsLoading, refreshStats } = useAgentStats(agent?.id);
+  const { stats, loading: statsLoading, refetch: refreshStats } = useAgentStats(agent?.id);
+  const { executions, refetch: refreshExecutions, loading: executionsLoading } = useAgentExecution(agent?.id);
   
   useEffect(() => {
     if (isOpen && agent?.id) {
       refreshStats();
+      refreshExecutions();
     }
-  }, [isOpen, agent?.id, refreshStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, agent?.id]);
 
   if (!agent) return null;
 
@@ -322,16 +325,16 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Executions</h3>
-                <button 
-                  onClick={refreshStats}
-                  disabled={statsLoading}
+                <button
+                  onClick={refreshExecutions}
+                  disabled={executionsLoading}
                   className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                 >
-                  <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${executionsLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-              
-              {statsLoading ? (
+
+              {executionsLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">

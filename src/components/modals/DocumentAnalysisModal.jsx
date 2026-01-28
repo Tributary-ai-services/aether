@@ -1,13 +1,19 @@
 import React from 'react';
-import { X, BarChart3, Brain, Hash, Tag, Clock, CheckCircle } from 'lucide-react';
+import { X, BarChart3, Brain, Hash, Tag, Clock, CheckCircle, Globe, FileText, Info, Loader2 } from 'lucide-react';
 
-const DocumentAnalysisModal = ({ 
-  isOpen, 
-  onClose, 
-  document, 
-  analysis 
+const DocumentAnalysisModal = ({
+  isOpen,
+  onClose,
+  document,
+  analysis
 }) => {
   if (!isOpen) return null;
+
+  // Check document status and source type
+  const sourceType = document?.metadata?.source_type || document?.source_type;
+  const isInlineContent = sourceType === 'web_scraping' || sourceType === 'text_input';
+  const sourceUrl = document?.metadata?.source_url || document?.source_url;
+  const isProcessing = document?.status === 'processing' || document?.status === 'uploading';
 
   const formatProcessingTime = (timeMs) => {
     if (timeMs < 1000) return `${timeMs}ms`;
@@ -173,13 +179,91 @@ const DocumentAnalysisModal = ({
                 Analysis completed on {new Date(document.created_at || document.updated_at || analysis.data.timestamp).toLocaleDateString()} at {new Date(document.created_at || document.updated_at || analysis.data.timestamp).toLocaleTimeString()}
               </div>
             </div>
+          ) : isProcessing ? (
+            <div className="text-center py-8">
+              <div className="relative inline-block mb-4">
+                <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Analysis in Progress</h3>
+              <p className="text-gray-600 mb-4">
+                {isInlineContent
+                  ? `${sourceType === 'web_scraping' ? 'Web content' : 'Text content'} is being analyzed for compliance and quality.`
+                  : 'Document is being processed. Analysis will be available soon.'}
+              </p>
+
+              {/* Source info for inline content */}
+              {isInlineContent && (
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
+                    {sourceType === 'web_scraping' ? (
+                      <Globe className="w-4 h-4" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span>{sourceType === 'web_scraping' ? 'Web Scraping' : 'Text Input'}</span>
+                  </div>
+                  {sourceUrl && (
+                    <div className="mt-2">
+                      <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 text-sm break-all"
+                      >
+                        {sourceUrl}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Processing info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-blue-800 font-medium mb-1">What's being analyzed?</p>
+                    <ul className="text-blue-700 list-disc list-inside space-y-1">
+                      <li>Compliance and PII detection</li>
+                      <li>Content quality assessment</li>
+                      <li>Topic and entity extraction</li>
+                      <li>Sentiment analysis</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Document stats */}
+              <div className="mt-6 grid grid-cols-2 gap-4 max-w-sm mx-auto">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1">Content Size</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {document?.size_bytes
+                      ? `${(document.size_bytes / 1024).toFixed(1)} KB`
+                      : 'Unknown'}
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1">Status</div>
+                  <div className="text-sm font-medium text-blue-600 capitalize flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Processing
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="text-center py-12">
               <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Analysis Available</h3>
               <p className="text-gray-600">
-                Analysis data is not available for this document yet.
+                Analysis data is not available for this document.
               </p>
+              {document?.status === 'failed' && (
+                <p className="text-red-600 mt-2 text-sm">
+                  Document processing failed. Please try re-uploading.
+                </p>
+              )}
             </div>
           )}
         </div>

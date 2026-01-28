@@ -880,6 +880,48 @@ const NotebooksPage = () => {
     }
   };
 
+  // Handle when a document is added from data source modal (web scraping, text input, etc.)
+  const handleDocumentAdded = async (responseData) => {
+    console.log('Document added from data source (raw response):', responseData);
+
+    // Extract the actual document from the response
+    // The API returns { success: true, data: {...document...} }
+    const document = responseData?.data || responseData;
+    console.log('Extracted document:', document);
+
+    // Refresh document counts
+    await fetchNotebookDocumentCounts();
+
+    // Refresh documents for the notebook where the document was added
+    const notebookId = document?.notebook_id || dataSourceNotebook?.id || selectedNotebook?.id;
+    if (notebookId) {
+      const result = await dispatch(fetchNotebookDocuments({ notebookId, forceRefresh: true })).unwrap();
+
+      // Use the actual count from the response
+      const newCount = result?.total || result?.documents?.length || 0;
+
+      setNotebookDocumentCounts(prev => ({
+        ...prev,
+        [notebookId]: newCount
+      }));
+
+      // Update selected notebook's document count if it's the same notebook
+      if (selectedNotebook && selectedNotebook.id === notebookId) {
+        dispatch(setSelectedNotebook({
+          ...selectedNotebook,
+          documentCount: newCount
+        }));
+      }
+    }
+
+    // Show success notification
+    dispatch(addNotification({
+      type: 'success',
+      title: 'Document Added',
+      message: `"${document?.name || document?.title || 'Document'}" has been added to your notebook.`
+    }));
+  };
+
   const handleDeleteNotebook = async (notebook) => {
     try {
       await dispatch(deleteNotebookAction(notebook.id)).unwrap();
@@ -1679,6 +1721,7 @@ const NotebooksPage = () => {
         onClose={handleCloseDataSource}
         notebook={dataSourceNotebook}
         onSelectFileUpload={handleSelectFileUpload}
+        onDocumentAdded={handleDocumentAdded}
         onSelectGoogleDrive={() => {
           // Future implementation for Google Drive integration
           console.log('Google Drive integration coming soon');

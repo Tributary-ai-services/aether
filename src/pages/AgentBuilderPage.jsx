@@ -111,6 +111,10 @@ const AgentBuilderPage = () => {
   };
 
   const handleEditAgent = (agent) => {
+    // Log the agent data to see what fields are present
+    console.log('Editing agent - full data from list:', JSON.stringify(agent, null, 2));
+    console.log('system_prompt:', agent.system_prompt);
+    console.log('llm_config:', agent.llm_config);
     setSelectedAgent(agent);
     setCreateModalOpen(true);
   };
@@ -343,25 +347,6 @@ const AgentBuilderPage = () => {
           </div>
         )}
 
-        {/* Implementation Progress */}
-        <div className="mt-4 space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 0: Mock cleanup completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 1: Real API integration completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={16} />
-            <span>Phase 2: Enhanced UI components completed</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="text-yellow-500" size={16} />
-            <span>Backend deployment: Ready for activation</span>
-          </div>
-        </div>
       </div>
 
       {/* Modals */}

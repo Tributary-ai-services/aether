@@ -83,7 +83,10 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
   const OptimizationIcon = optimizationBadge.icon;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onOpenDetail}
+    >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
@@ -113,8 +116,11 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
         </div>
         
         <div className="flex gap-1">
-          <button 
-            onClick={handleTestAgent}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTestAgent();
+            }}
             disabled={executionLoading}
             className="p-2 text-gray-400 hover:text-green-600 disabled:opacity-50"
             title="Test Agent"
@@ -125,14 +131,17 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
               <Play size={16} />
             )}
           </button>
-          <button 
-            onClick={handleDuplicateAgent}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDuplicateAgent();
+            }}
             className="p-2 text-gray-400 hover:text-blue-600"
             title="Duplicate Agent"
           >
             <Copy size={16} />
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setShareDialogOpen(true);
@@ -142,8 +151,11 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
           >
             <Share2 size={16} />
           </button>
-          <button 
-            onClick={onOpenDetail}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail();
+            }}
             className="p-2 text-gray-400 hover:text-gray-600"
             title="View Details"
           >

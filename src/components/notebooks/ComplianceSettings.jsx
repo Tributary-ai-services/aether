@@ -152,21 +152,40 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
           Security Options
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm text-gray-700">Content Redaction</label>
-              <p className="text-xs text-gray-500">Automatically redact sensitive information in documents</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.redactionEnabled || false}
-              onChange={(e) => handleChange('redactionEnabled', e.target.checked)}
-              disabled={disabled}
-              className="rounded border-gray-300"
-            />
-          </div>
+        {/* Redaction Mode Dropdown */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+            PII Redaction Mode
+          </label>
+          <select
+            value={settings.redactionMode || 'mask'}
+            onChange={(e) => {
+              const mode = e.target.value;
+              // Update both redactionMode and legacy redactionEnabled in a single onChange call
+              if (onChange) {
+                onChange({
+                  ...settings,
+                  redactionMode: mode,
+                  redactionEnabled: mode !== 'none'
+                });
+              }
+            }}
+            disabled={disabled}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="mask">Mask (***-**-1234) - Recommended</option>
+            <option value="replace">Replace (e.g., [SSN REDACTED])</option>
+            <option value="hash">Hash (SHA-256 of original value)</option>
+            <option value="remove">Remove (delete entirely)</option>
+            <option value="tokenize">Tokenize (reversible pseudonymization)</option>
+            <option value="none">None (no redaction)</option>
+          </select>
+          <p className="text-xs text-gray-600 mt-1">
+            Controls how detected PII (SSN, credit cards, emails, etc.) is handled in document chunks
+          </p>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center justify-between">
             <div>
               <label className="text-sm text-gray-700">Access Logging</label>

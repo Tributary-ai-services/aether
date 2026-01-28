@@ -6,6 +6,9 @@ import teamsReducer from './slices/teamsSlice.js';
 import organizationsReducer from './slices/organizationsSlice.js';
 import usersReducer from './slices/usersSlice.js';
 import spacesReducer from './slices/spacesSlice.js';
+import dataSourcesReducer from './slices/dataSourcesSlice.js';
+import databaseConnectionsReducer from './slices/databaseConnectionsSlice.js';
+import complianceReducer from './slices/complianceSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -16,7 +19,10 @@ const store = configureStore({
     teams: teamsReducer,
     organizations: organizationsReducer,
     users: usersReducer,
-    spaces: spacesReducer
+    spaces: spacesReducer,
+    dataSources: dataSourcesReducer,
+    databaseConnections: databaseConnectionsReducer,
+    compliance: complianceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
