@@ -29,6 +29,7 @@ import NotificationCenter from './components/notifications/NotificationCenter.js
 import ToastNotification from './components/notifications/ToastNotification.jsx';
 import ComplianceToast from './components/notifications/ComplianceToast.jsx';
 import PermissionErrorToast from './components/ui/PermissionErrorToast.jsx';
+import SecurityBlockedToast from './components/ui/SecurityBlockedToast.jsx';
 import AuditTrail from './components/audit/AuditTrail.jsx';
 import CompliancePanel from './components/compliance/CompliancePanel.jsx';
 import LeftNavigation from './components/navigation/LeftNavigation.jsx';
@@ -499,6 +500,9 @@ const App = () => {
 
       {/* Permission Error Toast (403 handling) */}
       <PermissionErrorToast />
+
+      {/* Security Blocked Toast (403 with SECURITY_BLOCKED code) */}
+      <SecurityBlockedToast />
       </div>
     </FilterProvider>
   );

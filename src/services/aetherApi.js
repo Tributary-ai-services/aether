@@ -112,12 +112,17 @@ class AetherApiService {
       if (!response.ok) {
         const errorText = await response.text();
 
-        // Handle 403 Forbidden - permission denied
+        // Handle 403 Forbidden - check if it's a security block or permission error
         if (response.status === 403) {
           let errorMessage = 'You do not have permission for this action';
+          let errorCode = 'FORBIDDEN';
+          let errorDetails = null;
+
           try {
             const errorData = JSON.parse(errorText);
-            errorMessage = errorData.error || errorData.message || errorMessage;
+            errorCode = errorData.code || 'FORBIDDEN';
+            errorMessage = errorData.message || errorMessage;
+            errorDetails = errorData.details || null;
           } catch (e) {
             // Use text as-is if not JSON
             if (errorText) {
@@ -125,16 +130,83 @@ class AetherApiService {
             }
           }
 
-          // Trigger permission error event
-          this.triggerPermissionError({
-            message: errorMessage,
-            action: config.method || 'GET',
-            resource: endpoint
-          });
+          // Check if this is a security block (distinct from permission denied)
+          if (errorCode === 'SECURITY_BLOCKED') {
+            this.triggerSecurityBlockedError({
+              message: errorMessage,
+              threatTypes: errorDetails?.threat_types || [],
+              severity: errorDetails?.severity || 'unknown',
+              action: config.method || 'GET',
+              resource: endpoint
+            });
+          } else {
+            // Regular permission error
+            this.triggerPermissionError({
+              message: errorMessage,
+              action: config.method || 'GET',
+              resource: endpoint
+            });
+          }
 
           const error = new Error(errorMessage);
-          error.response = { status: 403, data: { error: errorMessage } };
+          error.response = { status: 403, code: errorCode, data: { error: errorMessage, details: errorDetails } };
           throw error;
+        }
+
+        // Handle 400 "Space context required" - reload spaces and retry
+        if (response.status === 400) {
+          let errorData = {};
+          try {
+            errorData = JSON.parse(errorText);
+          } catch (e) {
+            // Not JSON, use text
+          }
+
+          const isSpaceContextError = errorText.toLowerCase().includes('space context required') ||
+                                       errorData?.error?.toLowerCase()?.includes('space context required');
+
+          if (isSpaceContextError && !options._spaceRetried) {
+            console.log('Space context lost, attempting to reload spaces and retry...');
+
+            try {
+              // Fetch available spaces (this endpoint doesn't require space context)
+              const spacesResponse = await this.makeRequest(`${this.baseURL}/users/me/spaces`, {
+                headers: {
+                  'Authorization': await this.getAuthHeader(),
+                  'Content-Type': 'application/json',
+                }
+              });
+
+              if (spacesResponse.ok) {
+                const spacesData = await spacesResponse.json();
+                const spaces = spacesData?.spaces || spacesData || [];
+
+                // Find personal space or use first available
+                const personalSpace = spaces.find(s => s.space_type === 'personal') || spaces[0];
+
+                if (personalSpace) {
+                  // Save to localStorage
+                  localStorage.setItem('currentSpace', JSON.stringify({
+                    space_type: personalSpace.space_type,
+                    space_id: personalSpace.space_id || personalSpace.id,
+                  }));
+
+                  console.log('Space context restored:', personalSpace.space_type, personalSpace.space_id || personalSpace.id);
+
+                  // Dispatch event to notify Redux/hooks to sync
+                  window.dispatchEvent(new CustomEvent('spaceContextRestored', {
+                    detail: personalSpace
+                  }));
+
+                  // Retry the original request with new space headers
+                  const retryOptions = { ...options, _spaceRetried: true };
+                  return this.request(endpoint, retryOptions);
+                }
+              }
+            } catch (spaceError) {
+              console.error('Failed to reload spaces:', spaceError);
+            }
+          }
         }
 
         const error = new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
@@ -206,6 +278,22 @@ class AetherApiService {
     const event = new CustomEvent('permissionError', {
       detail: {
         message: details.message || 'You do not have permission for this action',
+        action: details.action || null,
+        resource: details.resource || null,
+        status: 403,
+        timestamp: Date.now()
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Trigger security blocked error event for the UI to handle (403 with SECURITY_BLOCKED code)
+  triggerSecurityBlockedError(details = {}) {
+    const event = new CustomEvent('securityBlocked', {
+      detail: {
+        message: details.message || 'Your input contains potentially unsafe content',
+        threatTypes: details.threatTypes || [],
+        severity: details.severity || 'unknown',
         action: details.action || null,
         resource: details.resource || null,
         status: 403,
