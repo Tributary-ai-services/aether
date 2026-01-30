@@ -33,9 +33,9 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
   const getVisibilityDisplay = (visibility) => {
     switch (visibility) {
       case 'public':
-        return { icon: Globe, color: 'text-green-600', bg: 'bg-green-100 text-green-800' };
+        return { icon: Globe, color: 'text-(--color-success-dark)', bg: 'bg-(--color-success-light) text-(--color-success-dark)' };
       case 'shared':
-        return { icon: Users, color: 'text-blue-600', bg: 'bg-blue-100 text-blue-800' };
+        return { icon: Users, color: 'text-(--color-primary-600)', bg: 'bg-(--color-primary-100) text-(--color-primary-800)' };
       default:
         return { icon: Lock, color: 'text-gray-600', bg: 'bg-gray-100 text-gray-800' };
     }
@@ -86,9 +86,9 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
   };
 
   return (
-  <div 
+  <div
     className={`bg-white rounded-xl shadow-sm border p-6 transition-all cursor-pointer relative ${
-      dragActive ? 'border-blue-500 border-2 shadow-lg bg-blue-50' : 'border-gray-200 hover:shadow-md'
+      dragActive ? 'border-(--color-primary-500) border-2 shadow-lg bg-(--color-primary-50)' : 'border-gray-200 hover:shadow-md'
     }`}
     onClick={onOpenDetail}
     onDragOver={handleDragOver}
@@ -130,7 +130,7 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
         )}
         <Share2 
           size={16} 
-          className="text-gray-400 cursor-pointer hover:text-blue-600" 
+          className="text-gray-400 cursor-pointer hover:text-(--color-primary-600)" 
           onClick={(e) => {
             e.stopPropagation();
             setShareModalOpen(true);
@@ -142,11 +142,11 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
 
     {/* Drag overlay for the entire card */}
     {dragActive && !dragOverDocuments && (
-      <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-95 rounded-xl">
+      <div className="absolute inset-0 flex items-center justify-center bg-(--color-primary-100) bg-opacity-95 rounded-xl">
         <div className="text-center">
-          <Upload size={48} className="text-blue-600 mx-auto mb-2" />
-          <div className="text-blue-700 font-semibold">Drop files to upload</div>
-          <div className="text-blue-600 text-sm">to {notebook.name}</div>
+          <Upload size={48} className="text-(--color-primary-600) mx-auto mb-2" />
+          <div className="text-(--color-primary-700) font-semibold">Drop files to upload</div>
+          <div className="text-(--color-primary-600) text-sm">to {notebook.name}</div>
         </div>
       </div>
     )}
@@ -252,11 +252,11 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
     </div>
     
     <div className="grid grid-cols-2 gap-4 mb-4">
-      <div 
+      <div
         className={`text-center p-3 rounded-lg transition-all relative ${
-          dragOverDocuments 
-            ? 'bg-blue-200 border-2 border-dashed border-blue-500' 
-            : 'bg-blue-50 hover:bg-blue-100'
+          dragOverDocuments
+            ? 'bg-(--color-primary-200) border-2 border-dashed border-(--color-primary-500)'
+            : 'bg-(--color-primary-50) hover:bg-(--color-primary-100)'
         }`}
         onDragOver={handleDocumentDragOver}
         onDragLeave={handleDocumentDragLeave}
@@ -268,14 +268,14 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
         }}
         title="Click or drag files here to upload documents"
       >
-        <div className="text-2xl font-bold text-blue-600">{notebook.documentCount || 0}</div>
+        <div className="text-2xl font-bold text-(--color-primary-600)">{notebook.documentCount || 0}</div>
         <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
           <FileText size={12} />
           Documents
         </div>
         {dragOverDocuments && (
-          <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-90 rounded-lg">
-            <div className="text-blue-600 font-medium text-sm">Drop files here</div>
+          <div className="absolute inset-0 flex items-center justify-center bg-(--color-primary-100) bg-opacity-90 rounded-lg">
+            <div className="text-(--color-primary-600) font-medium text-sm">Drop files here</div>
           </div>
         )}
       </div>
@@ -303,12 +303,12 @@ const NotebookCard = ({ notebook, onOpenDetail, onUploadDocuments, onOpenSetting
             Upload
           </button>
         )}
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             onOpenDetail();
           }}
-          className="text-blue-600 hover:text-blue-800 font-medium"
+          className="text-(--color-primary-600) hover:text-(--color-primary-800) font-medium"
         >
           Open →
         </button>

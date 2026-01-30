@@ -52,7 +52,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
       <div className="absolute top-4 right-3 z-10">
         <button 
           onClick={onToggleCollapse}
-          className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+          className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-400 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) transition-all"
           title={isCollapsed ? 'Expand Filters' : 'Collapse Filters'}
         >
           <Filter size={16} />
@@ -81,7 +81,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
               title="Search"
               onClick={() => !isCollapsed && document.querySelector('#search-input')?.focus()}
             >
-              <Search size={18} className="text-gray-600 group-hover:text-blue-600" />
+              <Search size={18} className="text-gray-600 group-hover:text-(--color-primary-600)" />
             </button>
             <button 
               className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
@@ -124,7 +124,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
                   placeholder="Search..." 
                   value={filters.search}
                   onChange={handleSearchChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 />
               </div>
             </div>
@@ -141,7 +141,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
                       type="checkbox" 
                       checked={filters.status.includes(status)}
                       onChange={() => handleStatusChange(status)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                     <span className="ml-2 text-sm text-gray-700">{status}</span>
                   </label>
@@ -158,7 +158,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
               <select 
                 value={filters.dateRange}
                 onChange={handleDateRangeChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               >
                 <option>Last 24 hours</option>
                 <option>Last 7 days</option>
@@ -186,7 +186,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
                       type="checkbox" 
                       checked={filters.mediaTypes.includes(key)}
                       onChange={() => handleMediaTypeChange(key)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                     <Icon size={14} className={`ml-2 mr-1 ${color}`} />
                     <span className="text-sm text-gray-700">{label}</span>
@@ -208,7 +208,7 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
                       type="checkbox" 
                       checked={filters.categories.includes(category)}
                       onChange={() => handleCategoryChange(category)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                     <span className="ml-2 text-sm text-gray-700 capitalize">{category}</span>
                   </label>

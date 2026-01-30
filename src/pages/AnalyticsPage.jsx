@@ -112,7 +112,7 @@ const AnalyticsPage = () => {
               </div>
 
               <div className="flex gap-2 mt-4">
-                <button className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                <button className="flex-1 bg-(--color-primary-600) text-(--color-primary-contrast) px-3 py-2 rounded text-sm hover:bg-(--color-primary-700)">
                   View Metrics
                 </button>
                 <button className="px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">
@@ -127,7 +127,7 @@ const AnalyticsPage = () => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900">ML Experiments</h3>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          <button className="bg-(--color-primary-600) text-(--color-primary-contrast) px-4 py-2 rounded-lg hover:bg-(--color-primary-700) transition-colors">
             New Experiment
           </button>
         </div>
@@ -156,8 +156,8 @@ const AnalyticsPage = () => {
                     <span>{experiment.progress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full" 
+                    <div
+                      className="bg-(--color-primary-600) h-2 rounded-full"
                       style={{ width: `${experiment.progress}%` }}
                     ></div>
                   </div>

@@ -242,7 +242,7 @@ const TimeRangePicker = ({ value, onChange, defaultRange = 'now-24h' }) => {
                     type="datetime-local"
                     value={customFrom}
                     onChange={(e) => setCustomFrom(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   />
                 </div>
 
@@ -252,14 +252,14 @@ const TimeRangePicker = ({ value, onChange, defaultRange = 'now-24h' }) => {
                     type="datetime-local"
                     value={customTo}
                     onChange={(e) => setCustomTo(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   />
                 </div>
 
                 <button
                   onClick={handleApplyCustomRange}
                   disabled={!customFrom || !customTo}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-md text-sm font-medium hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Apply time range
                 </button>
@@ -277,7 +277,7 @@ const TimeRangePicker = ({ value, onChange, defaultRange = 'now-24h' }) => {
                     onClick={() => handleQuickRangeSelect(range)}
                     className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
                       isQuickRangeSelected(range)
-                        ? 'bg-blue-100 text-blue-700 font-medium'
+                        ? 'bg-(--color-primary-100) text-(--color-primary-700) font-medium'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >

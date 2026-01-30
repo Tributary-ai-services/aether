@@ -200,11 +200,11 @@ const CompliancePanel = ({ isOpen, onClose }) => {
       <div className="p-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="bg-(--color-primary-50) rounded-lg p-4 text-center border border-(--color-primary-200)">
+            <div className="text-2xl font-bold text-(--color-primary-600)">
               {summaryLoading ? '...' : summary.totalViolations}
             </div>
-            <div className="text-xs text-blue-600">Total</div>
+            <div className="text-xs text-(--color-primary-600)">Total</div>
           </div>
           <div className="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
             <div className="text-2xl font-bold text-yellow-600">
@@ -254,14 +254,14 @@ const CompliancePanel = ({ isOpen, onClose }) => {
                   <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                     <button
                       onClick={() => setChartType('pie')}
-                      className={`p-1.5 ${chartType === 'pie' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`p-1.5 ${chartType === 'pie' ? 'bg-(--color-primary-100) text-(--color-primary-600)' : 'text-gray-400 hover:text-gray-600'}`}
                       title="Pie Chart"
                     >
                       <PieChartIcon size={16} />
                     </button>
                     <button
                       onClick={() => setChartType('bar')}
-                      className={`p-1.5 ${chartType === 'bar' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`p-1.5 ${chartType === 'bar' ? 'bg-(--color-primary-100) text-(--color-primary-600)' : 'text-gray-400 hover:text-gray-600'}`}
                       title="Bar Chart"
                     >
                       <BarChart2 size={16} />
@@ -338,7 +338,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
               placeholder="Search violations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
             />
           </div>
 
@@ -346,7 +346,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
           <select
             value={filters.severity || ''}
             onChange={(e) => dispatch(setFilters({ severity: e.target.value || null }))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500)"
           >
             <option value="">All Severities</option>
             <option value="critical">Critical</option>
@@ -364,7 +364,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
                 acknowledged: value === '' ? null : value === 'true'
               }));
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500)"
           >
             <option value="">All Status</option>
             <option value="false">Unacknowledged</option>
@@ -375,7 +375,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
           <button
             onClick={handleRefresh}
             disabled={violationsLoading}
-            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors"
             title="Refresh"
           >
             <RefreshCw size={20} className={violationsLoading ? 'animate-spin' : ''} />
@@ -387,7 +387,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-4 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <button
               onClick={handleSelectAll}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700)"
             >
               Select All Unacknowledged
             </button>
@@ -560,7 +560,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1 || violationsLoading}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 text-gray-600 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="First Page"
               >
                 <ChevronsLeft size={18} />
@@ -570,7 +570,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || violationsLoading}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 text-gray-600 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Previous Page"
               >
                 <ChevronLeft size={18} />
@@ -595,7 +595,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
                       <button
                         key={1}
                         onClick={() => handlePageChange(1)}
-                        className="px-3 py-1 text-sm rounded-lg hover:bg-blue-50 text-gray-600"
+                        className="px-3 py-1 text-sm rounded-lg hover:bg-(--color-primary-50) text-gray-600"
                       >
                         1
                       </button>
@@ -614,8 +614,8 @@ const CompliancePanel = ({ isOpen, onClose }) => {
                         disabled={violationsLoading}
                         className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                           i === currentPage
-                            ? 'bg-blue-600 text-white'
-                            : 'hover:bg-blue-50 text-gray-600'
+                            ? 'bg-(--color-primary-600) text-(--color-primary-contrast)'
+                            : 'hover:bg-(--color-primary-50) text-gray-600'
                         }`}
                       >
                         {i}
@@ -632,7 +632,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
                       <button
                         key={totalPages}
                         onClick={() => handlePageChange(totalPages)}
-                        className="px-3 py-1 text-sm rounded-lg hover:bg-blue-50 text-gray-600"
+                        className="px-3 py-1 text-sm rounded-lg hover:bg-(--color-primary-50) text-gray-600"
                       >
                         {totalPages}
                       </button>
@@ -647,7 +647,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages || violationsLoading}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 text-gray-600 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Next Page"
               >
                 <ChevronRight size={18} />
@@ -657,7 +657,7 @@ const CompliancePanel = ({ isOpen, onClose }) => {
               <button
                 onClick={() => handlePageChange(totalPages)}
                 disabled={currentPage === totalPages || violationsLoading}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 text-gray-600 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Last Page"
               >
                 <ChevronsRight size={18} />

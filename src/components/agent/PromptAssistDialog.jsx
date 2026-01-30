@@ -244,7 +244,7 @@ const PromptAssistDialog = ({
               <div
                 className={`max-w-[85%] rounded-lg px-4 py-3 ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-(--color-primary-600) text-(--color-primary-contrast)'
                     : 'bg-gray-100 text-gray-800'
                 }`}
               >

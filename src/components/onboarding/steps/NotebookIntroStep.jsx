@@ -49,25 +49,25 @@ const NotebookIntroStep = ({ onNext, onBack }) => {
       </div>
 
       {/* What You Can Do */}
-      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 mb-8">
+      <div className="bg-(--color-primary-50) rounded-xl p-6 border border-(--color-primary-200) mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">
           What You Can Do
         </h3>
         <ul className="space-y-2 text-sm text-gray-700">
           <li className="flex items-start">
-            <span className="text-blue-600 mr-2">•</span>
+            <span className="text-(--color-primary-600) mr-2">•</span>
             <span>Upload your own documents (PDF, images, audio, video)</span>
           </li>
           <li className="flex items-start">
-            <span className="text-blue-600 mr-2">•</span>
+            <span className="text-(--color-primary-600) mr-2">•</span>
             <span>Search across all documents using natural language</span>
           </li>
           <li className="flex items-start">
-            <span className="text-blue-600 mr-2">•</span>
+            <span className="text-(--color-primary-600) mr-2">•</span>
             <span>Organize documents with tags and descriptions</span>
           </li>
           <li className="flex items-start">
-            <span className="text-blue-600 mr-2">•</span>
+            <span className="text-(--color-primary-600) mr-2">•</span>
             <span>Create AI agents to interact with your content</span>
           </li>
         </ul>
@@ -83,7 +83,7 @@ const NotebookIntroStep = ({ onNext, onBack }) => {
         </button>
         <button
           onClick={onNext}
-          className="px-8 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg hover:shadow-xl"
+          className="px-8 py-2.5 bg-(--color-primary-600) text-(--color-primary-contrast) font-medium rounded-lg hover:bg-(--color-primary-700) transition-colors duration-200 shadow-lg hover:shadow-xl"
         >
           Continue
         </button>

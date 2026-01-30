@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import { useNavigation } from '../../context/NavigationContext.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
-import { 
+import {
   Settings as SettingsIcon,
   X,
   Palette,
@@ -26,11 +26,15 @@ import {
   ExternalLink,
   Crown,
   UserCheck,
-  Eye
+  Eye,
+  FolderTree,
+  Terminal,
+  Server
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EditProfileModal from '../modals/EditProfileModal';
 import { fetchTeams, selectAllTeams, selectTeamsLoading } from '../../store/slices/teamsSlice';
+import { ConnectionList, McpServerStatus } from '../database';
 
 const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
   const navigate = useNavigate();
@@ -95,7 +99,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'account', label: 'Account', icon: User },
-    { id: 'data', label: 'Data', icon: Database }
+    { id: 'data', label: 'Data Sources', icon: Database }
   ];
 
   return (
@@ -126,7 +130,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                   onClick={() => setActiveTab(id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                     activeTab === id
-                      ? 'bg-blue-100 text-blue-700'
+                      ? 'bg-(--color-primary-100) text-(--color-primary-700)'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -156,7 +160,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     </div>
                     <button 
                       onClick={() => setShowEditProfileModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
                     >
                       Edit Profile
                     </button>
@@ -175,7 +179,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                             <div className="text-sm text-gray-500">Admin</div>
                           </div>
                         </div>
-                        <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
+                        <button className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm">View</button>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -187,7 +191,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                             <div className="text-sm text-gray-500">Member</div>
                           </div>
                         </div>
-                        <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
+                        <button className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm">View</button>
                       </div>
                     </div>
                   </div>
@@ -204,7 +208,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           <div className="text-sm text-gray-500">Member since Jan 2024</div>
                         </div>
                       </div>
-                      <button className="text-blue-600 hover:text-blue-700 text-sm">Manage</button>
+                      <button className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm">Manage</button>
                     </div>
                   </div>
                 </div>
@@ -224,7 +228,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                         onClose();
                         navigate('/teams/create');
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors flex items-center gap-2"
                     >
                       <Plus size={16} />
                       Create Team
@@ -244,7 +248,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
 
                 {teamsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--color-primary-600)"></div>
                   </div>
                 ) : teams.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -256,7 +260,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                         onClose();
                         navigate('/teams/create');
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
+                      className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors flex items-center gap-2 mx-auto"
                     >
                       <Plus size={16} />
                       Create Your First Team
@@ -300,7 +304,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               team.userRole === 'owner' ? 'bg-yellow-100 text-yellow-800' :
-                              team.userRole === 'admin' ? 'bg-blue-100 text-blue-800' :
+                              team.userRole === 'admin' ? 'bg-(--color-primary-100) text-(--color-primary-800)' :
                               team.userRole === 'member' ? 'bg-green-100 text-green-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
@@ -311,7 +315,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                                 onClose();
                                 navigate(`/teams/${team.id}`);
                               }}
-                              className="px-3 py-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                              className="px-3 py-1 text-(--color-primary-600) hover:text-(--color-primary-700) text-sm font-medium"
                             >
                               {team.userRole === 'owner' || team.userRole === 'admin' ? 'Manage' : 'View'}
                             </button>
@@ -325,29 +329,29 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                   </div>
                 )}
 
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mt-6 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Users className="text-blue-600" size={20} />
-                    <h4 className="font-medium text-blue-900">Team Management</h4>
+                    <Users className="text-(--color-primary-600)" size={20} />
+                    <h4 className="font-medium text-(--color-primary-900)">Team Management</h4>
                   </div>
-                  <p className="text-sm text-blue-700 mb-3">
+                  <p className="text-sm text-(--color-primary-700) mb-3">
                     Create teams to organize your work, collaborate with colleagues, and manage shared notebooks.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-(--color-primary-700)">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-(--color-primary-500) rounded-full"></div>
                       <span>Shared workspace management</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-(--color-primary-500) rounded-full"></div>
                       <span>Member role assignments</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-(--color-primary-500) rounded-full"></div>
                       <span>Notebook sharing controls</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-(--color-primary-500) rounded-full"></div>
                       <span>Team-specific settings</span>
                     </div>
                   </div>
@@ -423,7 +427,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Language
                     </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)">
                       <option>English (US)</option>
                       <option>English (UK)</option>
                       <option>Spanish</option>
@@ -436,7 +440,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Timezone
                     </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)">
                       <option>UTC-8 (Pacific Time)</option>
                       <option>UTC-5 (Eastern Time)</option>
                       <option>UTC+0 (GMT)</option>
@@ -448,7 +452,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <label className="flex items-center">
                       <input 
                         type="checkbox" 
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                        className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                       />
                       <span className="ml-2 text-sm text-gray-700">Enable beta features</span>
                     </label>
@@ -476,7 +480,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs.notebooks}
                           onChange={() => setTabVisibility('notebooks', !visibleTabs.notebooks)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -488,7 +492,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs['agent-builder']}
                           onChange={() => setTabVisibility('agent-builder', !visibleTabs['agent-builder'])}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -500,7 +504,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs.workflows}
                           onChange={() => setTabVisibility('workflows', !visibleTabs.workflows)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -512,7 +516,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs.analytics}
                           onChange={() => setTabVisibility('analytics', !visibleTabs.analytics)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -524,7 +528,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs.community}
                           onChange={() => setTabVisibility('community', !visibleTabs.community)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -536,7 +540,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={visibleTabs.streaming}
                           onChange={() => setTabVisibility('streaming', !visibleTabs.streaming)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                     </div>
@@ -569,7 +573,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <div className="grid grid-cols-3 gap-3">
                       <button
                         className={`p-4 rounded-lg border-2 transition-colors ${
-                          currentMode === 'light' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          currentMode === 'light' ? 'border-(--color-primary-500) bg-(--color-primary-50)' : 'border-gray-200 hover:border-gray-300'
                         }`}
                         onClick={() => handleModeChange('light')}
                       >
@@ -578,7 +582,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       </button>
                       <button
                         className={`p-4 rounded-lg border-2 transition-colors ${
-                          currentMode === 'dark' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          currentMode === 'dark' ? 'border-(--color-primary-500) bg-(--color-primary-50)' : 'border-gray-200 hover:border-gray-300'
                         }`}
                         onClick={() => handleModeChange('dark')}
                       >
@@ -587,7 +591,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       </button>
                       <button
                         className={`p-4 rounded-lg border-2 transition-colors ${
-                          currentMode === 'system' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          currentMode === 'system' ? 'border-(--color-primary-500) bg-(--color-primary-50)' : 'border-gray-200 hover:border-gray-300'
                         }`}
                         onClick={() => handleModeChange('system')}
                       >
@@ -605,7 +609,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       </label>
                       <button
                         onClick={onOpenThemeCustomizer}
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
                       >
                         <Palette size={16} />
                         Customize Theme
@@ -663,9 +667,9 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                         <button
                           onClick={togglePauseNotifications}
                           className={`px-4 py-2 rounded-lg transition-colors ${
-                            notificationsPaused 
-                              ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
-                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            notificationsPaused
+                              ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                              : 'bg-(--color-primary-100) text-(--color-primary-700) hover:bg-(--color-primary-200)'
                           }`}
                         >
                           {notificationsPaused ? 'Resume' : 'Pause'}
@@ -688,7 +692,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={notifications.email}
                           onChange={() => handleNotificationChange('email')}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between">
@@ -697,7 +701,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={notifications.push}
                           onChange={() => handleNotificationChange('push')}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                       <label className="flex items-center justify-between">
@@ -706,7 +710,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           type="checkbox" 
                           checked={notifications.desktop}
                           onChange={() => handleNotificationChange('desktop')}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                         />
                       </label>
                     </div>
@@ -747,7 +751,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <input 
                       type="text" 
                       defaultValue={user?.full_name || user?.fullName || ''}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     />
                   </div>
                   
@@ -758,7 +762,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                     <input 
                       type="email" 
                       defaultValue={user?.email || ''}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     />
                   </div>
 
@@ -781,11 +785,60 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
 
             {activeTab === 'data' && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">Data Management</h3>
+                <h3 className="text-lg font-semibold mb-4">Data Sources</h3>
                 <div className="space-y-6">
-                  <div>
+                  {/* Database Connections Section */}
+                  <ConnectionList onCloseSettings={onClose} />
+
+                  {/* MCP Servers Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <McpServerStatus />
+                  </div>
+
+                  {/* Database Tools Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h4 className="font-medium text-gray-900 mb-3">Database Tools</h4>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Quick access to database exploration and query tools
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button
+                        onClick={() => {
+                          onClose();
+                          navigate('/schema-browser');
+                        }}
+                        className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-colors text-left"
+                      >
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <FolderTree size={20} className="text-purple-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">Schema Browser</div>
+                          <div className="text-sm text-gray-500">Explore database tables and columns</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          onClose();
+                          navigate('/query-console');
+                        }}
+                        className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-(--color-primary-50) hover:border-(--color-primary-300) transition-colors text-left"
+                      >
+                        <div className="p-2 bg-(--color-primary-100) rounded-lg">
+                          <Terminal size={20} className="text-(--color-primary-600)" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">Query Console</div>
+                          <div className="text-sm text-gray-500">Execute SQL queries and view results</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Export Data Section */}
+                  <div className="border-t border-gray-200 pt-6">
                     <h4 className="font-medium text-gray-900 mb-3">Export Data</h4>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors">
                       <Download size={16} />
                       Export All Data
                     </button>
@@ -793,7 +846,8 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       Download a copy of all your data in JSON format
                     </p>
                   </div>
-                  
+
+                  {/* Danger Zone Section */}
                   <div className="border-t border-gray-200 pt-6">
                     <h4 className="font-medium text-red-900 mb-3">Danger Zone</h4>
                     <button className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors">
@@ -818,7 +872,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
             >
               Done
             </button>

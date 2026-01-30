@@ -170,7 +170,7 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
               className={`p-2 rounded-lg transition-colors ${
                 agent.status === 'published' 
                   ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)'
               }`}
               title={agent.status === 'published' ? 'Unpublish Agent' : 'Publish Agent'}
             >
@@ -418,7 +418,7 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
                 </button>
                 <button 
                   onClick={() => onEditAgent && onEditAgent(agent)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
                 >
                   <Edit size={16} />
                   Edit Configuration

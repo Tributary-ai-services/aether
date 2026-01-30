@@ -72,7 +72,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => handleChange('fullName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   placeholder="John Doe"
                 />
               </div>
@@ -87,7 +87,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="john.doe@example.com"
                   />
                 </div>
@@ -103,7 +103,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
@@ -117,7 +117,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleChange('title', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   placeholder="Senior Developer"
                 />
               </div>
@@ -132,7 +132,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                     type="text"
                     value={formData.department}
                     onChange={(e) => handleChange('department', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="Engineering"
                   />
                 </div>
@@ -148,7 +148,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                     type="text"
                     value={formData.location}
                     onChange={(e) => handleChange('location', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="San Francisco, CA"
                   />
                 </div>
@@ -163,7 +163,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
                 value={formData.bio}
                 onChange={(e) => handleChange('bio', e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 placeholder="Tell us a bit about yourself..."
               />
               <p className="text-sm text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
@@ -181,7 +181,7 @@ const EditProfileModal = ({ isOpen, onClose, onSave }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors flex items-center gap-2"
             >
               <Save size={18} />
               Save Changes

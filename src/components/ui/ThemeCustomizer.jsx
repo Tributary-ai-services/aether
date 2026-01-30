@@ -112,7 +112,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                   onClick={() => setActiveTab(id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                     activeTab === id
-                      ? 'bg-blue-100 text-blue-700'
+                      ? 'bg-(--color-primary-100) text-(--color-primary-700)'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -132,7 +132,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                   {Object.entries(themePresets).map(([key, preset]) => (
                     <div
                       key={key}
-                      className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-300 transition-colors"
+                      className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-(--color-primary-300) transition-colors"
                       onClick={() => handlePresetSelect(key)}
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -169,7 +169,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                       type="text"
                       value={localBranding.appName}
                       onChange={(e) => handleBrandingChange('appName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                       placeholder="Enter application name"
                     />
                   </div>
@@ -182,7 +182,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                       type="text"
                       value={localBranding.tagline}
                       onChange={(e) => handleBrandingChange('tagline', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                       placeholder="Enter tagline"
                     />
                   </div>
@@ -195,7 +195,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                       type="url"
                       value={localBranding.logoUrl || ''}
                       onChange={(e) => handleBrandingChange('logoUrl', e.target.value || null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                       placeholder="Enter logo URL (leave empty for text logo)"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -211,7 +211,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                       type="url"
                       value={localBranding.faviconUrl}
                       onChange={(e) => handleBrandingChange('faviconUrl', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                       placeholder="Enter favicon URL"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -262,7 +262,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
                     </p>
                     <button
                       onClick={exportTheme}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
                     >
                       <Download size={16} />
                       Export Theme
@@ -310,7 +310,7 @@ const ThemeCustomizer = ({ isOpen, onClose }) => {
           <div className="flex justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
             >
               Done
             </button>

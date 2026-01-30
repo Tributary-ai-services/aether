@@ -9,6 +9,16 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
   const messagesEndRef = useRef(null);
   const { startExecution, stopExecution, loading, error } = useAgentExecution(agent?.id);
 
+  // DEBUG: Log agent data when modal opens
+  useEffect(() => {
+    if (isOpen && agent) {
+      console.log('AgentTestModal - Agent data:', JSON.stringify(agent, null, 2));
+      console.log('AgentTestModal - Agent type:', agent?.type, '| typeof:', typeof agent?.type);
+      console.log('AgentTestModal - Agent Type (capital):', agent?.Type, '| typeof:', typeof agent?.Type);
+      console.log('AgentTestModal - All agent keys:', Object.keys(agent));
+    }
+  }, [isOpen, agent]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -189,7 +199,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
           
           <div className={`rounded-lg px-4 py-2 ${
             isUser 
-              ? 'bg-blue-600 text-white' 
+              ? 'bg-(--color-primary-600) text-(--color-primary-contrast)' 
               : isError 
                 ? 'bg-red-50 border border-red-200 text-red-800'
                 : 'bg-white border border-gray-200'
@@ -259,7 +269,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
                   {agent?.type === 'conversational' ? '💬 Conversational' :
                    agent?.type === 'qa' ? '❓ Q&A' :
                    agent?.type === 'producer' ? '✨ Producer' :
-                   'Unknown Type'}
+                   `Unknown Type (raw: "${agent?.type}")`}
                 </span>
               </div>
             </div>
@@ -330,7 +340,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
                 }}
                 placeholder="Type your message..."
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
                 disabled={loading}
               />
             </div>
@@ -339,7 +349,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
               <button
                 onClick={handleSendMessage}
                 disabled={!message.trim() || loading}
-                className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-3 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {loading ? (
                   <>

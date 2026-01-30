@@ -79,7 +79,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
       label: 'Edit',
       description: 'Can edit notebook content and settings',
       icon: Edit,
-      color: 'text-blue-600'
+      color: 'text-(--color-primary-600)'
     },
     {
       value: 'admin',
@@ -96,7 +96,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
     
     const colorMap = {
       'text-gray-600': 'bg-gray-100 text-gray-800',
-      'text-blue-600': 'bg-blue-100 text-blue-800',
+      'text-(--color-primary-600)': 'bg-(--color-primary-100) text-(--color-primary-700)',
       'text-purple-600': 'bg-purple-100 text-purple-800'
     };
     
@@ -268,7 +268,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
             <h3 className="font-medium text-gray-900">Teams with Access</h3>
             <button
               onClick={() => setShowAddShare(true)}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm"
+              className="flex items-center gap-2 text-(--color-primary-600) hover:text-(--color-primary-700) text-sm"
             >
               <Plus size={16} />
               Add Access
@@ -281,7 +281,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
               <p className="text-gray-600 text-sm">No teams have access yet</p>
               <button
                 onClick={() => setShowAddShare(true)}
-                className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                className="mt-2 text-(--color-primary-600) hover:text-(--color-primary-700) text-sm"
               >
                 Share with teams, users, or organizations
               </button>
@@ -355,12 +355,12 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
 
         {/* Add Share Form */}
         {showAddShare && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-blue-900">Add Access</h4>
+              <h4 className="font-medium text-(--color-primary-700)">Add Access</h4>
               <button
                 onClick={() => setShowAddShare(false)}
-                className="text-blue-600 hover:text-blue-800"
+                className="text-(--color-primary-600) hover:text-(--color-primary-700)"
               >
                 <X size={16} />
               </button>
@@ -381,7 +381,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                     shareType === 'team'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50) text-(--color-primary-700)'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -397,7 +397,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                     shareType === 'user'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50) text-(--color-primary-700)'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -413,7 +413,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                     shareType === 'organization'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50) text-(--color-primary-700)'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -435,7 +435,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   placeholder={`Search ${shareType === 'team' ? 'teams' : shareType === 'user' ? 'users' : 'organizations'}...`}
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                 />
               </div>
               
@@ -447,7 +447,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                     <label
                       key={team.id}
                       className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                        selectedTeam === team.id ? 'bg-blue-100' : 'hover:bg-gray-100'
+                        selectedTeam === team.id ? 'bg-(--color-primary-100)' : 'hover:bg-gray-100'
                       }`}
                     >
                       <input
@@ -466,7 +466,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                         <div className="text-xs text-gray-500">{team.memberCount} members</div>
                       </div>
                       {selectedTeam === team.id && (
-                        <Check className="text-blue-600" size={16} />
+                        <Check className="text-(--color-primary-600)" size={16} />
                       )}
                     </label>
                   );
@@ -477,7 +477,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   <label
                     key={user.id}
                     className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                      selectedUser === user.id.toString() ? 'bg-blue-100' : 'hover:bg-gray-100'
+                      selectedUser === user.id.toString() ? 'bg-(--color-primary-100)' : 'hover:bg-gray-100'
                     }`}
                   >
                     <input
@@ -499,7 +499,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                       </div>
                     </div>
                     {selectedUser === user.id.toString() && (
-                      <Check className="text-blue-600" size={16} />
+                      <Check className="text-(--color-primary-600)" size={16} />
                     )}
                   </label>
                 ))}
@@ -509,7 +509,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   <label
                     key={org.id}
                     className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                      selectedOrganization === org.id.toString() ? 'bg-blue-100' : 'hover:bg-gray-100'
+                      selectedOrganization === org.id.toString() ? 'bg-(--color-primary-100)' : 'hover:bg-gray-100'
                     }`}
                   >
                     <input
@@ -530,7 +530,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                       </div>
                     </div>
                     {selectedOrganization === org.id.toString() && (
-                      <Check className="text-blue-600" size={16} />
+                      <Check className="text-(--color-primary-600)" size={16} />
                     )}
                   </label>
                 ))}
@@ -567,7 +567,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                       key={option.value}
                       className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                         selectedPermission === option.value
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-(--color-primary-500) bg-(--color-primary-50)'
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -585,7 +585,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                         <div className="text-sm text-gray-600">{option.description}</div>
                       </div>
                       {selectedPermission === option.value && (
-                        <Check className="text-blue-600" size={16} />
+                        <Check className="text-(--color-primary-600)" size={16} />
                       )}
                     </label>
                   );
@@ -609,7 +609,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   (shareType === 'user' && !selectedUser) ||
                   (shareType === 'organization' && !selectedOrganization)
                 }
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
               >
                 {loading ? (
                   <>

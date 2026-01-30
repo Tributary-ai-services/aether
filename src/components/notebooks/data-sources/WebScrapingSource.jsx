@@ -46,8 +46,8 @@ const SCRAPER_INFO = {
     name: 'Crawl4AI',
     description: 'Browser-based scraping with JavaScript support.',
     icon: Globe,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
+    color: 'text-(--color-primary-600)',
+    bgColor: 'bg-(--color-primary-50)',
   },
   [SCRAPER_TYPES.ARCHIVE_ORG]: {
     name: 'Archive.org',
@@ -222,10 +222,10 @@ const WebScrapingSource = ({
 
     if (urlProbe.status === 'probing') {
       return (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mt-4 p-4 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg">
           <div className="flex items-center space-x-3">
-            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-            <span className="text-blue-700">Analyzing URL...</span>
+            <Loader2 className="w-5 h-5 text-(--color-primary-600) animate-spin" />
+            <span className="text-(--color-primary-700)">Analyzing URL...</span>
           </div>
         </div>
       );
@@ -295,14 +295,14 @@ const WebScrapingSource = ({
             </div>
 
             {/* Archive Available */}
-            <div className={`p-3 rounded-lg ${result.isArchiveAvailable ? 'bg-blue-50 border border-blue-200' : 'bg-gray-100'}`}>
+            <div className={`p-3 rounded-lg ${result.isArchiveAvailable ? 'bg-(--color-primary-50) border border-(--color-primary-200)' : 'bg-gray-100'}`}>
               <div className="flex items-center space-x-2">
                 {result.isArchiveAvailable ? (
-                  <Archive className="w-4 h-4 text-blue-600" />
+                  <Archive className="w-4 h-4 text-(--color-primary-600)" />
                 ) : (
                   <X className="w-4 h-4 text-gray-400" />
                 )}
-                <span className={`text-sm font-medium ${result.isArchiveAvailable ? 'text-blue-700' : 'text-gray-500'}`}>
+                <span className={`text-sm font-medium ${result.isArchiveAvailable ? 'text-(--color-primary-700)' : 'text-gray-500'}`}>
                   Archive
                 </span>
               </div>
@@ -336,7 +336,7 @@ const WebScrapingSource = ({
                     disabled={key === SCRAPER_TYPES.MANUAL}
                     className={`p-3 rounded-lg border text-left transition-all ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                        ? 'border-(--color-primary-500) bg-(--color-primary-50) ring-2 ring-(--color-primary-200)'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     } ${key === SCRAPER_TYPES.MANUAL ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
@@ -370,7 +370,7 @@ const WebScrapingSource = ({
                 className={`w-full px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
                   scraping.status === 'scraping'
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)'
                 }`}
               >
                 {scraping.status === 'scraping' ? (
@@ -517,7 +517,7 @@ const WebScrapingSource = ({
                 value={url}
                 onChange={handleUrlChange}
                 placeholder="https://example.com/article"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                   urlError ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}
               />
@@ -528,7 +528,7 @@ const WebScrapingSource = ({
               className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
                 !url || !!urlError || urlProbe.status === 'probing'
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)'
               }`}
             >
               {urlProbe.status === 'probing' ? (
@@ -552,18 +552,18 @@ const WebScrapingSource = ({
 
         {/* Info Section - show only when idle */}
         {urlProbe.status === 'idle' && (
-          <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-8 p-4 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg">
             <div className="flex items-start space-x-3">
-              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <Info className="w-5 h-5 text-(--color-primary-600) mt-0.5 flex-shrink-0" />
               <div className="text-sm">
-                <h4 className="font-medium text-blue-900">How it works</h4>
-                <ol className="mt-2 text-blue-700 list-decimal list-inside space-y-1">
+                <h4 className="font-medium text-(--color-primary-700)">How it works</h4>
+                <ol className="mt-2 text-(--color-primary-700) list-decimal list-inside space-y-1">
                   <li>Enter a URL and click "Analyze"</li>
                   <li>We detect AI-friendly content (llms.txt, ai.txt) and site requirements</li>
                   <li>Select a scraper (or use our recommendation)</li>
                   <li>Preview the content and add it to your notebook</li>
                 </ol>
-                <p className="mt-3 text-blue-600">
+                <p className="mt-3 text-(--color-primary-600)">
                   <strong>Tip:</strong> Sites with llms.txt provide AI-optimized content for better results.
                 </p>
               </div>

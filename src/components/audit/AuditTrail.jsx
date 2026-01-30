@@ -247,11 +247,11 @@ const AuditTrail = ({ isOpen, onClose }) => {
         <div className="p-6">
           {/* Compliance Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-(--color-primary-50) rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-(--color-primary-600)">
                 {summaryLoading ? '...' : summary.totalViolations}
               </div>
-              <div className="text-sm text-blue-600">Total Violations</div>
+              <div className="text-sm text-(--color-primary-600)">Total Violations</div>
             </div>
             <div className="bg-green-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-green-600">
@@ -299,7 +299,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search rules, files..."
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   />
                 </div>
               </div>
@@ -310,7 +310,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                 <select
                   value={severityFilter}
                   onChange={(e) => { setSeverityFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 >
                   <option value="">All</option>
                   <option value="critical">Critical</option>
@@ -326,7 +326,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                 <select
                   value={complianceTypeFilter}
                   onChange={(e) => { setComplianceTypeFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 >
                   <option value="">All</option>
                   <option value="pii">PII</option>
@@ -343,7 +343,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                 <select
                   value={statusFilter}
                   onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 >
                   <option value="">All</option>
                   <option value="false">Unacknowledged</option>
@@ -363,7 +363,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                 <button
                   onClick={handleRefresh}
                   disabled={violationsLoading}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-md text-sm hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
                 >
                   <RefreshCw size={14} className={violationsLoading ? 'animate-spin' : ''} />
                 </button>
@@ -413,17 +413,17 @@ const AuditTrail = ({ isOpen, onClose }) => {
 
           {/* Bulk Action Bar */}
           {selectedIds.size > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+            <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-3 mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle size={18} className="text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">
+                <CheckCircle size={18} className="text-(--color-primary-600)" />
+                <span className="text-sm font-medium text-(--color-primary-700)">
                   {selectedIds.size} violation{selectedIds.size > 1 ? 's' : ''} selected
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                  className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700) hover:underline"
                 >
                   Clear selection
                 </button>
@@ -539,7 +539,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                     return rules.length > 0 ? rules.map(([rule, count]) => (
                       <div key={rule} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
                         <span className="text-sm font-medium text-gray-700 truncate">{rule}</span>
-                        <span className="text-lg font-bold text-blue-600 ml-2">{count}</span>
+                        <span className="text-lg font-bold text-(--color-primary-600) ml-2">{count}</span>
                       </div>
                     )) : (
                       <div className="col-span-full text-gray-500 text-center py-8">No violations to display</div>
@@ -567,7 +567,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                             }
                           }}
                           onChange={handleSelectAll}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-(--color-primary-600) border-gray-300 rounded focus:ring-(--color-primary-500)"
                           title="Select all unacknowledged"
                         />
                       </th>
@@ -612,14 +612,14 @@ const AuditTrail = ({ isOpen, onClose }) => {
                       </tr>
                     ) : (
                       filteredViolations.map((violation) => (
-                        <tr key={violation.id} className={`hover:bg-gray-50 ${selectedIds.has(violation.id) ? 'bg-blue-50' : ''}`}>
+                        <tr key={violation.id} className={`hover:bg-gray-50 ${selectedIds.has(violation.id) ? 'bg-(--color-primary-50)' : ''}`}>
                           <td className="px-4 py-4 whitespace-nowrap">
                             {!violation.acknowledged && (
                               <input
                                 type="checkbox"
                                 checked={selectedIds.has(violation.id)}
                                 onChange={() => toggleSelect(violation.id)}
-                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                className="w-4 h-4 text-(--color-primary-600) border-gray-300 rounded focus:ring-(--color-primary-500)"
                               />
                             )}
                           </td>
@@ -667,7 +667,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                                   setSelectedViolation(violation);
                                   setDetailModalOpen(true);
                                 }}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-(--color-primary-600) hover:text-(--color-primary-700)"
                                 title="View details"
                               >
                                 <Eye size={16} />
@@ -833,7 +833,7 @@ const AuditTrail = ({ isOpen, onClose }) => {
                   {(selectedViolation.actions_taken || selectedViolation.actionsTaken || []).map((action, index) => (
                     <span
                       key={index}
-                      className="inline-flex px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full"
+                      className="inline-flex px-3 py-1 text-sm font-medium bg-(--color-primary-100) text-(--color-primary-700) rounded-full"
                     >
                       {action}
                     </span>

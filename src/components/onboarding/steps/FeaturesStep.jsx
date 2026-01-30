@@ -98,8 +98,8 @@ const FeaturesStep = ({ onNext, onBack }) => {
       </div>
 
       {/* Quick Tip */}
-      <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4 mb-8">
-        <p className="text-sm text-blue-900">
+      <div className="bg-(--color-primary-50) border-l-4 border-(--color-primary-500) rounded-r-lg p-4 mb-8">
+        <p className="text-sm text-(--color-primary-900)">
           <span className="font-semibold">Pro Tip:</span> Start by uploading a few documents to your "Getting Started" notebook, then create an AI agent to ask questions about them!
         </p>
       </div>
@@ -114,7 +114,7 @@ const FeaturesStep = ({ onNext, onBack }) => {
         </button>
         <button
           onClick={onNext}
-          className="px-8 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg hover:shadow-xl"
+          className="px-8 py-2.5 bg-(--color-primary-600) text-(--color-primary-contrast) font-medium rounded-lg hover:bg-(--color-primary-700) transition-colors duration-200 shadow-lg hover:shadow-xl"
         >
           Continue
         </button>

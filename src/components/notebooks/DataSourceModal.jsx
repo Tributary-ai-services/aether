@@ -266,12 +266,12 @@ const DataSourceModal = ({
         </div>
 
         {/* Info Section */}
-        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mt-8 p-4 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-(--color-primary-600) mt-0.5 flex-shrink-0" />
             <div>
-              <h4 className="font-medium text-blue-900 text-sm">Data Source Options</h4>
-              <p className="text-blue-700 text-sm mt-1">
+              <h4 className="font-medium text-(--color-primary-900) text-sm">Data Source Options</h4>
+              <p className="text-(--color-primary-700) text-sm mt-1">
                 <strong>File Upload</strong>, <strong>Text Input</strong>, <strong>Web Scraping</strong>, and <strong>Database</strong> connections are now available.
                 More integrations including Google Drive and cloud storage are coming soon.
               </p>

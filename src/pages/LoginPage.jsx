@@ -157,7 +157,7 @@ const LoginPage = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) transition-colors ${
                     formErrors.email 
                       ? 'border-red-300 bg-red-50' 
                       : 'border-gray-300 bg-white hover:border-gray-400'
@@ -190,7 +190,7 @@ const LoginPage = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) transition-colors ${
                     formErrors.password 
                       ? 'border-red-300 bg-red-50' 
                       : 'border-gray-300 bg-white hover:border-gray-400'
@@ -227,7 +227,7 @@ const LoginPage = () => {
                 type="checkbox"
                 checked={formData.rememberMe}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-blue-600 focus:ring-(--color-primary-500) border-gray-300 rounded"
               />
               <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -235,7 +235,7 @@ const LoginPage = () => {
             </div>
             <a
               href="#"
-              className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+              className="text-sm text-(--color-primary-600) hover:text-(--color-primary-500) font-medium"
               onClick={(e) => {
                 e.preventDefault();
                 navigate('/forgot-password');
@@ -249,7 +249,7 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-(--color-primary-600) hover:bg-(--color-primary-700) focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--color-primary-500) disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? (
               <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ const LoginPage = () => {
             Don't have an account?{' '}
             <a
               href="#"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-medium text-(--color-primary-600) hover:text-(--color-primary-500)"
               onClick={(e) => {
                 e.preventDefault();
                 // Redirect to Keycloak registration page

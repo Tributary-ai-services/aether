@@ -174,7 +174,7 @@ const NotebookManager = ({
           <div className="mb-6">
             <button
               onClick={() => setShowStats(!showStats)}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+              className="flex items-center gap-2 text-(--color-primary-600) hover:text-(--color-primary-700)"
             >
               <BarChart3 size={16} />
               {showStats ? 'Hide' : 'Show'} Statistics
@@ -183,7 +183,7 @@ const NotebookManager = ({
             {showStats && (
               <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{notebooks?.length || 0}</div>
+                  <div className="text-2xl font-bold text-(--color-primary-600)">{notebooks?.length || 0}</div>
                   <div className="text-sm text-gray-600">Total Notebooks</div>
                 </div>
                 <div className="text-center">
@@ -226,7 +226,7 @@ const NotebookManager = ({
             <button
               onClick={handleExport}
               disabled={loading || parentLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
             >
               <Download size={16} />
               Export {selectedNotebooks.size > 0 ? `(${selectedNotebooks.size})` : 'All'}
@@ -279,7 +279,7 @@ const NotebookManager = ({
             </span>
             <button
               onClick={selectAll}
-              className="text-blue-600 hover:text-blue-800"
+              className="text-(--color-primary-600) hover:text-(--color-primary-700)"
             >
               Select All
             </button>
@@ -325,7 +325,7 @@ const NotebookManager = ({
                 {notebooks.map(notebook => (
                   <tr 
                     key={notebook.id}
-                    className={`hover:bg-gray-50 ${selectedNotebooks.has(notebook.id) ? 'bg-blue-50' : ''}`}
+                    className={`hover:bg-gray-50 ${selectedNotebooks.has(notebook.id) ? 'bg-(--color-primary-50)' : ''}`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
@@ -344,7 +344,7 @@ const NotebookManager = ({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         notebook.visibility === 'public' ? 'bg-green-100 text-green-800' :
-                        notebook.visibility === 'shared' ? 'bg-blue-100 text-blue-800' :
+                        notebook.visibility === 'shared' ? 'bg-(--color-primary-100) text-(--color-primary-700)' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {notebook.visibility}
@@ -375,7 +375,7 @@ const NotebookManager = ({
                         permission="create"
                         onClick={() => handleDuplicate(notebook)}
                         disabled={loading || parentLoading}
-                        className="text-blue-600 hover:text-blue-900 mr-3 p-1"
+                        className="text-(--color-primary-600) hover:text-(--color-primary-700) mr-3 p-1"
                         disabledClassName="text-gray-400 mr-3 p-1 cursor-not-allowed"
                         disabledTitle="You need create permission to duplicate"
                         title="Duplicate"

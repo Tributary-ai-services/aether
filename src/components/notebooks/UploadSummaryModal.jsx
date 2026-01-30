@@ -131,7 +131,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
       onClose={onClose} 
       title={
         <div className="flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-indigo-600" />
+          <Sparkles className="h-6 w-6 text-(--color-primary-600)" />
           Upload Summary: {uploadResults.length === 1
             ? (uploadResults[0]?.value?.filename || uploadResults[0]?.value?.metadata?.original_name || uploadResults[0]?.value?.original_name || uploadResults[0]?.value?.name || 'Document')
             : `${uploadResults.length} Documents`}
@@ -148,7 +148,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                   onClick={() => setActiveTab('summary')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'summary'
-                      ? 'border-indigo-500 text-indigo-600'
+                      ? 'border-(--color-primary-500) text-(--color-primary-600)'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -158,7 +158,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                   onClick={() => setActiveTab('insights')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'insights'
-                      ? 'border-indigo-500 text-indigo-600'
+                      ? 'border-(--color-primary-500) text-(--color-primary-600)'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -168,7 +168,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                   onClick={() => setActiveTab('files')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'files'
-                      ? 'border-indigo-500 text-indigo-600'
+                      ? 'border-(--color-primary-500) text-(--color-primary-600)'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -181,7 +181,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
         <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--color-primary-600)"></div>
                 <span className="ml-2 text-gray-600">Analyzing content...</span>
               </div>
             ) : (
@@ -235,8 +235,8 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                   <div className="space-y-6">
                     {/* Content Insights */}
                     {overallInsights.content_insights && (
-                      <div className="bg-indigo-50 rounded-lg p-4">
-                        <h3 className="font-medium text-indigo-900 mb-3 flex items-center gap-2">
+                      <div className="bg-(--color-primary-50) rounded-lg p-4">
+                        <h3 className="font-medium text-(--color-primary-900) mb-3 flex items-center gap-2">
                           <BarChart3 className="h-5 w-5" />
                           Content Analysis
                         </h3>
@@ -250,7 +250,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                             <div className="flex items-center gap-2">
                               <div className="flex-1 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className="bg-indigo-600 h-2 rounded-full"
+                                  className="bg-(--color-primary-600) h-2 rounded-full"
                                   style={{ width: `${overallInsights.content_insights.avg_readability * 100}%` }}
                                 />
                               </div>
@@ -262,7 +262,7 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                               <p className="text-sm text-gray-600 mb-1 cursor-help" title="The main subjects and themes automatically identified in your document">Key Topics</p>
                               <div className="flex flex-wrap gap-2">
                                 {overallInsights.content_insights.key_topics.map((topic, idx) => (
-                                  <span key={idx} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md text-xs">
+                                  <span key={idx} className="px-2 py-1 bg-(--color-primary-100) text-(--color-primary-700) rounded-md text-xs">
                                     {topic}
                                   </span>
                                 ))}
@@ -300,12 +300,12 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
 
                     {/* Recommendations */}
                     {overallInsights.recommendations && overallInsights.recommendations.length > 0 && (
-                      <div className="bg-blue-50 rounded-lg p-4">
-                        <h3 className="font-medium text-blue-900 mb-3">AI Recommendations</h3>
+                      <div className="bg-(--color-primary-50) rounded-lg p-4">
+                        <h3 className="font-medium text-(--color-primary-900) mb-3">AI Recommendations</h3>
                         <ul className="space-y-2">
                           {overallInsights.recommendations.map((rec, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                              <span className="text-blue-500 mt-0.5">•</span>
+                              <span className="text-(--color-primary-500) mt-0.5">•</span>
                               <span>{rec}</span>
                             </li>
                           ))}

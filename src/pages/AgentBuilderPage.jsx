@@ -147,7 +147,7 @@ const AgentBuilderPage = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--color-primary-600)"></div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ const AgentBuilderPage = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleCreateAgent}
-            className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors bg-blue-600 text-white hover:bg-blue-700"
+            className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)"
           >
             <Plus size={16} />
             Create Agent
@@ -213,7 +213,7 @@ const AgentBuilderPage = () => {
               <p className="text-gray-600 mb-4">Create your first intelligent agent to get started</p>
               <button 
                 onClick={handleCreateAgent}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
+                className="px-6 py-3 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors flex items-center gap-2 mx-auto"
               >
                 <Plus size={16} />
                 Create Your First Agent
@@ -222,11 +222,11 @@ const AgentBuilderPage = () => {
           )}
         </LoadingWrapper>
       ) : (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border border-blue-200 p-8">
+        <div className="bg-gradient-to-br from-(--color-primary-50) to-(--color-primary-100) rounded-xl border border-(--color-primary-200) p-8">
           <div className="text-center max-w-2xl mx-auto">
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center">
+                <div className="w-20 h-20 bg-(--color-primary-600) rounded-2xl flex items-center justify-center">
                   <Brain className="text-white" size={32} />
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">

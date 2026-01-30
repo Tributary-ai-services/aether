@@ -41,8 +41,8 @@ const DocumentAnalysisModal = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-(--color-primary-100) rounded-lg">
+              <BarChart3 className="w-5 h-5 text-(--color-primary-600)" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Document Analysis</h2>
@@ -114,7 +114,7 @@ const DocumentAnalysisModal = ({
                     {analysis.data.main_topics.map((topic, index) => (
                       <span 
                         key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-(--color-primary-100) text-(--color-primary-700)"
                       >
                         <Tag className="w-3 h-3 mr-1" />
                         {topic}
@@ -208,7 +208,7 @@ const DocumentAnalysisModal = ({
                         href={sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm break-all"
+                        className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm break-all"
                       >
                         {sourceUrl}
                       </a>
@@ -218,12 +218,12 @@ const DocumentAnalysisModal = ({
               )}
 
               {/* Processing info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
+              <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4 text-left max-w-md mx-auto">
                 <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Info className="w-5 h-5 text-(--color-primary-600) flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
-                    <p className="text-blue-800 font-medium mb-1">What's being analyzed?</p>
-                    <ul className="text-blue-700 list-disc list-inside space-y-1">
+                    <p className="text-(--color-primary-700) font-medium mb-1">What's being analyzed?</p>
+                    <ul className="text-(--color-primary-600) list-disc list-inside space-y-1">
                       <li>Compliance and PII detection</li>
                       <li>Content quality assessment</li>
                       <li>Topic and entity extraction</li>
@@ -245,7 +245,7 @@ const DocumentAnalysisModal = ({
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <div className="text-xs text-gray-500 mb-1">Status</div>
-                  <div className="text-sm font-medium text-blue-600 capitalize flex items-center gap-1">
+                  <div className="text-sm font-medium text-(--color-primary-600) capitalize flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Processing
                   </div>

@@ -137,7 +137,7 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--color-primary-600)"></div>
           <span className="ml-2 text-gray-600">Loading preview...</span>
         </div>
       );
@@ -152,7 +152,7 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
             <p className="text-gray-600 text-sm">{error}</p>
             <button 
               onClick={fetchDocumentDetails}
-              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="mt-3 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded hover:bg-(--color-primary-700)"
             >
               Retry
             </button>
@@ -204,7 +204,7 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
               <div className="text-center">
                 {imageLoading ? (
                   <div className="flex items-center justify-center h-48">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--color-primary-600)"></div>
                     <span className="ml-2 text-gray-600">Loading image...</span>
                   </div>
                 ) : imageUrl ? (
@@ -223,7 +223,7 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
                     <p className="text-gray-500 text-sm">Unable to load image preview</p>
                     <button 
                       onClick={() => loadImagePreview(documentDetails.id)}
-                      className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      className="mt-2 px-3 py-1 bg-(--color-primary-600) text-(--color-primary-contrast) text-sm rounded hover:bg-(--color-primary-700)"
                     >
                       Retry
                     </button>
@@ -260,7 +260,7 @@ const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
               </p>
               {documentDetails.status === 'processing' && (
                 <div className="inline-flex items-center gap-2 text-blue-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-(--color-primary-600)"></div>
                   <span className="text-sm">Processing document...</span>
                 </div>
               )}
@@ -996,7 +996,7 @@ const NotebooksPage = () => {
                   dispatch(setSelectedNotebook(null));
                   dispatch(setViewMode('cards'));
                 }}
-                className="text-blue-600 hover:text-blue-700 transition-colors"
+                className="text-(--color-primary-600) hover:text-(--color-primary-700) transition-colors"
               >
                 <h2 className="text-xl font-semibold">Notebooks</h2>
               </button>
@@ -1147,7 +1147,7 @@ const NotebooksPage = () => {
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleCreateSubNotebook(selectedNotebook)}
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                        className="flex items-center gap-1 text-(--color-primary-600) hover:text-(--color-primary-700) text-xs px-2 py-1 rounded hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
                         title="Create sub-notebook"
                       >
                         <Folder size={12} />
@@ -1210,7 +1210,7 @@ const NotebooksPage = () => {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={handleBulkDownload}
-                                className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
+                                className="p-1 hover:bg-blue-100 rounded text-(--color-primary-600) hover:text-(--color-primary-700)"
                                 title={`Download ${selectedDocuments.size} selected`}
                               >
                                 <DownloadCloud size={14} />
@@ -1343,7 +1343,7 @@ const NotebooksPage = () => {
                                           e.stopPropagation();
                                           handleShowMLStats(document);
                                         }}
-                                        className="p-1 hover:bg-blue-100 rounded text-blue-600 hover:text-blue-700"
+                                        className="p-1 hover:bg-blue-100 rounded text-(--color-primary-600) hover:text-(--color-primary-700)"
                                         title="View ML Analysis"
                                       >
                                         <BarChart3 size={14} />
@@ -1369,7 +1369,7 @@ const NotebooksPage = () => {
                             <div className="text-sm">No documents uploaded</div>
                             <button 
                               onClick={() => handleUploadDocuments(selectedNotebook)}
-                              className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
+                              className="mt-2 text-(--color-primary-600) hover:text-(--color-primary-700) text-sm underline"
                             >
                               Upload documents
                             </button>
@@ -1445,9 +1445,9 @@ const NotebooksPage = () => {
                       <input
                         type="text"
                         placeholder="Ask questions about your notebook content..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                       />
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <button className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors">
                         Send
                       </button>
                     </div>
@@ -1486,7 +1486,7 @@ const NotebooksPage = () => {
                       <input
                         type="text"
                         placeholder="Add a comment for collaborators..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) text-sm"
                       />
                       <button className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
                         Comment

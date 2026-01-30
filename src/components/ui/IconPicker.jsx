@@ -91,7 +91,7 @@ const IconPicker = ({ value, onChange, onClose }) => {
           onClick={() => setActiveTab('icons')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'icons'
-              ? 'text-blue-600 border-blue-600'
+              ? 'text-(--color-primary-600) border-(--color-primary-600)'
               : 'text-gray-500 border-transparent hover:text-gray-700'
           }`}
         >
@@ -101,7 +101,7 @@ const IconPicker = ({ value, onChange, onClose }) => {
           onClick={() => setActiveTab('upload')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'upload'
-              ? 'text-blue-600 border-blue-600'
+              ? 'text-(--color-primary-600) border-(--color-primary-600)'
               : 'text-gray-500 border-transparent hover:text-gray-700'
           }`}
         >
@@ -120,7 +120,7 @@ const IconPicker = ({ value, onChange, onClose }) => {
                 onClick={() => handleIconSelect(iconItem.id)}
                 className={`p-3 rounded-lg border-2 transition-all hover:bg-gray-50 ${
                   isSelected(iconItem.id)
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-(--color-primary-500) bg-(--color-primary-50)'
                     : 'border-gray-200'
                 }`}
                 title={iconItem.label}
@@ -142,7 +142,7 @@ const IconPicker = ({ value, onChange, onClose }) => {
             <p className="text-xs text-gray-500 mb-4">
               PNG, JPG up to 2MB. Recommended: 64x64px
             </p>
-            <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+            <label className="inline-flex items-center px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) cursor-pointer">
               <Upload size={16} className="mr-2" />
               Choose File
               <input
@@ -188,7 +188,7 @@ const IconPicker = ({ value, onChange, onClose }) => {
         </button>
         <button
           onClick={onClose}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
         >
           Save
         </button>

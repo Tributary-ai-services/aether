@@ -31,7 +31,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
       label: 'Organization',
       description: 'All organization members can see this team',
       icon: Shield,
-      color: 'text-blue-600'
+      color: 'text-(--color-primary-600)'
     },
     {
       value: 'public',
@@ -130,7 +130,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
             type="text"
             value={formData.name}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) ${
               errors.name ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Enter team name"
@@ -152,7 +152,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
             rows={3}
             value={formData.description}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) resize-none ${
               errors.description ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Briefly describe your team's purpose (optional)"
@@ -179,7 +179,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
                   key={option.value}
                   className={`relative flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
                     formData.visibility === option.value
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50)'
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
@@ -204,7 +204,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
                     </div>
                   </div>
                   {formData.visibility === option.value && (
-                    <div className="absolute top-3 right-3 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                    <div className="absolute top-3 right-3 w-5 h-5 bg-(--color-primary-600) rounded-full flex items-center justify-center">
                       <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -229,7 +229,7 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

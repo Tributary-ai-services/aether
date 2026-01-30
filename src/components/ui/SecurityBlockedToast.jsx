@@ -57,14 +57,14 @@ const severityStyles = {
     badge: 'bg-yellow-100 text-yellow-800'
   },
   low: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-300',
-    icon: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-    title: 'text-blue-800',
-    text: 'text-blue-700',
-    subtext: 'text-blue-500',
-    badge: 'bg-blue-100 text-blue-800'
+    bg: 'bg-(--color-primary-50)',
+    border: 'border-(--color-primary-300)',
+    icon: 'bg-(--color-primary-100)',
+    iconColor: 'text-(--color-primary-600)',
+    title: 'text-(--color-primary-700)',
+    text: 'text-(--color-primary-600)',
+    subtext: 'text-(--color-primary-500)',
+    badge: 'bg-(--color-primary-100) text-(--color-primary-700)'
   }
 };
 

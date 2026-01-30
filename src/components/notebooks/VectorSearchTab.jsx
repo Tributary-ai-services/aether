@@ -214,7 +214,7 @@ const VectorSearchTab = ({ notebook }) => {
                 onChange={(e) => setQueryText(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter your search query..."
-                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 disabled={isSearching}
               />
               <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -222,7 +222,7 @@ const VectorSearchTab = ({ notebook }) => {
             <button
               onClick={handleSearch}
               disabled={isSearching || !queryText.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSearching ? (
                 <>
@@ -255,7 +255,7 @@ const VectorSearchTab = ({ notebook }) => {
                   e.stopPropagation();
                   resetOptions();
                 }}
-                className="text-xs text-blue-600 hover:text-blue-700"
+                className="text-xs text-(--color-primary-600) hover:text-(--color-primary-700)"
               >
                 Reset to Defaults
               </button>
@@ -282,7 +282,7 @@ const VectorSearchTab = ({ notebook }) => {
                     max="100"
                     value={options.topK}
                     onChange={(e) => setOptions(prev => ({ ...prev, topK: parseInt(e.target.value) || 10 }))}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                   />
                 </div>
                 <div>
@@ -301,7 +301,7 @@ const VectorSearchTab = ({ notebook }) => {
                     step="0.01"
                     value={options.minScore}
                     onChange={(e) => setOptions(prev => ({ ...prev, minScore: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                   />
                 </div>
                 <div>
@@ -321,7 +321,7 @@ const VectorSearchTab = ({ notebook }) => {
                     value={options.threshold || ''}
                     onChange={(e) => setOptions(prev => ({ ...prev, threshold: e.target.value ? parseFloat(e.target.value) : null }))}
                     placeholder="None"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                   />
                 </div>
                 <div>
@@ -340,7 +340,7 @@ const VectorSearchTab = ({ notebook }) => {
                     value={options.maxDistance || ''}
                     onChange={(e) => setOptions(prev => ({ ...prev, maxDistance: e.target.value ? parseFloat(e.target.value) : null }))}
                     placeholder="None"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                   />
                 </div>
               </div>
@@ -353,7 +353,7 @@ const VectorSearchTab = ({ notebook }) => {
                       type="checkbox"
                       checked={options.deduplicate}
                       onChange={(e) => setOptions(prev => ({ ...prev, deduplicate: e.target.checked }))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
                     />
                     Deduplicate
                   </label>
@@ -367,7 +367,7 @@ const VectorSearchTab = ({ notebook }) => {
                       type="checkbox"
                       checked={options.groupByDocument}
                       onChange={(e) => setOptions(prev => ({ ...prev, groupByDocument: e.target.checked }))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
                     />
                     Group by document
                   </label>
@@ -381,7 +381,7 @@ const VectorSearchTab = ({ notebook }) => {
                       type="checkbox"
                       checked={options.rerank}
                       onChange={(e) => setOptions(prev => ({ ...prev, rerank: e.target.checked }))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
                     />
                     Apply reranking
                   </label>
@@ -400,7 +400,7 @@ const VectorSearchTab = ({ notebook }) => {
                   <Filter size={14} />
                   Metadata Filters
                   {metadataFilters.length > 0 && (
-                    <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded">
+                    <span className="bg-(--color-primary-100) text-(--color-primary-700) text-xs px-1.5 py-0.5 rounded">
                       {metadataFilters.filter(f => f.key && f.value).length}
                     </span>
                   )}
@@ -417,7 +417,7 @@ const VectorSearchTab = ({ notebook }) => {
                           placeholder="Key (e.g., language)"
                           value={filter.key}
                           onChange={(e) => updateFilter(index, 'key', e.target.value)}
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                           list="metadata-keys"
                         />
                         <span className="text-gray-400">=</span>
@@ -426,7 +426,7 @@ const VectorSearchTab = ({ notebook }) => {
                           placeholder="Value"
                           value={filter.value}
                           onChange={(e) => updateFilter(index, 'value', e.target.value)}
-                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-(--color-primary-500)"
                         />
                         <button
                           onClick={() => removeFilter(index)}
@@ -441,7 +441,7 @@ const VectorSearchTab = ({ notebook }) => {
                     {/* Add filter button */}
                     <button
                       onClick={addFilter}
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="text-xs text-(--color-primary-600) hover:text-(--color-primary-700) flex items-center gap-1"
                     >
                       + Add Filter
                     </button>

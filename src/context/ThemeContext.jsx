@@ -218,6 +218,32 @@ export const themePresets = {
         900: '#581c87'
       }
     }
+  },
+
+  rivian: {
+    name: 'Rivian Yellow',
+    ...defaultTheme,
+    branding: {
+      ...defaultTheme.branding,
+      appName: 'Rivian AI'
+    },
+    colors: {
+      ...defaultTheme.colors,
+      primary: {
+        50: '#fffbeb',
+        100: '#fef3c7',
+        200: '#fde68a',
+        300: '#fcd34d',
+        400: '#fbbf24',
+        500: '#f59e0b',
+        600: '#FFB100',  // Rivian Yellow
+        700: '#e89d00',  // Darker yellow (hover)
+        800: '#cc8200',  // Even darker (active)
+        900: '#a16207'
+      },
+      // Override info color to match primary for consistency
+      info: '#FFB100'
+    }
   }
 };
 
@@ -258,31 +284,59 @@ export const ThemeProvider = ({ children }) => {
     document.title = `${currentTheme.branding.appName} - ${currentTheme.branding.tagline}`;
   }, [currentTheme]);
 
+  // Helper function to calculate luminance for contrast detection
+  const getLuminance = (hex) => {
+    // Remove # if present and handle 3-digit hex
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+
   // Update CSS custom properties
   const updateCSSVariables = (theme) => {
     const root = document.documentElement;
-    
+
     // Primary colors
     Object.entries(theme.colors.primary).forEach(([key, value]) => {
       root.style.setProperty(`--color-primary-${key}`, value);
     });
-    
+
+    // Set contrast color (black for light backgrounds, white for dark)
+    const primaryLuminance = getLuminance(theme.colors.primary[600]);
+    const contrastColor = primaryLuminance > 0.5 ? '#000000' : '#ffffff';
+    root.style.setProperty('--color-primary-contrast', contrastColor);
+
     // Secondary colors
     Object.entries(theme.colors.secondary).forEach(([key, value]) => {
       root.style.setProperty(`--color-secondary-${key}`, value);
     });
-    
+
     // Accent colors
     Object.entries(theme.colors.accent).forEach(([key, value]) => {
       root.style.setProperty(`--color-accent-${key}`, value);
     });
-    
+
     // Status colors
     root.style.setProperty('--color-success', theme.colors.success);
     root.style.setProperty('--color-warning', theme.colors.warning);
     root.style.setProperty('--color-error', theme.colors.error);
     root.style.setProperty('--color-info', theme.colors.info);
-    
+
+    // Status color light/dark variants (for badges)
+    root.style.setProperty('--color-success-light', '#dcfce7'); // green-100
+    root.style.setProperty('--color-success-dark', '#166534');  // green-800
+    root.style.setProperty('--color-warning-light', '#fef3c7'); // amber-100
+    root.style.setProperty('--color-warning-dark', '#92400e');  // amber-800
+    root.style.setProperty('--color-error-light', '#fee2e2');   // red-100
+    root.style.setProperty('--color-error-dark', '#991b1b');    // red-800
+    root.style.setProperty('--color-info-light', theme.colors.primary[100]);
+    root.style.setProperty('--color-info-dark', theme.colors.primary[800]);
+
     // Gray colors
     Object.entries(theme.colors.gray).forEach(([key, value]) => {
       root.style.setProperty(`--color-gray-${key}`, value);

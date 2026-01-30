@@ -31,7 +31,7 @@ export const getStatusColor = (status) => {
 export const getModelStatusColor = (status) => {
   switch(status) {
     case 'deployed': return 'bg-green-100 text-green-800';
-    case 'training': return 'bg-blue-100 text-blue-800';
+    case 'training': return 'bg-(--color-primary-100) text-(--color-primary-700)';
     case 'testing': return 'bg-yellow-100 text-yellow-800';
     case 'failed': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
@@ -40,7 +40,7 @@ export const getModelStatusColor = (status) => {
 
 export const getExperimentStatusColor = (status) => {
   switch(status) {
-    case 'running': return 'bg-blue-100 text-blue-800';
+    case 'running': return 'bg-(--color-primary-100) text-(--color-primary-700)';
     case 'completed': return 'bg-green-100 text-green-800';
     case 'queued': return 'bg-gray-100 text-gray-800';
     case 'failed': return 'bg-red-100 text-red-800';
@@ -56,7 +56,7 @@ export const getTrendIcon = (trend) => {
 
 export const getMediaIcon = (mediaType) => {
   switch(mediaType) {
-    case 'image': return <Image size={12} className="text-blue-600" />;
+    case 'image': return <Image size={12} className="text-(--color-primary-600)" />;
     case 'video': return <Video size={12} className="text-purple-600" />;
     case 'audio': return <Mic size={12} className="text-green-600" />;
     case 'video+image': return <FileVideo size={12} className="text-indigo-600" />;
@@ -64,7 +64,7 @@ export const getMediaIcon = (mediaType) => {
     case 'document': return <FileText size={12} className="text-gray-600" />;
     case 'text': return <FileText size={12} className="text-gray-600" />;
     case 'handwriting': return <FileText size={12} className="text-purple-600" />;
-    case 'signature': return <FileText size={12} className="text-blue-600" />;
+    case 'signature': return <FileText size={12} className="text-(--color-primary-600)" />;
     default: return <FileText size={12} className="text-gray-600" />;
   }
 };
@@ -72,6 +72,6 @@ export const getMediaIcon = (mediaType) => {
 export const getMediaTypeColor = (mediaTypes) => {
   if (mediaTypes?.includes('video')) return 'bg-purple-100 text-purple-800';
   if (mediaTypes?.includes('audio')) return 'bg-green-100 text-green-800';
-  if (mediaTypes?.includes('image')) return 'bg-blue-100 text-blue-800';
+  if (mediaTypes?.includes('image')) return 'bg-(--color-primary-100) text-(--color-primary-700)';
   return 'bg-gray-100 text-gray-800';
 };

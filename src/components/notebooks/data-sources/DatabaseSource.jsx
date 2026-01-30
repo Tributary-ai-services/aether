@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Database,
@@ -8,10 +9,6 @@ import {
   CheckCircle,
   Loader2,
   ChevronRight,
-  Server,
-  Eye,
-  EyeOff,
-  TestTube,
   Save,
   Table,
   RefreshCw,
@@ -23,35 +20,31 @@ import {
   HardDrive,
   CloudLightning,
   Snowflake,
-  Play
+  Play,
+  ExternalLink,
+  Terminal,
+  FolderTree
 } from 'lucide-react';
 import {
   fetchDatabaseConnections,
-  createDatabaseConnection,
-  testDatabaseConnection,
   fetchDatabaseSchema,
   executeQuery,
   selectConnections,
   selectConnectionsLoading,
   selectConnectionsError,
-  selectConnectionTest,
   selectSchemaForConnection,
   selectSchemaLoading,
   selectQueryExecution,
-  resetConnectionTest,
   resetQueryExecution,
   clearConnectionsError
 } from '../../../store/slices/databaseConnectionsSlice.js';
 import {
   DATABASE_TYPES,
   DATABASE_CATEGORIES,
-  FIELD_TYPES,
-  getDatabaseTypeById,
-  getDatabaseTypesByCategory,
-  validateConnectionParams,
-  detectEnvironment
+  getDatabaseTypeById
 } from '../../../config/databaseTypes.js';
 import { aetherApi } from '../../../services/aetherApi.js';
+import ConnectionFormModal from '../../database/ConnectionFormModal.jsx';
 
 // Icon mapping for database types
 const ICON_MAP = {
@@ -85,25 +78,24 @@ const DatabaseSource = ({
   onClose
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Redux state
   const existingConnections = useSelector(selectConnections);
   const connectionsLoading = useSelector(selectConnectionsLoading);
   const connectionsError = useSelector(selectConnectionsError);
-  const connectionTest = useSelector(selectConnectionTest);
   const schemaLoading = useSelector(selectSchemaLoading);
   const queryExecution = useSelector(selectQueryExecution);
 
   // Local state
-  const [step, setStep] = useState('select'); // 'select' | 'configure' | 'query'
+  const [step, setStep] = useState('select'); // 'select' | 'query'
   const [selectedDbType, setSelectedDbType] = useState(null);
   const [selectedConnection, setSelectedConnection] = useState(null);
-  const [formValues, setFormValues] = useState({});
-  const [formErrors, setFormErrors] = useState({});
-  const [showPasswords, setShowPasswords] = useState({});
-  const [connectionName, setConnectionName] = useState('');
   const [queryText, setQueryText] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Connection modal state
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
 
   // Get schema for selected connection
   const schema = useSelector(state =>
@@ -118,7 +110,6 @@ const DatabaseSource = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      dispatch(resetConnectionTest());
       dispatch(resetQueryExecution());
       dispatch(clearConnectionsError());
     };
@@ -136,26 +127,21 @@ const DatabaseSource = ({
     return groups;
   }, []);
 
-  // Initialize form values when database type is selected
-  useEffect(() => {
-    if (selectedDbType) {
-      const dbType = getDatabaseTypeById(selectedDbType);
-      if (dbType) {
-        const initialValues = {};
-        dbType.fields.forEach(field => {
-          initialValues[field.name] = field.default !== undefined ? field.default : '';
-        });
-        setFormValues(initialValues);
-        setConnectionName(`${dbType.name} Connection`);
-      }
-    }
-  }, [selectedDbType]);
-
-  // Handle database type selection
+  // Handle database type selection - opens ConnectionFormModal
   const handleSelectDbType = (dbTypeId) => {
     setSelectedDbType(dbTypeId);
     setSelectedConnection(null);
-    setStep('configure');
+    setShowConnectionModal(true);
+  };
+
+  // Handle connection created from modal
+  const handleConnectionCreated = (connection) => {
+    setSelectedConnection(connection);
+    setSelectedDbType(connection.databaseType || connection.type);
+    setShowConnectionModal(false);
+    setStep('query');
+    // Fetch schema for the new connection
+    dispatch(fetchDatabaseSchema(connection.id));
   };
 
   // Handle existing connection selection
@@ -165,83 +151,6 @@ const DatabaseSource = ({
     setStep('query');
     // Fetch schema for this connection
     dispatch(fetchDatabaseSchema(connection.id));
-  };
-
-  // Handle form field change
-  const handleFieldChange = (fieldName, value) => {
-    setFormValues(prev => ({ ...prev, [fieldName]: value }));
-    // Clear error for this field
-    if (formErrors[fieldName]) {
-      setFormErrors(prev => {
-        const next = { ...prev };
-        delete next[fieldName];
-        return next;
-      });
-    }
-  };
-
-  // Toggle password visibility
-  const togglePasswordVisibility = (fieldName) => {
-    setShowPasswords(prev => ({ ...prev, [fieldName]: !prev[fieldName] }));
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const result = validateConnectionParams(selectedDbType, formValues);
-    if (!result.valid) {
-      const errors = {};
-      result.errors.forEach(err => {
-        // Extract field name from error message
-        const match = err.match(/^(.+) is required$/);
-        if (match) {
-          const fieldLabel = match[1];
-          const dbType = getDatabaseTypeById(selectedDbType);
-          const field = dbType?.fields.find(f => f.label === fieldLabel);
-          if (field) {
-            errors[field.name] = err;
-          }
-        }
-      });
-      setFormErrors(errors);
-      return false;
-    }
-    return true;
-  };
-
-  // Handle test connection
-  const handleTestConnection = async () => {
-    if (!validateForm()) return;
-
-    dispatch(testDatabaseConnection({
-      connectionParams: {
-        databaseType: selectedDbType,
-        ...formValues,
-      }
-    }));
-  };
-
-  // Handle save connection
-  const handleSaveConnection = async () => {
-    if (!validateForm()) return;
-
-    setSaving(true);
-    try {
-      const connectionData = {
-        name: connectionName,
-        databaseType: selectedDbType,
-        ...formValues,
-      };
-
-      const result = await dispatch(createDatabaseConnection(connectionData)).unwrap();
-      setSelectedConnection(result);
-      setStep('query');
-      // Fetch schema for the new connection
-      dispatch(fetchDatabaseSchema(result.id));
-    } catch (err) {
-      console.error('Failed to save connection:', err);
-    } finally {
-      setSaving(false);
-    }
   };
 
   // Handle query execution
@@ -323,6 +232,38 @@ const DatabaseSource = ({
   // Render database type selection
   const renderTypeSelection = () => (
     <div className="space-y-6">
+      {/* Database Tools Quick Access */}
+      <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium text-gray-800">Database Tools</h4>
+            <p className="text-xs text-gray-600 mt-0.5">Explore schemas and run queries across all connections</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/schema-browser');
+              }}
+              className="flex items-center space-x-1.5 px-3 py-2 text-sm font-medium text-purple-700 bg-white border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors"
+            >
+              <FolderTree className="w-4 h-4" />
+              <span>Schema Browser</span>
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/query-console');
+              }}
+              className="flex items-center space-x-1.5 px-3 py-2 text-sm font-medium text-(--color-primary-700) bg-white border border-(--color-primary-300) rounded-lg hover:bg-(--color-primary-50) transition-colors"
+            >
+              <Terminal className="w-4 h-4" />
+              <span>Query Console</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Existing Connections */}
       {existingConnections.length > 0 && (
         <div>
@@ -402,201 +343,6 @@ const DatabaseSource = ({
     </div>
   );
 
-  // Render connection form
-  const renderConnectionForm = () => {
-    const dbType = getDatabaseTypeById(selectedDbType);
-    if (!dbType) return null;
-
-    return (
-      <div className="space-y-6">
-        {/* Database Type Header */}
-        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-          <div
-            className="p-3 rounded-lg"
-            style={{ backgroundColor: `${dbType.color}20` }}
-          >
-            {renderDbIcon(dbType.icon, 'w-6 h-6')}
-          </div>
-          <div>
-            <h4 className="font-medium text-gray-900">{dbType.name}</h4>
-            <p className="text-sm text-gray-500">{dbType.description}</p>
-          </div>
-        </div>
-
-        {/* Connection Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Connection Name
-          </label>
-          <input
-            type="text"
-            value={connectionName}
-            onChange={(e) => setConnectionName(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="My Database Connection"
-          />
-        </div>
-
-        {/* Dynamic Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {dbType.fields.map(field => (
-            <div key={field.name} className={field.type === FIELD_TYPES.TEXTAREA ? 'md:col-span-2' : ''}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-
-              {field.type === FIELD_TYPES.TEXT && (
-                <input
-                  type="text"
-                  value={formValues[field.name] || ''}
-                  onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                  placeholder={field.placeholder}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors[field.name] ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                />
-              )}
-
-              {field.type === FIELD_TYPES.PASSWORD && (
-                <div className="relative">
-                  <input
-                    type={showPasswords[field.name] ? 'text' : 'password'}
-                    value={formValues[field.name] || ''}
-                    onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                    placeholder={field.placeholder}
-                    className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      formErrors[field.name] ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => togglePasswordVisibility(field.name)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswords[field.name] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              )}
-
-              {field.type === FIELD_TYPES.NUMBER && (
-                <input
-                  type="number"
-                  value={formValues[field.name] || ''}
-                  onChange={(e) => handleFieldChange(field.name, parseInt(e.target.value) || '')}
-                  placeholder={field.placeholder}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors[field.name] ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                />
-              )}
-
-              {field.type === FIELD_TYPES.SELECT && (
-                <select
-                  value={formValues[field.name] || ''}
-                  onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors[field.name] ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                >
-                  {field.options?.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              )}
-
-              {field.type === FIELD_TYPES.TOGGLE && (
-                <button
-                  type="button"
-                  onClick={() => handleFieldChange(field.name, !formValues[field.name])}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    formValues[field.name] ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      formValues[field.name] ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              )}
-
-              {formErrors[field.name] && (
-                <p className="mt-1 text-sm text-red-600">{formErrors[field.name]}</p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Connection Test Result */}
-        {connectionTest.status === 'testing' && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
-            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-            <span className="text-blue-700">Testing connection...</span>
-          </div>
-        )}
-
-        {connectionTest.status === 'success' && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <span className="text-green-700">Connection successful!</span>
-          </div>
-        )}
-
-        {connectionTest.status === 'failed' && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <span className="text-red-700">{connectionTest.error}</span>
-          </div>
-        )}
-
-        {/* Error display */}
-        {connectionsError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <span className="text-red-700">{connectionsError}</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={handleTestConnection}
-            disabled={connectionTest.status === 'testing'}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-2"
-          >
-            <TestTube className="w-4 h-4" />
-            <span>Test Connection</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveConnection}
-            disabled={saving || connectionTest.status === 'testing'}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
-              saving
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save & Continue</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   // Render query interface
   const renderQueryInterface = () => {
     const dbType = getDatabaseTypeById(selectedDbType);
@@ -620,10 +366,37 @@ const DatabaseSource = ({
           <button
             onClick={() => dispatch(fetchDatabaseSchema(selectedConnection.id))}
             disabled={schemaLoading}
-            className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+            className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700) flex items-center space-x-1"
           >
             <RefreshCw className={`w-4 h-4 ${schemaLoading ? 'animate-spin' : ''}`} />
             <span>Refresh Schema</span>
+          </button>
+        </div>
+
+        {/* Quick Actions - Schema Browser and Query Console */}
+        <div className="flex items-center space-x-2 p-3 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg">
+          <span className="text-sm text-(--color-primary-700) font-medium">Advanced Tools:</span>
+          <button
+            onClick={() => {
+              onClose();
+              navigate(`/schema-browser/${selectedConnection.id}`);
+            }}
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-sm font-medium text-(--color-primary-700) bg-white border border-(--color-primary-300) rounded-md hover:bg-(--color-primary-50) transition-colors"
+          >
+            <FolderTree className="w-4 h-4" />
+            <span>Schema Browser</span>
+            <ExternalLink className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => {
+              onClose();
+              navigate(`/query-console/${selectedConnection.id}`);
+            }}
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-sm font-medium text-(--color-primary-700) bg-white border border-(--color-primary-300) rounded-md hover:bg-(--color-primary-50) transition-colors"
+          >
+            <Terminal className="w-4 h-4" />
+            <span>Query Console</span>
+            <ExternalLink className="w-3 h-3" />
           </button>
         </div>
 
@@ -663,7 +436,7 @@ const DatabaseSource = ({
             value={queryText}
             onChange={(e) => setQueryText(e.target.value)}
             placeholder="SELECT * FROM table_name LIMIT 100"
-            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
+            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) font-mono text-sm resize-none"
           />
         </div>
 
@@ -674,7 +447,7 @@ const DatabaseSource = ({
           className={`w-full px-4 py-3 font-medium rounded-lg transition-colors flex items-center justify-center space-x-2 ${
             !queryText.trim() || queryExecution.status === 'executing'
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)'
           }`}
         >
           {queryExecution.status === 'executing' ? (
@@ -777,8 +550,6 @@ const DatabaseSource = ({
     switch (step) {
       case 'select':
         return renderTypeSelection();
-      case 'configure':
-        return renderConnectionForm();
       case 'query':
         return renderQueryInterface();
       default:
@@ -791,8 +562,6 @@ const DatabaseSource = ({
     switch (step) {
       case 'select':
         return 'Select Database';
-      case 'configure':
-        return 'Configure Connection';
       case 'query':
         return 'Query Data';
       default:
@@ -806,10 +575,6 @@ const DatabaseSource = ({
       setStep('select');
       setSelectedConnection(null);
       dispatch(resetQueryExecution());
-    } else if (step === 'configure') {
-      setStep('select');
-      setSelectedDbType(null);
-      dispatch(resetConnectionTest());
     } else {
       onBack();
     }
@@ -850,7 +615,7 @@ const DatabaseSource = ({
       <div className="flex-1 p-6 overflow-y-auto">
         {connectionsLoading && step === 'select' ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-(--color-primary-600) animate-spin" />
           </div>
         ) : (
           renderContent()
@@ -866,6 +631,18 @@ const DatabaseSource = ({
           {step === 'select' ? 'Cancel' : 'Back'}
         </button>
       </div>
+
+      {/* Connection Form Modal */}
+      {showConnectionModal && (
+        <ConnectionFormModal
+          initialType={selectedDbType}
+          onClose={() => {
+            setShowConnectionModal(false);
+            setSelectedDbType(null);
+          }}
+          onSuccess={handleConnectionCreated}
+        />
+      )}
     </div>
   );
 };

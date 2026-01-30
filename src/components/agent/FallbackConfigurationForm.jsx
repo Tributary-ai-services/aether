@@ -69,7 +69,7 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
           id="fallback-enabled"
           checked={config.enabled}
           onChange={(e) => handleConfigChange('enabled', e.target.checked)}
-          className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="mt-1 rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
         />
         <div>
           <label htmlFor="fallback-enabled" className="block text-sm font-medium text-gray-700">
@@ -98,12 +98,12 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
                 {config.preferred_chain.map((provider, index) => (
                   <div key={provider} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2 flex-1">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">
+                      <span className="w-6 h-6 bg-(--color-primary-100) text-(--color-primary-800) rounded-full flex items-center justify-center text-xs font-medium">
                         {index + 1}
                       </span>
                       <span className="font-medium text-gray-900">{provider}</span>
                       {index === 0 && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        <span className="px-2 py-1 bg-(--color-primary-100) text-(--color-primary-800) rounded-full text-xs">
                           Primary
                         </span>
                       )}
@@ -158,7 +158,7 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
                 <select
                   value={newProvider}
                   onChange={(e) => setNewProvider(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 >
                   <option value="">Select provider to add...</option>
                   {availableProviders.map(provider => (
@@ -171,7 +171,7 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
                   type="button"
                   onClick={addProvider}
                   disabled={!newProvider}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 flex items-center gap-2"
                 >
                   <Plus size={16} />
                   Add
@@ -189,7 +189,7 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
               <select
                 value={config.max_cost_increase || 0.5}
                 onChange={(e) => handleConfigChange('max_cost_increase', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               >
                 <option value={0}>No cost increase (0%)</option>
                 <option value={0.1}>10% cost increase</option>
@@ -213,7 +213,7 @@ const FallbackConfigurationForm = ({ config, onChange }) => {
                     type="checkbox"
                     checked={config.require_same_features}
                     onChange={(e) => handleConfigChange('require_same_features', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
                   />
                   <span className="text-sm text-gray-700">Require same features</span>
                 </label>

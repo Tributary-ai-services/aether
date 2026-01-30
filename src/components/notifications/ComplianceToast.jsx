@@ -118,7 +118,7 @@ const ComplianceToast = ({ onOpenAuditTrail }) => {
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={handleViewDetails}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                    className="text-xs text-(--color-primary-600) hover:text-(--color-primary-700) font-medium flex items-center gap-1"
                   >
                     View Details
                     <ExternalLink size={12} />

@@ -205,7 +205,7 @@ const TextInputSource = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Document title"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
             />
           </div>
 
@@ -257,7 +257,7 @@ const TextInputSource = ({
                 ? "# Enter your markdown content here...\n\nSupports **bold**, *italic*, and more."
                 : "Enter or paste your text content here..."
               }
-              className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none font-mono text-sm"
+              className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none font-mono text-sm"
               required
             />
           </div>
@@ -285,12 +285,12 @@ const TextInputSource = ({
           </div>
 
           {/* Tips */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-6 p-4 bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-(--color-primary-600) mt-0.5 flex-shrink-0" />
               <div className="text-sm">
-                <h4 className="font-medium text-blue-900">Tips</h4>
-                <ul className="mt-1 text-blue-700 list-disc list-inside space-y-1">
+                <h4 className="font-medium text-(--color-primary-700)">Tips</h4>
+                <ul className="mt-1 text-(--color-primary-700) list-disc list-inside space-y-1">
                   <li>Paste text directly from other applications</li>
                   <li>Use Markdown format for structured content</li>
                   <li>Your draft is automatically saved locally</li>
@@ -325,7 +325,7 @@ const TextInputSource = ({
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
                 loading || !content.trim() || saveStatus === 'saving'
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)'
               }`}
             >
               {(loading || saveStatus === 'saving') ? (

@@ -53,7 +53,7 @@ const ConfigurationTemplateSelector = ({ selectedTemplate, onTemplateChange }) =
       case 'High Reliability':
         return <Shield className="text-green-600" size={20} />;
       case 'Cost Optimized':
-        return <DollarSign className="text-blue-600" size={20} />;
+        return <DollarSign className="text-(--color-primary-600)" size={20} />;
       case 'Performance':
         return <Zap className="text-purple-600" size={20} />;
       case 'Balanced':
@@ -68,7 +68,7 @@ const ConfigurationTemplateSelector = ({ selectedTemplate, onTemplateChange }) =
       case 'High Reliability':
         return 'border-green-200 bg-green-50';
       case 'Cost Optimized':
-        return 'border-blue-200 bg-blue-50';
+        return 'border-(--color-primary-200) bg-(--color-primary-50)';
       case 'Performance':
         return 'border-purple-200 bg-purple-50';
       case 'Balanced':
@@ -83,7 +83,7 @@ const ConfigurationTemplateSelector = ({ selectedTemplate, onTemplateChange }) =
       case 'High Reliability':
         return 'border-green-500 bg-green-100 ring-2 ring-green-200';
       case 'Cost Optimized':
-        return 'border-blue-500 bg-blue-100 ring-2 ring-blue-200';
+        return 'border-(--color-primary-500) bg-(--color-primary-100) ring-2 ring-(--color-primary-200)';
       case 'Performance':
         return 'border-purple-500 bg-purple-100 ring-2 ring-purple-200';
       case 'Balanced':
@@ -154,7 +154,7 @@ const ConfigurationTemplateSelector = ({ selectedTemplate, onTemplateChange }) =
               <div className="mb-3">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                   template.optimize_for === 'quality' ? 'bg-green-100 text-green-800' :
-                  template.optimize_for === 'cost' ? 'bg-blue-100 text-blue-800' :
+                  template.optimize_for === 'cost' ? 'bg-(--color-primary-100) text-(--color-primary-800)' :
                   template.optimize_for === 'performance' ? 'bg-purple-100 text-purple-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
