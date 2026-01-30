@@ -26,7 +26,13 @@ export const useAgentBuilder = (filter = {}) => {
       };
       
       const response = await api.agentBuilder.getAll(requestFilter);
+      // DEBUG: Log raw API response
+      console.log('useAgentBuilder - Raw API response:', JSON.stringify(response, null, 2));
       const agentsData = response.agents || response.data || [];
+      // DEBUG: Log first agent's type
+      if (agentsData.length > 0) {
+        console.log('useAgentBuilder - First agent type:', agentsData[0]?.type, '| Full agent:', agentsData[0]);
+      }
       setAgents(agentsData);
       
       // Fetch user stats if available

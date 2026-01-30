@@ -6,12 +6,17 @@ export const fetchOnboardingStatus = createAsyncThunk(
   'ui/fetchOnboardingStatus',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('[Onboarding API] Calling getStatus...');
       const status = await api.onboarding.getStatus();
-      return {
+      console.log('[Onboarding API] Response:', status);
+      const result = {
         hasCompletedOnboarding: status.tutorial_completed,
         shouldAutoTrigger: status.should_auto_trigger
       };
+      console.log('[Onboarding API] Parsed result:', result);
+      return result;
     } catch (error) {
+      console.error('[Onboarding API] Error:', error);
       return rejectWithValue(error.message || 'Failed to load onboarding status');
     }
   }

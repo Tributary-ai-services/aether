@@ -1219,9 +1219,29 @@ class AetherApiService {
     /**
      * Get database schema (tables, views, etc.)
      * @param {string} id - Connection ID
+     * @param {string} type - Schema type: 'database', 'schema', or 'table'
      * @returns {Promise} Schema information
      */
-    getSchema: (id) => this.request(`/databases/${id}/schema`),
+    getSchema: (id, type = 'table') => this.request(`/databases/${id}/schema?type=${type}`),
+
+    /**
+     * Get list of tables in a database
+     * @param {string} id - Connection ID
+     * @returns {Promise} List of tables with basic info
+     */
+    getTables: (id) => this.request(`/databases/${id}/tables`),
+
+    /**
+     * Get column information for a specific table
+     * @param {string} id - Connection ID
+     * @param {string} tableName - Table name
+     * @param {string} schema - Schema name (optional, defaults to 'public')
+     * @returns {Promise} Table columns with types, nullable, primary key info
+     */
+    getTableColumns: (id, tableName, schema) => {
+      const params = schema ? `?schema=${encodeURIComponent(schema)}` : '';
+      return this.request(`/databases/${id}/tables/${encodeURIComponent(tableName)}/columns${params}`);
+    },
 
     /**
      * Execute a query on a database connection

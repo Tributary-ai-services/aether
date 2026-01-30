@@ -46,6 +46,8 @@ import TeamsPage from './pages/TeamsPage.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
+import QueryConsolePage from './pages/QueryConsolePage.jsx';
+import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -98,9 +100,21 @@ const App = () => {
   // Fetch onboarding status on mount
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      console.log('[Onboarding] Fetching onboarding status...');
       dispatch(fetchOnboardingStatus());
     }
   }, [isAuthenticated, isLoading, dispatch]);
+
+  // Debug: Log onboarding state changes
+  useEffect(() => {
+    console.log('[Onboarding] State changed:', {
+      isOnboardingLoading,
+      shouldAutoTrigger,
+      isOnboardingOpen,
+      isAuthenticated,
+      isLoading
+    });
+  }, [isOnboardingLoading, shouldAutoTrigger, isOnboardingOpen, isAuthenticated, isLoading]);
 
   // Fetch compliance summary on mount to show violation badge
   useEffect(() => {
@@ -114,8 +128,10 @@ const App = () => {
     // Wait for both auth and onboarding status to load before auto-triggering
     // Also check that the modal is not already open to prevent re-triggering
     if (isAuthenticated && !isLoading && !isOnboardingLoading && shouldAutoTrigger && !isOnboardingOpen) {
+      console.log('[Onboarding] Auto-trigger conditions met, opening modal in 1 second...');
       // Delay slightly to allow initial page load
       const timer = setTimeout(() => {
+        console.log('[Onboarding] Opening onboarding modal');
         dispatch(openOnboardingModal());
       }, 1000);
 
@@ -446,6 +462,10 @@ const App = () => {
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/streaming" element={<StreamingPage />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/query-console" element={<QueryConsolePage />} />
+            <Route path="/query-console/:connectionId" element={<QueryConsolePage />} />
+            <Route path="/schema-browser" element={<SchemaBrowserPage />} />
+            <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
           </Routes>
         </main>
       </div>

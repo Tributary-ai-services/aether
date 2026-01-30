@@ -147,6 +147,45 @@ export const fetchMcpDatabaseServers = createAsyncThunk(
   }
 );
 
+// Fetch tables for a database connection
+export const fetchDatabaseTables = createAsyncThunk(
+  'databaseConnections/fetchTables',
+  async (connectionId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.databases.getTables(connectionId);
+      if (response.success) {
+        return { connectionId, tables: response.data?.tables || response.data || [] };
+      } else {
+        return rejectWithValue(response.error || 'Failed to fetch tables');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch tables');
+    }
+  }
+);
+
+// Fetch columns for a specific table
+export const fetchTableColumns = createAsyncThunk(
+  'databaseConnections/fetchTableColumns',
+  async ({ connectionId, tableName, schema }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.databases.getTableColumns(connectionId, tableName, schema);
+      if (response.success) {
+        return {
+          connectionId,
+          tableName,
+          schema,
+          columns: response.data?.columns || response.data || []
+        };
+      } else {
+        return rejectWithValue(response.error || 'Failed to fetch table columns');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch table columns');
+    }
+  }
+);
+
 // ============================================================================
 // Initial State
 // ============================================================================
@@ -173,6 +212,16 @@ const initialState = {
   schemaLoading: false,
   schemaError: null,
 
+  // Tables cache by connection ID
+  tables: {}, // { connectionId: { tables: [], lastFetched: timestamp } }
+  tablesLoading: false,
+  tablesError: null,
+
+  // Table columns cache by connectionId:tableName
+  tableColumns: {}, // { 'connectionId:tableName': { columns: [], lastFetched: timestamp } }
+  tableColumnsLoading: false,
+  tableColumnsError: null,
+
   // Connection testing
   connectionTest: {
     status: 'idle', // 'idle' | 'testing' | 'success' | 'failed'
@@ -188,6 +237,9 @@ const initialState = {
     result: null,
     error: null,
   },
+
+  // Query history (persisted in localStorage)
+  queryHistory: [],
 
   // Environment detection
   environment: {
@@ -269,6 +321,49 @@ const databaseConnectionsSlice = createSlice({
         state.schemas = {};
       }
     },
+
+    // Add query to history
+    addQueryToHistory: (state, action) => {
+      const historyItem = {
+        id: `query_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...action.payload,
+      };
+      // Add to beginning of array (most recent first)
+      state.queryHistory.unshift(historyItem);
+      // Keep only last 100 queries
+      if (state.queryHistory.length > 100) {
+        state.queryHistory = state.queryHistory.slice(0, 100);
+      }
+      // Persist to localStorage
+      try {
+        localStorage.setItem('databaseQueryHistory', JSON.stringify(state.queryHistory));
+      } catch (e) {
+        console.warn('Failed to persist query history:', e);
+      }
+    },
+
+    // Clear query history
+    clearQueryHistory: (state) => {
+      state.queryHistory = [];
+      try {
+        localStorage.removeItem('databaseQueryHistory');
+      } catch (e) {
+        console.warn('Failed to clear query history from localStorage:', e);
+      }
+    },
+
+    // Load query history from localStorage
+    loadQueryHistory: (state) => {
+      try {
+        const saved = localStorage.getItem('databaseQueryHistory');
+        if (saved) {
+          state.queryHistory = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn('Failed to load query history:', e);
+        state.queryHistory = [];
+      }
+    },
   },
 
   extraReducers: (builder) => {
@@ -280,7 +375,8 @@ const databaseConnectionsSlice = createSlice({
       })
       .addCase(fetchDatabaseConnections.fulfilled, (state, action) => {
         state.connectionsLoading = false;
-        state.connections = action.payload.connections || action.payload || [];
+        // Backend returns { databases: [...], total, page, page_size }
+        state.connections = action.payload.databases || action.payload.connections || [];
       })
       .addCase(fetchDatabaseConnections.rejected, (state, action) => {
         state.connectionsLoading = false;
@@ -434,6 +530,44 @@ const databaseConnectionsSlice = createSlice({
       .addCase(fetchMcpDatabaseServers.rejected, (state, action) => {
         state.mcpServersLoading = false;
         state.mcpServersError = action.payload || 'Failed to fetch MCP servers';
+      })
+
+      // ======== Fetch Database Tables ========
+      .addCase(fetchDatabaseTables.pending, (state) => {
+        state.tablesLoading = true;
+        state.tablesError = null;
+      })
+      .addCase(fetchDatabaseTables.fulfilled, (state, action) => {
+        state.tablesLoading = false;
+        const { connectionId, tables } = action.payload;
+        state.tables[connectionId] = {
+          tables: tables,
+          lastFetched: new Date().toISOString(),
+        };
+      })
+      .addCase(fetchDatabaseTables.rejected, (state, action) => {
+        state.tablesLoading = false;
+        state.tablesError = action.payload || 'Failed to fetch tables';
+      })
+
+      // ======== Fetch Table Columns ========
+      .addCase(fetchTableColumns.pending, (state) => {
+        state.tableColumnsLoading = true;
+        state.tableColumnsError = null;
+      })
+      .addCase(fetchTableColumns.fulfilled, (state, action) => {
+        state.tableColumnsLoading = false;
+        const { connectionId, tableName, schema, columns } = action.payload;
+        // Include schema in cache key to differentiate tables with same name in different schemas
+        const cacheKey = schema ? `${connectionId}:${schema}.${tableName}` : `${connectionId}:${tableName}`;
+        state.tableColumns[cacheKey] = {
+          columns: columns,
+          lastFetched: new Date().toISOString(),
+        };
+      })
+      .addCase(fetchTableColumns.rejected, (state, action) => {
+        state.tableColumnsLoading = false;
+        state.tableColumnsError = action.payload || 'Failed to fetch table columns';
       });
   },
 });
@@ -453,6 +587,9 @@ export const {
   resetQueryExecution,
   setEnvironment,
   clearSchemaCache,
+  addQueryToHistory,
+  clearQueryHistory,
+  loadQueryHistory,
 } = databaseConnectionsSlice.actions;
 
 // ============================================================================
@@ -469,6 +606,12 @@ export const selectSelectedConnection = (state) => state.databaseConnections.sel
 export const selectConnectionsByType = createSelector(
   [selectConnections, (state, dbType) => dbType],
   (connections, dbType) => connections.filter(c => c.databaseType === dbType)
+);
+
+// Get connection by ID
+export const selectConnectionById = createSelector(
+  [selectConnections, (state, connectionId) => connectionId],
+  (connections, connectionId) => connections.find(c => c.id === connectionId) || null
 );
 
 // Database types selector
@@ -506,5 +649,28 @@ export const selectQueryExecutionStatus = (state) => state.databaseConnections.q
 // Environment selectors
 export const selectEnvironment = (state) => state.databaseConnections.environment;
 export const selectEnvironmentType = (state) => state.databaseConnections.environment.type;
+
+// Query history selectors
+export const selectQueryHistory = (state) => state.databaseConnections.queryHistory;
+
+// Tables selectors
+export const selectTables = (state) => state.databaseConnections.tables;
+export const selectTablesLoading = (state) => state.databaseConnections.tablesLoading;
+export const selectTablesError = (state) => state.databaseConnections.tablesError;
+
+export const selectTablesForConnection = createSelector(
+  [selectTables, (state, connectionId) => connectionId],
+  (tables, connectionId) => tables[connectionId]?.tables || []
+);
+
+// Table columns selectors
+export const selectTableColumns = (state) => state.databaseConnections.tableColumns;
+export const selectTableColumnsLoading = (state) => state.databaseConnections.tableColumnsLoading;
+export const selectTableColumnsError = (state) => state.databaseConnections.tableColumnsError;
+
+export const selectColumnsForTable = createSelector(
+  [selectTableColumns, (state, connectionId, tableName) => `${connectionId}:${tableName}`],
+  (tableColumns, cacheKey) => tableColumns[cacheKey]?.columns || []
+);
 
 export default databaseConnectionsSlice.reducer;
