@@ -5,6 +5,16 @@ import { api } from '../../services/api.js';
 export const fetchOnboardingStatus = createAsyncThunk(
   'ui/fetchOnboardingStatus',
   async (_, { rejectWithValue }) => {
+    // Check localStorage first - if user has skipped/completed locally, honor that
+    const localComplete = localStorage.getItem('aether_onboarding_complete') === 'true';
+    if (localComplete) {
+      console.log('[Onboarding] Using localStorage: onboarding already completed');
+      return {
+        hasCompletedOnboarding: true,
+        shouldAutoTrigger: false
+      };
+    }
+
     try {
       console.log('[Onboarding API] Calling getStatus...');
       const status = await api.onboarding.getStatus();
@@ -27,9 +37,15 @@ export const markOnboardingComplete = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await api.onboarding.markTutorialComplete();
+      // Also save to localStorage as backup
+      localStorage.setItem('aether_onboarding_complete', 'true');
       return true;
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to mark tutorial complete');
+      console.error('[Onboarding] API failed, using localStorage fallback:', error);
+      // Save to localStorage as fallback so user isn't stuck in a loop
+      localStorage.setItem('aether_onboarding_complete', 'true');
+      // Still return success since we saved locally
+      return true;
     }
   }
 );
@@ -233,9 +249,16 @@ const uiSlice = createSlice({
       .addCase(fetchOnboardingStatus.rejected, (state, action) => {
         state.onboarding.isLoading = false;
         state.onboarding.error = action.payload;
-        // On error, default to not completed so tutorial can be shown
-        state.onboarding.hasCompletedOnboarding = false;
-        state.onboarding.shouldAutoTrigger = true;
+        // Check localStorage fallback before triggering onboarding
+        const localComplete = localStorage.getItem('aether_onboarding_complete') === 'true';
+        if (localComplete) {
+          state.onboarding.hasCompletedOnboarding = true;
+          state.onboarding.shouldAutoTrigger = false;
+        } else {
+          // On error with no local state, default to not completed so tutorial can be shown
+          state.onboarding.hasCompletedOnboarding = false;
+          state.onboarding.shouldAutoTrigger = true;
+        }
       })
 
       // Mark onboarding complete
@@ -249,6 +272,9 @@ const uiSlice = createSlice({
       })
       .addCase(markOnboardingComplete.rejected, (state, action) => {
         state.onboarding.error = action.payload;
+        // Still disable auto-trigger to prevent infinite loop when user clicks skip
+        state.onboarding.shouldAutoTrigger = false;
+        state.modals.onboarding = false; // Close modal even on error
       })
 
       // Reset onboarding

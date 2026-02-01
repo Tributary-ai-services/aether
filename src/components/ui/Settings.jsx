@@ -536,16 +536,28 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                           <span className="font-medium text-gray-900">Live Streams</span>
                           <p className="text-sm text-gray-500">Real-time data streaming and events</p>
                         </div>
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={visibleTabs.streaming}
                           onChange={() => setTabVisibility('streaming', !visibleTabs.streaming)}
-                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <span className="font-medium text-gray-900">Developer Tools</span>
+                          <p className="text-sm text-gray-500">SQL queries, vector testing, MCP testing, and AI playground</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={visibleTabs['developer-tools']}
+                          onChange={() => setTabVisibility('developer-tools', !visibleTabs['developer-tools'])}
+                          className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)"
                         />
                       </label>
                     </div>
                   </div>
-                  
+
                   <div className="border-t border-gray-200 pt-6">
                     <button
                       onClick={resetToDefaults}
@@ -554,7 +566,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       Reset to Defaults
                     </button>
                     <p className="text-sm text-gray-500 mt-2">
-                      Restore default navigation settings (Notebooks, Agent Builder, and Community visible)
+                      Restore default navigation settings (Notebooks, Agent Builder, Community, and Developer Tools visible)
                     </p>
                   </div>
                 </div>
