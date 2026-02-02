@@ -496,6 +496,45 @@ const SQLQueriesTab = () => {
     }
   }, [dispatch, hasSpaceContext]);
 
+  // Check for query to load from Add Data dialog (stored in localStorage)
+  useEffect(() => {
+    const storedData = localStorage.getItem('devtools-load-query');
+    if (storedData) {
+      try {
+        const { query, connectionId, timestamp } = JSON.parse(storedData);
+        // Only use if stored within last 30 seconds (to avoid stale data)
+        if (Date.now() - timestamp < 30000 && query) {
+          // Clear the stored data immediately
+          localStorage.removeItem('devtools-load-query');
+
+          // Set the connection
+          if (connectionId) {
+            setSelectedConnection(connectionId);
+          }
+
+          // Load the query into a new tab
+          const newTabId = `tab-${Date.now()}`;
+          setQueryTabs(prev => [...prev, {
+            id: newTabId,
+            title: query.name || 'Loaded Query',
+            query: query.query || query.sql || '',
+            results: null,
+            isExecuting: false,
+            savedQueryId: query.id || null,
+            error: null
+          }]);
+          setActiveTabId(newTabId);
+        } else {
+          // Data is stale, remove it
+          localStorage.removeItem('devtools-load-query');
+        }
+      } catch (e) {
+        console.error('Failed to load query from localStorage:', e);
+        localStorage.removeItem('devtools-load-query');
+      }
+    }
+  }, []);
+
   // Load tables when connection changes
   useEffect(() => {
     if (selectedConnection) {
