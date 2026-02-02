@@ -50,7 +50,7 @@ const RetryConfigurationForm = ({ config, onChange }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
-        <RotateCcw className="text-blue-600" size={18} />
+        <RotateCcw className="text-(--color-primary-600)" size={18} />
         <h4 className="font-medium text-gray-900">Retry Configuration</h4>
       </div>
 
@@ -63,7 +63,7 @@ const RetryConfigurationForm = ({ config, onChange }) => {
           <select
             value={config.max_attempts}
             onChange={(e) => handleConfigChange('max_attempts', parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
           >
             <option value={1}>1 (No retries)</option>
             <option value={2}>2 (1 retry)</option>
@@ -83,7 +83,7 @@ const RetryConfigurationForm = ({ config, onChange }) => {
           <select
             value={config.backoff_type}
             onChange={(e) => handleConfigChange('backoff_type', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
           >
             <option value="exponential">Exponential</option>
             <option value="linear">Linear</option>
@@ -103,7 +103,7 @@ const RetryConfigurationForm = ({ config, onChange }) => {
           <select
             value={config.base_delay}
             onChange={(e) => handleConfigChange('base_delay', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
           >
             <option value="100ms">100ms</option>
             <option value="500ms">500ms</option>
@@ -123,7 +123,7 @@ const RetryConfigurationForm = ({ config, onChange }) => {
           <select
             value={config.max_delay}
             onChange={(e) => handleConfigChange('max_delay', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
           >
             <option value="2s">2 seconds</option>
             <option value="10s">10 seconds</option>
@@ -185,12 +185,12 @@ const RetryConfigurationForm = ({ config, onChange }) => {
       </div>
 
       {/* Configuration Summary */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4">
         <div className="flex items-start gap-2">
-          <Info className="text-blue-500 mt-0.5" size={16} />
+          <Info className="text-(--color-primary-500) mt-0.5" size={16} />
           <div>
-            <h5 className="font-medium text-blue-900 mb-1">Retry Configuration Summary</h5>
-            <div className="text-sm text-blue-700 space-y-1">
+            <h5 className="font-medium text-(--color-primary-900) mb-1">Retry Configuration Summary</h5>
+            <div className="text-sm text-(--color-primary-700) space-y-1">
               <p>
                 • Up to <strong>{config.max_attempts}</strong> attempts will be made
               </p>

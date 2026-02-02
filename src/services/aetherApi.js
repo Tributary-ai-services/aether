@@ -112,12 +112,17 @@ class AetherApiService {
       if (!response.ok) {
         const errorText = await response.text();
 
-        // Handle 403 Forbidden - permission denied
+        // Handle 403 Forbidden - check if it's a security block or permission error
         if (response.status === 403) {
           let errorMessage = 'You do not have permission for this action';
+          let errorCode = 'FORBIDDEN';
+          let errorDetails = null;
+
           try {
             const errorData = JSON.parse(errorText);
-            errorMessage = errorData.error || errorData.message || errorMessage;
+            errorCode = errorData.code || 'FORBIDDEN';
+            errorMessage = errorData.message || errorMessage;
+            errorDetails = errorData.details || null;
           } catch (e) {
             // Use text as-is if not JSON
             if (errorText) {
@@ -125,16 +130,83 @@ class AetherApiService {
             }
           }
 
-          // Trigger permission error event
-          this.triggerPermissionError({
-            message: errorMessage,
-            action: config.method || 'GET',
-            resource: endpoint
-          });
+          // Check if this is a security block (distinct from permission denied)
+          if (errorCode === 'SECURITY_BLOCKED') {
+            this.triggerSecurityBlockedError({
+              message: errorMessage,
+              threatTypes: errorDetails?.threat_types || [],
+              severity: errorDetails?.severity || 'unknown',
+              action: config.method || 'GET',
+              resource: endpoint
+            });
+          } else {
+            // Regular permission error
+            this.triggerPermissionError({
+              message: errorMessage,
+              action: config.method || 'GET',
+              resource: endpoint
+            });
+          }
 
           const error = new Error(errorMessage);
-          error.response = { status: 403, data: { error: errorMessage } };
+          error.response = { status: 403, code: errorCode, data: { error: errorMessage, details: errorDetails } };
           throw error;
+        }
+
+        // Handle 400 "Space context required" - reload spaces and retry
+        if (response.status === 400) {
+          let errorData = {};
+          try {
+            errorData = JSON.parse(errorText);
+          } catch (e) {
+            // Not JSON, use text
+          }
+
+          const isSpaceContextError = errorText.toLowerCase().includes('space context required') ||
+                                       errorData?.error?.toLowerCase()?.includes('space context required');
+
+          if (isSpaceContextError && !options._spaceRetried) {
+            console.log('Space context lost, attempting to reload spaces and retry...');
+
+            try {
+              // Fetch available spaces (this endpoint doesn't require space context)
+              const spacesResponse = await this.makeRequest(`${this.baseURL}/users/me/spaces`, {
+                headers: {
+                  'Authorization': await this.getAuthHeader(),
+                  'Content-Type': 'application/json',
+                }
+              });
+
+              if (spacesResponse.ok) {
+                const spacesData = await spacesResponse.json();
+                const spaces = spacesData?.spaces || spacesData || [];
+
+                // Find personal space or use first available
+                const personalSpace = spaces.find(s => s.space_type === 'personal') || spaces[0];
+
+                if (personalSpace) {
+                  // Save to localStorage
+                  localStorage.setItem('currentSpace', JSON.stringify({
+                    space_type: personalSpace.space_type,
+                    space_id: personalSpace.space_id || personalSpace.id,
+                  }));
+
+                  console.log('Space context restored:', personalSpace.space_type, personalSpace.space_id || personalSpace.id);
+
+                  // Dispatch event to notify Redux/hooks to sync
+                  window.dispatchEvent(new CustomEvent('spaceContextRestored', {
+                    detail: personalSpace
+                  }));
+
+                  // Retry the original request with new space headers
+                  const retryOptions = { ...options, _spaceRetried: true };
+                  return this.request(endpoint, retryOptions);
+                }
+              }
+            } catch (spaceError) {
+              console.error('Failed to reload spaces:', spaceError);
+            }
+          }
         }
 
         const error = new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
@@ -206,6 +278,22 @@ class AetherApiService {
     const event = new CustomEvent('permissionError', {
       detail: {
         message: details.message || 'You do not have permission for this action',
+        action: details.action || null,
+        resource: details.resource || null,
+        status: 403,
+        timestamp: Date.now()
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Trigger security blocked error event for the UI to handle (403 with SECURITY_BLOCKED code)
+  triggerSecurityBlockedError(details = {}) {
+    const event = new CustomEvent('securityBlocked', {
+      detail: {
+        message: details.message || 'Your input contains potentially unsafe content',
+        threatTypes: details.threatTypes || [],
+        severity: details.severity || 'unknown',
         action: details.action || null,
         resource: details.resource || null,
         status: 403,
@@ -885,6 +973,455 @@ class AetherApiService {
      * @returns {Promise} Vector store information
      */
     getInfo: (notebookId) => this.request(`/notebooks/${notebookId}/vector-search/info`),
+  };
+
+// Compliance API - DLP violations from AudiModal
+  compliance = {
+    /**
+     * Get paginated list of DLP violations
+     * @param {object} params - Filter and pagination parameters
+     * @param {string} params.severity - Filter by severity (critical, high, medium, low)
+     * @param {string} params.status - Filter by status (detected, resolved, acknowledged)
+     * @param {boolean} params.acknowledged - Filter by acknowledged status
+     * @param {string} params.complianceType - Filter by compliance type (pii, hipaa, pci-dss, gdpr)
+     * @param {string} params.from - Time range start (ISO 8601 or relative like 'now-24h')
+     * @param {string} params.to - Time range end (ISO 8601 or 'now')
+     * @param {number} params.page - Page number (default: 1)
+     * @param {number} params.pageSize - Page size (default: 20, max: 100)
+     * @returns {Promise} Paginated list of violations
+     */
+    getViolations: (params = {}) => {
+      const searchParams = new URLSearchParams();
+      if (params.severity) searchParams.append('severity', params.severity);
+      if (params.status) searchParams.append('status', params.status);
+      if (params.acknowledged !== undefined) searchParams.append('acknowledged', params.acknowledged);
+      if (params.complianceType) searchParams.append('compliance_type', params.complianceType);
+      if (params.from) searchParams.append('from', params.from);
+      if (params.to) searchParams.append('to', params.to);
+      if (params.page) searchParams.append('page', params.page);
+      if (params.pageSize) searchParams.append('page_size', params.pageSize);
+      const queryString = searchParams.toString();
+      return this.request(`/compliance/violations${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get a specific DLP violation by ID
+     * @param {string} id - Violation ID
+     * @returns {Promise} Violation details
+     */
+    getViolation: (id) => this.request(`/compliance/violations/${id}`),
+
+    /**
+     * Get compliance summary statistics
+     * @returns {Promise} Summary with total violations, score, counts by severity/type
+     */
+    getSummary: () => this.request('/compliance/summary'),
+
+    /**
+     * Acknowledge a DLP violation
+     * @param {string} id - Violation ID to acknowledge
+     * @returns {Promise} Updated violation
+     */
+    acknowledgeViolation: (id) => this.request(`/compliance/violations/${id}/acknowledge`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Bulk acknowledge multiple DLP violations
+     * @param {string[]} violationIds - Array of violation IDs to acknowledge
+     * @returns {Promise} Results of bulk acknowledge operation
+     */
+    bulkAcknowledge: (violationIds) => this.request('/compliance/violations/acknowledge-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ violation_ids: violationIds }),
+    }),
+  };
+
+  // ============================================================================
+  // Data Sources API
+  // ============================================================================
+  dataSources = {
+    /**
+     * Get all data sources for the current space
+     * @param {Object} options - Pagination and filter options
+     * @returns {Promise} List of data sources
+     */
+    getAll: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      if (options.type) params.append('type', options.type);
+      const queryString = params.toString();
+      return this.request(`/data-sources${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get a single data source by ID
+     * @param {string} id - Data source ID
+     * @returns {Promise} Data source details
+     */
+    get: (id) => this.request(`/data-sources/${id}`),
+
+    /**
+     * Create a new data source
+     * @param {Object} data - Data source configuration
+     * @returns {Promise} Created data source
+     */
+    create: (data) => this.request('/data-sources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update an existing data source
+     * @param {string} id - Data source ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated data source
+     */
+    update: (id, updates) => this.request(`/data-sources/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a data source
+     * @param {string} id - Data source ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/data-sources/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test a data source connection
+     * @param {string} id - Data source ID
+     * @returns {Promise} Connection test result
+     */
+    testConnection: (id) => this.request(`/data-sources/${id}/test`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Trigger a sync for a data source
+     * @param {string} id - Data source ID
+     * @param {Object} options - Sync options (full, incremental, etc.)
+     * @returns {Promise} Sync job info
+     */
+    triggerSync: (id, options = {}) => this.request(`/data-sources/${id}/sync`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    }),
+
+    /**
+     * Get sync status for a data source
+     * @param {string} id - Data source ID
+     * @returns {Promise} Sync status
+     */
+    getSyncStatus: (id) => this.request(`/data-sources/${id}/sync/status`),
+
+    /**
+     * List files/items in a data source (for browsing)
+     * @param {string} id - Data source ID
+     * @param {string} path - Path within the data source
+     * @returns {Promise} List of files/items
+     */
+    listFiles: (id, path = '/') => this.request(`/data-sources/${id}/files?path=${encodeURIComponent(path)}`),
+
+    /**
+     * Probe a URL to detect AI-friendly content
+     * @param {string} url - URL to probe
+     * @returns {Promise} Probe results (llms.txt, ai.txt, robots.txt, paywall detection)
+     */
+    probeUrl: (url) => this.request('/data-sources/probe-url', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+    /**
+     * Scrape a URL using the recommended or specified scraper
+     * @param {string} url - URL to scrape
+     * @param {string} scraperType - Scraper type (crawl4ai, direct_fetch, archive_org, etc.)
+     * @param {Object} options - Scraping options
+     * @returns {Promise} Scraped content
+     */
+    scrapeUrl: (url, scraperType, options = {}) => this.request('/data-sources/scrape-url', {
+      method: 'POST',
+      body: JSON.stringify({ url, scraper_type: scraperType, options }),
+    }),
+  };
+
+  // ============================================================================
+  // Database Connections API
+  // ============================================================================
+  databases = {
+    /**
+     * Get all database connections
+     * @returns {Promise} List of database connections
+     */
+    getAll: () => this.request('/databases'),
+
+    /**
+     * Get a single database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Connection details
+     */
+    get: (id) => this.request(`/databases/${id}`),
+
+    /**
+     * Create a new database connection
+     * @param {Object} data - Connection configuration
+     * @returns {Promise} Created connection
+     */
+    create: (data) => this.request('/databases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update an existing database connection
+     * @param {string} id - Connection ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated connection
+     */
+    update: (id, updates) => this.request(`/databases/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/databases/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test an existing database connection
+     * @param {string} id - Connection ID
+     * @returns {Promise} Connection test result
+     */
+    testConnection: (id) => this.request(`/databases/${id}/test`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Test a new database connection without saving
+     * @param {Object} connectionParams - Connection parameters to test
+     * @returns {Promise} Connection test result
+     */
+    testNewConnection: (connectionParams) => this.request('/databases/test', {
+      method: 'POST',
+      body: JSON.stringify(connectionParams),
+    }),
+
+    /**
+     * Get database schema (tables, views, etc.)
+     * @param {string} id - Connection ID
+     * @param {string} type - Schema type: 'database', 'schema', or 'table'
+     * @returns {Promise} Schema information
+     */
+    getSchema: (id, type = 'table') => this.request(`/databases/${id}/schema?type=${type}`),
+
+    /**
+     * Get list of tables in a database
+     * @param {string} id - Connection ID
+     * @returns {Promise} List of tables with basic info
+     */
+    getTables: (id) => this.request(`/databases/${id}/tables`),
+
+    /**
+     * Get column information for a specific table
+     * @param {string} id - Connection ID
+     * @param {string} tableName - Table name
+     * @param {string} schema - Schema name (optional, defaults to 'public')
+     * @returns {Promise} Table columns with types, nullable, primary key info
+     */
+    getTableColumns: (id, tableName, schema) => {
+      const params = schema ? `?schema=${encodeURIComponent(schema)}` : '';
+      return this.request(`/databases/${id}/tables/${encodeURIComponent(tableName)}/columns${params}`);
+    },
+
+    /**
+     * Execute a query on a database connection
+     * @param {string} id - Connection ID
+     * @param {string} query - SQL/query to execute
+     * @param {Object} params - Query parameters
+     * @returns {Promise} Query results
+     */
+    query: (id, query, params = {}) => this.request(`/databases/${id}/query`, {
+      method: 'POST',
+      body: JSON.stringify({ query, params }),
+    }),
+  };
+
+  // ============================================================================
+  // Credentials API
+  // ============================================================================
+  credentials = {
+    /**
+     * List all credentials (metadata only, no secrets)
+     * @returns {Promise} List of credentials
+     */
+    list: () => this.request('/credentials'),
+
+    /**
+     * Create a new credential
+     * @param {Object} data - Credential data (secrets encrypted server-side)
+     * @returns {Promise} Created credential metadata
+     */
+    create: (data) => this.request('/credentials', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Delete a credential
+     * @param {string} id - Credential ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/credentials/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Test a credential
+     * @param {string} id - Credential ID
+     * @returns {Promise} Test result
+     */
+    test: (id) => this.request(`/credentials/${id}/test`, {
+      method: 'POST',
+    }),
+  };
+
+  // ============================================================================
+  // Compliance API - DLP Violations from AudiModal
+  // ============================================================================
+  compliance = {
+    /**
+     * Get paginated list of DLP violations
+     * @param {Object} params - Query parameters
+     * @param {string} params.severity - Filter by severity (critical, high, medium, low)
+     * @param {string} params.status - Filter by status (detected, resolved, acknowledged)
+     * @param {boolean} params.acknowledged - Filter by acknowledged status
+     * @param {string} params.compliance_type - Filter by compliance type (pii, hipaa, pci-dss, gdpr)
+     * @param {number} params.page - Page number (default: 1)
+     * @param {number} params.page_size - Page size (default: 20, max: 100)
+     * @returns {Promise} Paginated list of violations
+     */
+    getViolations: (params = {}) => {
+      const queryParams = new URLSearchParams();
+      if (params.severity) queryParams.append('severity', params.severity);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.acknowledged !== undefined) queryParams.append('acknowledged', params.acknowledged);
+      if (params.compliance_type) queryParams.append('compliance_type', params.compliance_type);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      const queryString = queryParams.toString();
+      return this.request(`/compliance/violations${queryString ? '?' + queryString : ''}`);
+    },
+
+    /**
+     * Get a specific DLP violation by ID
+     * @param {string} id - Violation ID
+     * @returns {Promise} Violation details
+     */
+    getViolation: (id) => this.request(`/compliance/violations/${id}`),
+
+    /**
+     * Get compliance summary statistics
+     * @returns {Promise} Compliance summary with violation counts and score
+     */
+    getSummary: () => this.request('/compliance/summary'),
+
+    /**
+     * Acknowledge a DLP violation
+     * @param {string} id - Violation ID
+     * @returns {Promise} Acknowledged violation
+     */
+    acknowledgeViolation: (id) => this.request(`/compliance/violations/${id}/acknowledge`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Bulk acknowledge multiple DLP violations
+     * @param {string[]} violationIds - Array of violation IDs to acknowledge
+     * @returns {Promise} Bulk acknowledge result
+     */
+    bulkAcknowledge: (violationIds) => this.request('/compliance/violations/acknowledge-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ violation_ids: violationIds }),
+    }),
+  };
+
+  // ============================================================================
+  // OAuth API
+  // ============================================================================
+  oauth = {
+    /**
+     * Initiate OAuth flow for a provider
+     * @param {string} provider - OAuth provider (google, microsoft, dropbox, etc.)
+     * @returns {Promise} OAuth authorization URL and state
+     */
+    initiateFlow: (provider) => this.request(`/oauth/${provider}/authorize`, {
+      method: 'POST',
+    }),
+
+    /**
+     * Handle OAuth callback
+     * @param {string} provider - OAuth provider
+     * @param {string} code - Authorization code
+     * @param {string} state - CSRF state token
+     * @returns {Promise} Created credential from OAuth
+     */
+    callback: (provider, code, state) => this.request(`/oauth/${provider}/callback`, {
+      method: 'POST',
+      body: JSON.stringify({ code, state }),
+    }),
+  };
+
+  // ============================================================================
+  // MCP (Model Context Protocol) API
+  // ============================================================================
+  mcp = {
+    /**
+     * List available MCP servers
+     * @returns {Promise} List of MCP servers
+     */
+    listServers: () => this.request('/mcp/servers'),
+
+    /**
+     * List available MCP database servers
+     * @returns {Promise} List of database-specific MCP servers
+     */
+    listDatabaseServers: () => this.request('/mcp/servers?type=database'),
+
+    /**
+     * Invoke an MCP tool
+     * @param {string} serverId - MCP server ID
+     * @param {string} tool - Tool name
+     * @param {Object} params - Tool parameters
+     * @returns {Promise} Tool result
+     */
+    invokeTool: (serverId, tool, params) => this.request('/mcp/invoke', {
+      method: 'POST',
+      body: JSON.stringify({ server_id: serverId, tool, params }),
+    }),
+
+    /**
+     * Get an MCP resource
+     * @param {string} uri - Resource URI
+     * @returns {Promise} Resource content
+     */
+    getResource: (uri) => this.request(`/mcp/resources?uri=${encodeURIComponent(uri)}`),
+
+    /**
+     * List tools for a specific MCP server
+     * @param {string} serverId - MCP server ID
+     * @returns {Promise} List of available tools
+     */
+    listTools: (serverId) => this.request(`/mcp/servers/${serverId}/tools`),
   };
 }
 

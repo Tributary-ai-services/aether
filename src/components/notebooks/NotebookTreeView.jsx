@@ -205,7 +205,7 @@ const NotebookTreeView = ({
   const getVisibilityIcon = (visibility) => {
     switch (visibility) {
       case 'public': return <Globe size={12} className="text-green-600" />;
-      case 'shared': return <Users size={12} className="text-blue-600" />;
+      case 'shared': return <Users size={12} className="text-(--color-primary-600)" />;
       default: return <Lock size={12} className="text-gray-400" />;
     }
   };
@@ -219,8 +219,8 @@ const NotebookTreeView = ({
       <div key={notebook.id} className="select-none">
         <div
           className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-            isSelected 
-              ? 'bg-blue-100 text-blue-900' 
+            isSelected
+              ? 'bg-(--color-primary-100) text-(--color-primary-900)'
               : 'hover:bg-gray-100 text-gray-700'
           }`}
           style={{ paddingLeft: `${12 + depth * 20}px` }}
@@ -247,9 +247,9 @@ const NotebookTreeView = ({
           <div className="flex-shrink-0">
             {hasChildren ? (
               isExpanded ? (
-                <FolderOpen size={16} className="text-blue-600" />
+                <FolderOpen size={16} className="text-(--color-primary-600)" />
               ) : (
-                <Folder size={16} className="text-blue-600" />
+                <Folder size={16} className="text-(--color-primary-600)" />
               )
             ) : (
               <BookOpen size={16} className="text-purple-600" />

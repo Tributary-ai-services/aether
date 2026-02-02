@@ -15,9 +15,9 @@ const ActionNode = ({ data, isConnectable }) => {
   };
 
   return (
-    <div className="px-4 py-2 shadow-lg rounded-lg bg-white border-2 border-blue-500 min-w-[150px]">
+    <div className="px-4 py-2 shadow-lg rounded-lg bg-white border-2 border-(--color-primary-500) min-w-[150px]">
       <div className="flex items-center gap-2">
-        <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+        <div className="w-6 h-6 bg-(--color-primary-100) rounded flex items-center justify-center">
           {getActionIcon(data.actionType)}
         </div>
         <div className="flex-1">

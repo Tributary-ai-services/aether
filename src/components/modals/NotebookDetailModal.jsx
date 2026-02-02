@@ -153,7 +153,7 @@ const NotebookDetailModal = ({ isOpen, onClose, notebook, onOpenSettings, onOpen
                     onClose();
                     onViewContents?.(notebook);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
                 >
                   <Eye size={16} />
                   View Contents

@@ -138,7 +138,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
   const getRoleBadge = (role) => {
     const badges = {
       owner: { color: 'bg-purple-100 text-purple-800', icon: Crown },
-      admin: { color: 'bg-blue-100 text-blue-800', icon: Shield },
+      admin: { color: 'bg-(--color-primary-100) text-(--color-primary-800)', icon: Shield },
       member: { color: 'bg-green-100 text-green-800', icon: Users },
       viewer: { color: 'bg-gray-100 text-gray-800', icon: Eye }
     };
@@ -149,7 +149,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
   const getPlanInfo = (plan) => {
     const plans = {
       free: { name: 'Free', color: 'bg-gray-100 text-gray-800', seats: 3 },
-      pro: { name: 'Pro', color: 'bg-blue-100 text-blue-800', seats: 25 },
+      pro: { name: 'Pro', color: 'bg-(--color-primary-100) text-(--color-primary-800)', seats: 25 },
       enterprise: { name: 'Enterprise', color: 'bg-purple-100 text-purple-800', seats: 'Unlimited' }
     };
     
@@ -224,7 +224,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'overview'
-                ? 'text-blue-600 border-blue-600'
+                ? 'text-(--color-primary-600) border-(--color-primary-600)'
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
@@ -234,7 +234,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
             onClick={() => setActiveTab('members')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'members'
-                ? 'text-blue-600 border-blue-600'
+                ? 'text-(--color-primary-600) border-(--color-primary-600)'
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
@@ -246,7 +246,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                 onClick={() => setActiveTab('settings')}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === 'settings'
-                    ? 'text-blue-600 border-blue-600'
+                    ? 'text-(--color-primary-600) border-(--color-primary-600)'
                     : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
@@ -256,7 +256,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                 onClick={() => setActiveTab('billing')}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === 'billing'
-                    ? 'text-blue-600 border-blue-600'
+                    ? 'text-(--color-primary-600) border-(--color-primary-600)'
                     : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
@@ -274,7 +274,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gray-50 rounded-lg p-6">
                   <div className="flex items-center gap-3">
-                    <Users className="text-blue-600" size={24} />
+                    <Users className="text-(--color-primary-600)" size={24} />
                     <div>
                       <div className="text-2xl font-bold text-gray-900">{organization.memberCount}</div>
                       <div className="text-sm text-gray-600">Members</div>
@@ -318,7 +318,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                       <span className="text-sm text-gray-500">Website</span>
                       {organization.website ? (
                         <a href={organization.website} target="_blank" rel="noopener noreferrer" 
-                           className="text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                           className="text-(--color-primary-600) hover:text-(--color-primary-700) flex items-center gap-1">
                           {organization.website}
                           <ExternalLink size={12} />
                         </a>
@@ -344,7 +344,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                   <h3 className="text-lg font-semibold">Organization Members</h3>
                   <button
                     onClick={() => setShowInviteForm(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
                   >
                     <UserPlus size={16} />
                     Invite Member
@@ -373,14 +373,14 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                             placeholder="Enter email address"
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                             disabled={invitationLoading}
                           />
                         </div>
                         <select
                           value={inviteRole}
                           onChange={(e) => setInviteRole(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                           disabled={invitationLoading}
                         >
                           <option value="viewer">Viewer</option>
@@ -390,7 +390,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                         <button
                           type="submit"
                           disabled={invitationLoading || !inviteEmail.trim()}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                          className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
                         >
                           {invitationLoading ? 'Inviting...' : 'Invite'}
                         </button>
@@ -524,7 +524,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                   {!isEditingDetails && (
                     <button
                       onClick={() => setIsEditingDetails(true)}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                      className="flex items-center gap-2 text-(--color-primary-600) hover:text-(--color-primary-700)"
                     >
                       <Edit2 size={16} />
                       Edit
@@ -542,7 +542,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                         type="text"
                         value={orgDetails.name}
                         onChange={(e) => setOrgDetails({ ...orgDetails, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                       />
                     </div>
 
@@ -554,7 +554,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                         rows={3}
                         value={orgDetails.description}
                         onChange={(e) => setOrgDetails({ ...orgDetails, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) resize-none"
                       />
                     </div>
 
@@ -567,7 +567,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                           type="url"
                           value={orgDetails.website}
                           onChange={(e) => setOrgDetails({ ...orgDetails, website: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                         />
                       </div>
                       <div>
@@ -578,7 +578,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                           type="text"
                           value={orgDetails.location}
                           onChange={(e) => setOrgDetails({ ...orgDetails, location: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                         />
                       </div>
                     </div>
@@ -590,7 +590,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                       <select
                         value={orgDetails.visibility}
                         onChange={(e) => setOrgDetails({ ...orgDetails, visibility: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                       >
                         <option value="private">Private</option>
                         <option value="public">Public</option>
@@ -601,7 +601,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                       <button
                         onClick={handleUpdateOrganization}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
                       >
                         <Save size={16} />
                         Save Changes
@@ -663,7 +663,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                     <input 
                       type="checkbox" 
                       defaultChecked={organization.settings?.membersCanCreateRepositories}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                   </label>
                   <label className="flex items-center justify-between">
@@ -674,7 +674,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                     <input 
                       type="checkbox" 
                       defaultChecked={organization.settings?.membersCanCreateTeams}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                   </label>
                   <label className="flex items-center justify-between">
@@ -685,7 +685,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                     <input 
                       type="checkbox" 
                       defaultChecked={organization.settings?.membersCanFork}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                   </label>
                   <label className="flex items-center justify-between">
@@ -696,7 +696,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                     <input 
                       type="checkbox" 
                       defaultChecked={organization.settings?.twoFactorRequired}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
                     />
                   </label>
                 </div>
@@ -773,7 +773,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                   {/* Free Plan */}
                   <div className={`border-2 rounded-lg p-6 ${
                     organization.billing?.plan === 'free' 
-                      ? 'border-blue-500 bg-blue-50' 
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50)' 
                       : 'border-gray-200'
                   }`}>
                     <h4 className="text-lg font-bold mb-2">Free</h4>
@@ -795,7 +795,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                   {/* Pro Plan */}
                   <div className={`border-2 rounded-lg p-6 ${
                     organization.billing?.plan === 'pro' 
-                      ? 'border-blue-500 bg-blue-50' 
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50)' 
                       : 'border-gray-200'
                   }`}>
                     <h4 className="text-lg font-bold mb-2">Pro</h4>
@@ -809,7 +809,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                     </ul>
                     <button 
                       disabled={organization.billing?.plan === 'pro'}
-                      className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                      className="w-full py-2 px-4 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg text-sm hover:bg-(--color-primary-700) disabled:opacity-50"
                     >
                       {organization.billing?.plan === 'pro' ? 'Current Plan' : 'Upgrade'}
                     </button>
@@ -818,7 +818,7 @@ const OrganizationDetailsModal = ({ isOpen, onClose, organization }) => {
                   {/* Enterprise Plan */}
                   <div className={`border-2 rounded-lg p-6 ${
                     organization.billing?.plan === 'enterprise' 
-                      ? 'border-blue-500 bg-blue-50' 
+                      ? 'border-(--color-primary-500) bg-(--color-primary-50)' 
                       : 'border-gray-200'
                   }`}>
                     <h4 className="text-lg font-bold mb-2">Enterprise</h4>

@@ -42,24 +42,24 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'published':
-        return 'bg-green-100 text-green-800';
+        return 'bg-(--color-success-light) text-(--color-success-dark)';
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-(--color-warning-light) text-(--color-warning-dark)';
       case 'disabled':
         return 'bg-gray-100 text-gray-800';
       default:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-(--color-primary-100) text-(--color-primary-800)';
     }
   };
 
   const getOptimizationBadge = (optimizeFor) => {
     switch (optimizeFor) {
       case 'cost':
-        return { icon: DollarSign, color: 'bg-blue-100 text-blue-800', label: 'Cost' };
+        return { icon: DollarSign, color: 'bg-(--color-primary-100) text-(--color-primary-800)', label: 'Cost' };
       case 'performance':
         return { icon: Zap, color: 'bg-purple-100 text-purple-800', label: 'Speed' };
       case 'quality':
-        return { icon: Shield, color: 'bg-green-100 text-green-800', label: 'Quality' };
+        return { icon: Shield, color: 'bg-(--color-success-light) text-(--color-success-dark)', label: 'Quality' };
       default:
         return { icon: Shield, color: 'bg-gray-100 text-gray-800', label: 'Balanced' };
     }
@@ -83,7 +83,10 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
   const OptimizationIcon = optimizationBadge.icon;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onOpenDetail}
+    >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
@@ -94,7 +97,7 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-gray-900">{agent.name}</h3>
               {agent.is_public && (
-                <Eye className="text-blue-500" size={14} title="Public Agent" />
+                <Eye className="text-(--color-primary-500)" size={14} title="Public Agent" />
               )}
               {agent.is_template && (
                 <Crown className="text-yellow-500" size={14} title="Template Agent" />
@@ -113,8 +116,11 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
         </div>
         
         <div className="flex gap-1">
-          <button 
-            onClick={handleTestAgent}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTestAgent();
+            }}
             disabled={executionLoading}
             className="p-2 text-gray-400 hover:text-green-600 disabled:opacity-50"
             title="Test Agent"
@@ -125,25 +131,31 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
               <Play size={16} />
             )}
           </button>
-          <button 
-            onClick={handleDuplicateAgent}
-            className="p-2 text-gray-400 hover:text-blue-600"
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDuplicateAgent();
+            }}
+            className="p-2 text-gray-400 hover:text-(--color-primary-600)"
             title="Duplicate Agent"
           >
             <Copy size={16} />
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setShareDialogOpen(true);
             }}
-            className="p-2 text-gray-400 hover:text-blue-600"
+            className="p-2 text-gray-400 hover:text-(--color-primary-600)"
             title="Share Agent"
           >
             <Share2 size={16} />
           </button>
-          <button 
-            onClick={onOpenDetail}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail();
+            }}
             className="p-2 text-gray-400 hover:text-gray-600"
             title="View Details"
           >
@@ -154,8 +166,8 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
 
       {/* Description */}
       {agent.description && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-          <div className="text-xs text-blue-600 mb-1">Description</div>
+        <div className="mb-4 p-3 bg-(--color-primary-50) rounded-lg">
+          <div className="text-xs text-(--color-primary-600) mb-1">Description</div>
           <div className="text-sm text-gray-700 line-clamp-2">{agent.description}</div>
         </div>
       )}
@@ -182,7 +194,7 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
             </span>
           )}
           {agent.llm_config?.fallback_config?.enabled && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+            <span className="px-2 py-1 bg-(--color-primary-100) text-(--color-primary-700) rounded-full">
               Fallback
             </span>
           )}

@@ -173,8 +173,8 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {/* Breadcrumb for nested creation */}
         {parentNotebook && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center text-sm text-blue-700">
+          <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-3">
+            <div className="flex items-center text-sm text-(--color-primary-700)">
               <Folder size={16} className="mr-2" />
               <span>Creating notebook in: </span>
               <div className="flex items-center ml-2">
@@ -201,7 +201,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
               onClick={() => setActiveTab('basic')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'basic'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -212,7 +212,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
               onClick={() => setActiveTab('compliance')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'compliance'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -235,7 +235,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                 errors.name ? 'border-red-300' : 'border-gray-300'
               }`}
               placeholder="Enter notebook name"
@@ -256,7 +256,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
             <select
               value={formData.visibility}
               onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               disabled={isCreating}
             >
               <option value="private">
@@ -281,7 +281,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             rows={3}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none ${
               errors.description ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Describe the purpose and contents of this notebook"
@@ -306,14 +306,14 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
               value={currentTag}
               onChange={(e) => setCurrentTag(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               placeholder="Add tags for better organization"
               disabled={isCreating}
             />
             <button
               type="button"
               onClick={addTag}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
               disabled={!currentTag.trim() || isCreating}
             >
               <Tag size={16} />
@@ -323,13 +323,13 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
             {formData.tags.map(tag => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-(--color-primary-100) text-(--color-primary-700) rounded-full text-xs"
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => removeTag(tag)}
-                  className="hover:text-blue-600"
+                  className="hover:text-(--color-primary-600)"
                   disabled={isCreating}
                 >
                   <X size={12} />
@@ -351,14 +351,14 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
                 value={collaboratorEmail}
                 onChange={(e) => setCollaboratorEmail(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCollaborator())}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                 placeholder="Enter collaborator email"
                 disabled={isCreating}
               />
               <button
                 type="button"
                 onClick={addCollaborator}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
                 disabled={!collaboratorEmail.trim() || isCreating}
               >
                 <Users size={16} />
@@ -422,7 +422,7 @@ const CreateNotebookModal = ({ isOpen, onClose, parentNotebook = null, onCreateN
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
               disabled={isCreating}
             >
               {isCreating ? (

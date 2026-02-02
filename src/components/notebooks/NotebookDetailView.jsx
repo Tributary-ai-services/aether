@@ -136,7 +136,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
       case 'mp4':
       case 'avi':
       case 'mov':
-        return <Film size={16} className="text-blue-600" />;
+        return <Film size={16} className="text-(--color-primary-600)" />;
       case 'mp3':
       case 'wav':
       case 'flac':
@@ -189,7 +189,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <BookOpen size={24} className="text-blue-600" />
+              <BookOpen size={24} className="text-(--color-primary-600)" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">{notebook.name}</h1>
                 <p className="text-sm text-gray-500">{notebook.description}</p>
@@ -206,7 +206,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
                 {notebook.visibility === 'public' ? (
                   <Globe size={16} className="text-green-600" />
                 ) : notebook.visibility === 'shared' ? (
-                  <Users size={16} className="text-blue-600" />
+                  <Users size={16} className="text-(--color-primary-600)" />
                 ) : (
                   <Lock size={16} className="text-gray-600" />
                 )}
@@ -235,7 +235,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
                 
                 {/* GDPR */}
                 {complianceSettings.complianceFrameworks?.includes('GDPR') && (
-                  <div className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 flex items-center gap-1" title="GDPR Compliance">
+                  <div className="px-2 py-1 rounded-full text-xs bg-(--color-primary-100) text-(--color-primary-700) flex items-center gap-1" title="GDPR Compliance">
                     <ShieldCheck size={10} />
                     GDPR
                   </div>
@@ -295,8 +295,8 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
               resource={notebook}
               resourcePermission="edit"
               onClick={() => onUploadDocuments?.(notebook)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              disabledClassName="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-50 cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
+              disabledClassName="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg opacity-50 cursor-not-allowed"
               disabledTitle="You need edit access to upload documents"
             >
               <Upload size={16} />
@@ -322,7 +322,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
                 placeholder="Search documents..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) w-64"
               />
             </div>
 
@@ -330,7 +330,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
             >
               <option value="all">All Types</option>
               <option value="pdf">PDF</option>
@@ -347,7 +347,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
               onClick={() => setLocalViewMode('grid')}
               className={`p-2 rounded-lg transition-colors ${
                 localViewMode === 'grid' 
-                  ? 'bg-blue-100 text-blue-600' 
+                  ? 'bg-(--color-primary-100) text-(--color-primary-600)' 
                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -357,7 +357,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
               onClick={() => setLocalViewMode('list')}
               className={`p-2 rounded-lg transition-colors ${
                 localViewMode === 'list' 
-                  ? 'bg-blue-100 text-blue-600' 
+                  ? 'bg-(--color-primary-100) text-(--color-primary-600)' 
                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -489,7 +489,7 @@ const NotebookDetailView = ({ notebook, onUploadDocuments }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="text-blue-600 hover:text-blue-900">
+                          <button className="text-(--color-primary-600) hover:text-(--color-primary-700)">
                             <Eye size={16} />
                           </button>
                           <button className="text-gray-400 hover:text-gray-600">

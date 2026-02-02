@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStreaming } from '../hooks/index.js';
 import { getStatusColor, getSentimentColor, getMediaIcon } from '../utils/helpers.jsx';
-import { 
+import {
   Radio,
   Activity,
   Camera,
@@ -19,8 +19,25 @@ import {
   Image,
   Video,
   Mic,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
+
+// Helper to get severity badge styles
+const getSeverityBadgeStyles = (severity) => {
+  switch (severity?.toLowerCase()) {
+    case 'critical':
+      return 'bg-red-100 text-red-700 border-red-200';
+    case 'high':
+      return 'bg-orange-100 text-orange-700 border-orange-200';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'low':
+      return 'bg-green-100 text-green-700 border-green-200';
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+  }
+};
 
 const StreamingPage = () => {
   const { 
@@ -161,32 +178,70 @@ const StreamingPage = () => {
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {liveEvents.map(event => (
-              <div key={event.id} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+              <div
+                key={event.id}
+                className={`p-3 border rounded-lg hover:bg-gray-50 ${
+                  event.isComplianceEvent
+                    ? event.severity === 'critical'
+                      ? 'border-red-200 bg-red-50/50'
+                      : event.severity === 'high'
+                      ? 'border-orange-200 bg-orange-50/50'
+                      : 'border-amber-200 bg-amber-50/50'
+                    : 'border-gray-100'
+                }`}
+              >
                 <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">{event.source}</span>
-                    <span className="text-xs text-gray-500">•</span>
-                    <span className="text-xs text-gray-500">{event.type}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {event.isComplianceEvent ? (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <Shield size={14} className="text-amber-600" />
+                          <span className="text-sm font-medium text-amber-700">Compliance</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${getSeverityBadgeStyles(event.severity)}`}>
+                          {event.severity?.toUpperCase()}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium text-gray-900">{event.source}</span>
+                        <span className="text-xs text-gray-500">•</span>
+                        <span className="text-xs text-gray-500">{event.type}</span>
+                      </>
+                    )}
                     <div className="flex items-center gap-1">
-                      {getMediaIcon(event.mediaType)}
-                      <span className="text-xs text-gray-500">{event.mediaType}</span>
+                      {event.isComplianceEvent ? (
+                        <AlertTriangle size={12} className="text-amber-500" />
+                      ) : (
+                        getMediaIcon(event.mediaType)
+                      )}
+                      <span className="text-xs text-gray-500">{event.isComplianceEvent ? 'DLP' : event.mediaType}</span>
                     </div>
-                    {event.hasAuditTrail && (
+                    {event.hasAuditTrail && !event.isComplianceEvent && (
                       <div className="flex items-center gap-1">
                         <Shield size={10} className="text-green-600" />
                         <span className="text-xs text-green-600">Audited</span>
                       </div>
                     )}
-                    <span className={`px-2 py-1 rounded-full text-xs ${getSentimentColor(event.sentiment)}`}>
-                      {event.sentiment}
-                    </span>
+                    {!event.isComplianceEvent && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${getSentimentColor(event.sentiment)}`}>
+                        {event.sentiment}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Clock size={12} />
                     {event.timestamp}
                   </div>
                 </div>
-                <p className="text-sm text-gray-700">{event.content}</p>
+                <p className={`text-sm ${event.isComplianceEvent ? 'text-gray-800' : 'text-gray-700'}`}>
+                  {event.content}
+                </p>
+                {event.isComplianceEvent && event.confidence && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Confidence: {(event.confidence * 100).toFixed(0)}%
+                  </div>
+                )}
               </div>
             ))}
           </div>

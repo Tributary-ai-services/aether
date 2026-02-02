@@ -103,7 +103,7 @@ export const getNotebookDepth = (notebook, allNotebooks) => {
 export const formatVisibility = (visibility) => {
   const visibilityMap = {
     private: { label: 'Private', icon: '🔒', color: 'text-gray-600' },
-    shared: { label: 'Shared', icon: '👥', color: 'text-blue-600' },
+    shared: { label: 'Shared', icon: '👥', color: 'text-(--color-primary-600)' },
     public: { label: 'Public', icon: '🌐', color: 'text-green-600' }
   };
   

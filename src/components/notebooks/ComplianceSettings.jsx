@@ -49,12 +49,12 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
   return (
     <div className="space-y-6">
       {/* Compliance Frameworks */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4">
         <div className="flex items-start gap-3 mb-4">
-          <Shield className="text-blue-600 mt-1" size={20} />
+          <Shield className="text-(--color-primary-600) mt-1" size={20} />
           <div className="flex-1">
-            <h3 className="font-medium text-blue-900 mb-2">Compliance Frameworks</h3>
-            <p className="text-xs text-blue-700 mb-3">
+            <h3 className="font-medium text-(--color-primary-900) mb-2">Compliance Frameworks</h3>
+            <p className="text-xs text-(--color-primary-700) mb-3">
               Enable regulatory compliance frameworks for data protection and industry standards.
             </p>
           </div>
@@ -82,10 +82,10 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
                 className="rounded border-gray-300 mt-1"
               />
               <div>
-                <label htmlFor={`framework-${framework.id}`} className="text-sm font-medium text-blue-800">
+                <label htmlFor={`framework-${framework.id}`} className="text-sm font-medium text-(--color-primary-800)">
                   {framework.label}
                 </label>
-                <p className="text-xs text-blue-600">
+                <p className="text-xs text-(--color-primary-600)">
                   {framework.description}
                 </p>
               </div>
@@ -104,7 +104,7 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
           value={settings.dataClassification || 'internal'}
           onChange={(e) => handleChange('dataClassification', e.target.value)}
           disabled={disabled}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
         >
           {dataClassifications.map(classification => (
             <option key={classification.value} value={classification.value}>
@@ -133,7 +133,7 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
             value={settings.dataRetentionDays || 365}
             onChange={(e) => handleChange('dataRetentionDays', parseInt(e.target.value) || 365)}
             disabled={disabled}
-            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
           />
           <span className="text-sm text-gray-600">days</span>
           <div className="text-xs text-gray-500">
@@ -152,21 +152,40 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
           Security Options
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm text-gray-700">Content Redaction</label>
-              <p className="text-xs text-gray-500">Automatically redact sensitive information in documents</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.redactionEnabled || false}
-              onChange={(e) => handleChange('redactionEnabled', e.target.checked)}
-              disabled={disabled}
-              className="rounded border-gray-300"
-            />
-          </div>
+        {/* Redaction Mode Dropdown */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+            PII Redaction Mode
+          </label>
+          <select
+            value={settings.redactionMode || 'mask'}
+            onChange={(e) => {
+              const mode = e.target.value;
+              // Update both redactionMode and legacy redactionEnabled in a single onChange call
+              if (onChange) {
+                onChange({
+                  ...settings,
+                  redactionMode: mode,
+                  redactionEnabled: mode !== 'none'
+                });
+              }
+            }}
+            disabled={disabled}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+          >
+            <option value="mask">Mask (***-**-1234) - Recommended</option>
+            <option value="replace">Replace (e.g., [SSN REDACTED])</option>
+            <option value="hash">Hash (SHA-256 of original value)</option>
+            <option value="remove">Remove (delete entirely)</option>
+            <option value="tokenize">Tokenize (reversible pseudonymization)</option>
+            <option value="none">None (no redaction)</option>
+          </select>
+          <p className="text-xs text-gray-600 mt-1">
+            Controls how detected PII (SSN, credit cards, emails, etc.) is handled in document chunks
+          </p>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center justify-between">
             <div>
               <label className="text-sm text-gray-700">Access Logging</label>

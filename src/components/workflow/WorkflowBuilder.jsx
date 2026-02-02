@@ -174,7 +174,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
               type="text"
               value={workflowName}
               onChange={(e) => setWorkflowName(e.target.value)}
-              className="text-xl font-semibold bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:border-blue-500 rounded px-2 py-1"
+              className="text-xl font-semibold bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:border-(--color-primary-500) rounded px-2 py-1"
             />
             <span className="text-sm text-gray-500">• Workflow Builder</span>
           </div>
@@ -189,7 +189,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
             >
               <Save size={16} />
               Save
@@ -226,7 +226,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
             <div className="space-y-2">
               <button
                 onClick={() => addNode('trigger')}
-                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-(--color-primary-50) hover:border-(--color-primary-300) transition-colors"
               >
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                   <Zap size={16} className="text-green-600" />
@@ -239,7 +239,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
 
               <button
                 onClick={() => addNode('action')}
-                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-(--color-primary-50) hover:border-(--color-primary-300) transition-colors"
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Settings size={16} className="text-blue-600" />
@@ -252,7 +252,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
 
               <button
                 onClick={() => addNode('condition')}
-                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-(--color-primary-50) hover:border-(--color-primary-300) transition-colors"
               >
                 <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <GitBranch size={16} className="text-yellow-600" />
@@ -265,7 +265,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null }) => {
 
               <button
                 onClick={() => addNode('output')}
-                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-(--color-primary-50) hover:border-(--color-primary-300) transition-colors"
               >
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Target size={16} className="text-purple-600" />

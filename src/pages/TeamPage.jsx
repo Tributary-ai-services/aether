@@ -66,7 +66,7 @@ const TeamPage = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--color-primary-600) mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading team...</p>
         </div>
       </div>
@@ -82,7 +82,7 @@ const TeamPage = () => {
           </div>
           <button
             onClick={() => navigate('/teams')}
-            className="mt-4 text-blue-600 hover:text-blue-700"
+            className="mt-4 text-(--color-primary-600) hover:text-(--color-primary-700)"
           >
             ← Back to Teams
           </button>
@@ -100,7 +100,7 @@ const TeamPage = () => {
           <p className="text-gray-600 mb-6">The team you're looking for doesn't exist or you don't have access to it.</p>
           <button
             onClick={() => navigate('/teams')}
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
+            className="inline-flex items-center gap-2 text-(--color-primary-600) hover:text-(--color-primary-700)"
           >
             <ArrowLeft size={16} />
             Back to Teams
@@ -176,7 +176,7 @@ const TeamPage = () => {
             {canInviteMembers && (
               <button
                 onClick={() => setInviteModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
               >
                 <UserPlus size={16} />
                 Invite Members
@@ -217,7 +217,7 @@ const TeamPage = () => {
           {canViewMembers ? (
             <button
               onClick={() => setDetailsModalOpen(true)}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm font-medium"
             >
               View Members →
             </button>
@@ -241,7 +241,7 @@ const TeamPage = () => {
           <p className="text-sm text-gray-600 mb-3">Access shared notebooks and collaborative documents.</p>
           <button
             onClick={() => navigate('/notebooks')}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm font-medium"
           >
             View Notebooks →
           </button>
@@ -263,14 +263,14 @@ const TeamPage = () => {
           {canManageTeam ? (
             <button
               onClick={() => setDetailsModalOpen(true)}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm font-medium"
             >
               Open Settings →
             </button>
           ) : (
             <button
               onClick={() => setDetailsModalOpen(true)}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-(--color-primary-600) hover:text-(--color-primary-700) text-sm font-medium"
             >
               View Settings →
             </button>

@@ -6,11 +6,13 @@ import Modal from '../ui/Modal.jsx';
 import ConfigurationTemplateSelector from '../agent/ConfigurationTemplateSelector.jsx';
 import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
 import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
-import { 
-  Bot, 
-  Settings, 
-  Zap, 
-  DollarSign, 
+import { AIAssistLabel } from '../agent/AIAssistButton.jsx';
+import PromptAssistDialog from '../agent/PromptAssistDialog.jsx';
+import {
+  Bot,
+  Settings,
+  Zap,
+  DollarSign,
   Brain,
   Save,
   X,
@@ -67,6 +69,10 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [configValidation, setConfigValidation] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('Balanced');
+
+  // Prompt Assist Dialog state
+  const [promptAssistOpen, setPromptAssistOpen] = useState(false);
+  const [promptAssistField, setPromptAssistField] = useState('description'); // 'description' or 'system_prompt'
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -149,9 +155,11 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   // Validate configuration when it changes
   useEffect(() => {
     const validateConfiguration = async () => {
+      console.log('Validating config:', { provider: formData.llm_config.provider, model: formData.llm_config.model });
       if (formData.llm_config.provider && formData.llm_config.model) {
         try {
           const validation = await validateConfig(formData.llm_config);
+          console.log('Validation result:', validation);
           setConfigValidation(validation);
         } catch (err) {
           console.warn('Config validation failed:', err);
@@ -159,14 +167,17 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           setConfigValidation({ valid: true, errors: [] });
         }
       } else {
-        // Reset validation if required fields are missing
+        // Reset validation if required fields are missing - show as valid (no config yet)
+        console.log('No provider/model, setting valid');
         setConfigValidation({ valid: true, errors: [] });
       }
     };
 
     const timeoutId = setTimeout(validateConfiguration, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.llm_config, validateConfig]);
+    // Note: validateConfig excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.llm_config.provider, formData.llm_config.model]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -442,7 +453,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                 validationErrors.name ? 'border-red-300' : 'border-gray-300'
               }`}
               placeholder="Enter agent name"
@@ -459,7 +470,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
             <select
               value={formData.type}
               onChange={(e) => handleInputChange('type', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
             >
               <option value="qa">Q&A Agent - Answer questions based on knowledge sources</option>
               <option value="conversational">Conversational Agent - Chat-based with memory</option>
@@ -476,7 +487,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
             <select
               value={selectedTemplate}
               onChange={(e) => handleTemplateChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
             >
               <option value="Balanced">Balanced (Recommended)</option>
               <option value="High Reliability">High Reliability</option>
@@ -488,14 +499,22 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
+          <AIAssistLabel
+            htmlFor="description"
+            label="Description"
+            onAssistClick={() => {
+              setPromptAssistField('description');
+              setPromptAssistOpen(true);
+            }}
+            assistTooltip="Get AI help with description"
+            className="mb-2"
+          />
           <textarea
+            id="description"
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
             rows={3}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
               validationErrors.description ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Describe what this agent does..."
@@ -507,14 +526,23 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
         {/* System Prompt */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            System Prompt *
-          </label>
+          <AIAssistLabel
+            htmlFor="system_prompt"
+            label="System Prompt"
+            required={true}
+            onAssistClick={() => {
+              setPromptAssistField('system_prompt');
+              setPromptAssistOpen(true);
+            }}
+            assistTooltip="Get AI help with system prompt"
+            className="mb-2"
+          />
           <textarea
+            id="system_prompt"
             value={formData.system_prompt}
             onChange={(e) => handleInputChange('system_prompt', e.target.value)}
             rows={4}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
               validationErrors.system_prompt ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Enter the system prompt that defines the agent's behavior..."
@@ -539,7 +567,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
               <select
                 value={formData.llm_config.provider}
                 onChange={(e) => handleLLMConfigChange('provider', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                   validationErrors.provider ? 'border-red-300' : 'border-gray-300'
                 }`}
               >
@@ -563,7 +591,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                 value={formData.llm_config.model}
                 onChange={(e) => handleLLMConfigChange('model', e.target.value)}
                 disabled={!formData.llm_config.provider || availableModels.length === 0}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                   validationErrors.model ? 'border-red-300' : 'border-gray-300'
                 } ${!formData.llm_config.provider ? 'bg-gray-100' : ''}`}
               >
@@ -597,7 +625,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                 step="0.1"
                 value={formData.llm_config.temperature}
                 onChange={(e) => handleLLMConfigChange('temperature', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               />
             </div>
 
@@ -611,7 +639,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                 max="32000"
                 value={formData.llm_config.max_tokens}
                 onChange={(e) => handleLLMConfigChange('max_tokens', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               />
             </div>
 
@@ -622,7 +650,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
               <select
                 value={formData.llm_config.optimize_for}
                 onChange={(e) => handleLLMConfigChange('optimize_for', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               >
                 <option value="quality">Quality</option>
                 <option value="cost">Cost</option>
@@ -712,13 +740,13 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                     value={currentTag}
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="Add tag..."
                   />
                   <button
                     type="button"
                     onClick={handleAddTag}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
                   >
                     Add
                   </button>
@@ -751,7 +779,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                     type="checkbox"
                     checked={formData.is_public}
                     onChange={(e) => handleInputChange('is_public', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
                   />
                   <span className="text-sm text-gray-700">Make Public</span>
                 </label>
@@ -761,7 +789,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                     type="checkbox"
                     checked={formData.is_template}
                     onChange={(e) => handleInputChange('is_template', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
                   />
                   <span className="text-sm text-gray-700">Save as Template</span>
                 </label>
@@ -783,7 +811,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           <button
             type="submit"
             disabled={loading || (configValidation && !configValidation.valid)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
               <>
@@ -799,6 +827,23 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           </button>
         </div>
       </form>
+
+      {/* Prompt Assist Dialog */}
+      <PromptAssistDialog
+        isOpen={promptAssistOpen}
+        onClose={() => setPromptAssistOpen(false)}
+        onApply={(suggestion) => {
+          if (promptAssistField === 'description') {
+            handleInputChange('description', suggestion);
+          } else if (promptAssistField === 'system_prompt') {
+            handleInputChange('system_prompt', suggestion);
+          }
+        }}
+        assistFor={promptAssistField}
+        agentName={formData.name}
+        agentType={formData.type}
+        currentValue={promptAssistField === 'description' ? formData.description : formData.system_prompt}
+      />
     </Modal>
   );
 };

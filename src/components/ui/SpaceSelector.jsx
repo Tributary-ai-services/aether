@@ -38,7 +38,7 @@ const SpaceSelector = ({ className = "" }) => {
   const getSpaceIcon = (spaceType) => {
     switch (spaceType) {
       case SPACE_TYPES.PERSONAL:
-        return <User size={16} className="text-blue-600" />;
+        return <User size={16} className="text-(--color-primary-600)" />;
       case SPACE_TYPES.ORGANIZATION:
         return <Building2 size={16} className="text-green-600" />;
       default:
@@ -103,7 +103,7 @@ const SpaceSelector = ({ className = "" }) => {
             e.stopPropagation();
             loadAvailableSpaces(true); // Force reload, bypass cooldown
           }}
-          className="text-xs text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+          className="text-xs text-(--color-primary-600) hover:text-(--color-primary-700) hover:underline focus:outline-none"
         >
           Retry
         </button>
@@ -116,7 +116,7 @@ const SpaceSelector = ({ className = "" }) => {
       {/* Current Space Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-3 py-2 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+        className="flex items-center justify-between w-full px-3 py-2 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-transparent transition-colors"
       >
         <div className="flex items-center space-x-2 min-w-0">
           {currentSpace ? getSpaceIcon(currentSpace.space_type) : <Globe size={16} className="text-gray-400" />}
@@ -172,7 +172,7 @@ const SpaceSelector = ({ className = "" }) => {
                     className="flex items-center justify-between w-full px-3 py-2 text-left hover:bg-gray-50 focus:outline-none focus:bg-gray-50"
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      <User size={16} className="text-blue-600" />
+                      <User size={16} className="text-(--color-primary-600)" />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-gray-900 truncate">
                           {availableSpaces.personal_space.space_name}
@@ -183,7 +183,7 @@ const SpaceSelector = ({ className = "" }) => {
                       </div>
                     </div>
                     {currentSpace?.space_id === availableSpaces.personal_space.space_id && (
-                      <Check size={16} className="text-blue-600" />
+                      <Check size={16} className="text-(--color-primary-600)" />
                     )}
                   </button>
                 </>

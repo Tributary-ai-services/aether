@@ -151,7 +151,7 @@ const CreateSpaceModal = ({ onClose, organizationId = null, spaceType = 'organiz
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-transparent"
               placeholder="e.g., Marketing Campaigns, Product Development"
               disabled={loading}
             />
@@ -165,7 +165,7 @@ const CreateSpaceModal = ({ onClose, organizationId = null, spaceType = 'organiz
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-transparent"
               rows={3}
               placeholder="Describe the purpose of this space..."
               disabled={loading}
@@ -219,7 +219,7 @@ const CreateSpaceModal = ({ onClose, organizationId = null, spaceType = 'organiz
               <select
                 value={formData.organizationId}
                 onChange={(e) => handleInputChange('organizationId', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-transparent ${
                   !formData.organizationId && !loadingOrgs ? 'border-amber-300' : 'border-gray-300'
                 }`}
                 disabled={loading || loadingOrgs}
@@ -279,7 +279,7 @@ const CreateSpaceModal = ({ onClose, organizationId = null, spaceType = 'organiz
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
               disabled={loading || (!organizationId && organizations.length === 0)}
               title={organizations.length === 0 ? 'Create an organization first' : ''}
             >

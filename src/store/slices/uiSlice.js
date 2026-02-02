@@ -6,12 +6,17 @@ export const fetchOnboardingStatus = createAsyncThunk(
   'ui/fetchOnboardingStatus',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('[Onboarding API] Calling getStatus...');
       const status = await api.onboarding.getStatus();
-      return {
+      console.log('[Onboarding API] Response:', status);
+      const result = {
         hasCompletedOnboarding: status.tutorial_completed,
         shouldAutoTrigger: status.should_auto_trigger
       };
+      console.log('[Onboarding API] Parsed result:', result);
+      return result;
     } catch (error) {
+      console.error('[Onboarding API] Error:', error);
       return rejectWithValue(error.message || 'Failed to load onboarding status');
     }
   }
@@ -61,6 +66,8 @@ const initialState = {
   notifications: [],
   // Permission error state for 403 handling
   permissionError: null, // { message, action, resource, timestamp }
+  // Security blocked state for threat detection (403 with SECURITY_BLOCKED code)
+  securityBlocked: null, // { message, threatTypes, severity, action, resource, timestamp }
   theme: 'light',
   sidebarCollapsed: false,
   viewMode: 'cards', // cards, tree, detail
@@ -194,6 +201,21 @@ const uiSlice = createSlice({
     },
     clearPermissionError: (state) => {
       state.permissionError = null;
+    },
+
+    // Security blocked management (403 with SECURITY_BLOCKED code)
+    showSecurityBlocked: (state, action) => {
+      state.securityBlocked = {
+        message: action.payload.message || 'Your input contains potentially unsafe content',
+        threatTypes: action.payload.threatTypes || [],
+        severity: action.payload.severity || 'unknown',
+        action: action.payload.action || null,
+        resource: action.payload.resource || null,
+        timestamp: Date.now()
+      };
+    },
+    clearSecurityBlocked: (state) => {
+      state.securityBlocked = null;
     }
   },
   extraReducers: (builder) => {
@@ -264,7 +286,9 @@ export const {
   setAuthLoading,
   initializeUI,
   showPermissionError,
-  clearPermissionError
+  clearPermissionError,
+  showSecurityBlocked,
+  clearSecurityBlocked
 } = uiSlice.actions;
 
 // Selectors
@@ -275,6 +299,7 @@ export const selectSidebarCollapsed = (state) => state.ui.sidebarCollapsed;
 export const selectViewMode = (state) => state.ui.viewMode;
 export const selectLoading = (state) => state.ui.loading;
 export const selectPermissionError = (state) => state.ui.permissionError;
+export const selectSecurityBlocked = (state) => state.ui.securityBlocked;
 
 // Onboarding selectors
 export const selectOnboardingModal = (state) => state.ui.modals.onboarding;

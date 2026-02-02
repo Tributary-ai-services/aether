@@ -29,7 +29,7 @@ const RoleOption = ({ role, description, selected, onSelect, disabled }) => (
     className={`
       w-full p-3 text-left rounded-lg border transition-all
       ${selected
-        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+        ? 'border-(--color-primary-500) bg-(--color-primary-50) ring-1 ring-(--color-primary-500)'
         : disabled
           ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -41,7 +41,7 @@ const RoleOption = ({ role, description, selected, onSelect, disabled }) => (
         <div className="font-medium text-gray-900 capitalize">{role}</div>
         <div className="text-sm text-gray-500">{description}</div>
       </div>
-      {selected && <Check size={18} className="text-blue-600" />}
+      {selected && <Check size={18} className="text-(--color-primary-600)" />}
     </div>
   </button>
 );
@@ -139,7 +139,7 @@ const InviteMemberModal = ({ spaceId, spaceName, onClose, onSuccess }) => {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <UserPlus size={20} className="text-blue-600" />
+            <UserPlus size={20} className="text-(--color-primary-600)" />
             <h2 className="text-lg font-semibold text-gray-900">Invite Member</h2>
           </div>
           <button
@@ -181,7 +181,7 @@ const InviteMemberModal = ({ spaceId, spaceName, onClose, onSuccess }) => {
                   setError(null);
                 }}
                 placeholder="colleague@company.com"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-transparent"
                 disabled={loading}
               />
             </div>
@@ -227,7 +227,7 @@ const InviteMemberModal = ({ spaceId, spaceName, onClose, onSuccess }) => {
             <button
               type="submit"
               disabled={loading || !email.trim()}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

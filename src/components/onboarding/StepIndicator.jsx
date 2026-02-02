@@ -11,9 +11,9 @@ const StepIndicator = ({ steps, currentStep }) => {
             <div
               className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
                 index < currentStep
-                  ? 'bg-blue-600 border-blue-600 text-white'
+                  ? 'bg-(--color-primary-600) border-(--color-primary-600) text-(--color-primary-contrast)'
                   : index === currentStep
-                  ? 'border-blue-600 text-blue-600 bg-white ring-4 ring-blue-100'
+                  ? 'border-(--color-primary-600) text-(--color-primary-600) bg-white ring-4 ring-(--color-primary-100)'
                   : 'border-gray-300 text-gray-400 bg-white'
               }`}
             >
@@ -27,7 +27,7 @@ const StepIndicator = ({ steps, currentStep }) => {
             <span
               className={`mt-2 text-xs font-medium text-center max-w-[80px] hidden md:block ${
                 index === currentStep
-                  ? 'text-blue-600'
+                  ? 'text-(--color-primary-600)'
                   : index < currentStep
                   ? 'text-gray-700'
                   : 'text-gray-400'
@@ -41,7 +41,7 @@ const StepIndicator = ({ steps, currentStep }) => {
           {index < steps.length - 1 && (
             <div
               className={`h-0.5 w-12 md:w-20 mx-2 transition-all duration-300 ${
-                index < currentStep ? 'bg-blue-600' : 'bg-gray-300'
+                index < currentStep ? 'bg-(--color-primary-600)' : 'bg-gray-300'
               }`}
             />
           )}

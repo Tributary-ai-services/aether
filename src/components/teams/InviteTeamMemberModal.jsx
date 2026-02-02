@@ -38,7 +38,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
       label: 'Admin',
       description: 'Can manage team settings and members',
       icon: Shield,
-      color: 'text-blue-600'
+      color: 'text-(--color-primary-600)'
     },
     {
       value: 'member',
@@ -167,7 +167,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                 placeholder="colleague@example.com"
                 disabled={loading}
               />
@@ -190,7 +190,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
                     key={option.value}
                     className={`relative flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
                       formData.role === option.value
-                        ? 'border-blue-500 bg-blue-50'
+                        ? 'border-(--color-primary-500) bg-(--color-primary-50)'
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
@@ -215,7 +215,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
                       </div>
                     </div>
                     {formData.role === option.value && (
-                      <div className="absolute top-3 right-3 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-(--color-primary-600) rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
@@ -238,7 +238,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
               rows={3}
               value={formData.message}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) resize-none"
               placeholder="Add a personal note to your invitation..."
               disabled={loading}
             />
@@ -257,7 +257,7 @@ const InviteTeamMemberModal = ({ isOpen, onClose, team }) => {
             <button
               type="submit"
               disabled={loading || !formData.email}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <>

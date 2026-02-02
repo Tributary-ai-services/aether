@@ -35,7 +35,7 @@ const RoleBadge = ({ role }) => {
       case 'admin':
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'member':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-(--color-primary-100) text-(--color-primary-800) border-(--color-primary-200)';
       case 'viewer':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -119,7 +119,7 @@ const MemberRow = ({
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
-              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
             >
               {assignableRoles.map(role => (
                 <option key={role} value={role}>
@@ -289,7 +289,7 @@ const SpaceMembersPanel = ({ spaceId, onInvite }) => {
         <RequirePermission role="admin">
           <button
             onClick={onInvite}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center space-x-1 px-3 py-1.5 bg-(--color-primary-600) text-(--color-primary-contrast) text-sm font-medium rounded-lg hover:bg-(--color-primary-700) transition-colors"
           >
             <UserPlus size={16} />
             <span>Invite</span>
@@ -331,7 +331,7 @@ const SpaceMembersPanel = ({ spaceId, onInvite }) => {
       {/* Loading overlay for updates */}
       {updateLoading && (
         <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-          <Loader2 size={24} className="animate-spin text-blue-600" />
+          <Loader2 size={24} className="animate-spin text-(--color-primary-600)" />
         </div>
       )}
     </div>

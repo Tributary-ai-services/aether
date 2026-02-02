@@ -16,7 +16,9 @@ import {
   closeOnboardingModal,
   selectOnboardingModal,
   selectShouldAutoTrigger,
-  selectOnboardingLoading
+  selectOnboardingLoading,
+  fetchSummary as fetchComplianceSummary,
+  selectUnacknowledgedCount
 } from './store';
 import { createNotebook } from './store/slices/notebooksSlice.js';
 import TabButton from './components/ui/TabButton.jsx';
@@ -25,8 +27,11 @@ import ThemeCustomizer from './components/ui/ThemeCustomizer.jsx';
 import Settings from './components/ui/Settings.jsx';
 import NotificationCenter from './components/notifications/NotificationCenter.jsx';
 import ToastNotification from './components/notifications/ToastNotification.jsx';
+import ComplianceToast from './components/notifications/ComplianceToast.jsx';
 import PermissionErrorToast from './components/ui/PermissionErrorToast.jsx';
+import SecurityBlockedToast from './components/ui/SecurityBlockedToast.jsx';
 import AuditTrail from './components/audit/AuditTrail.jsx';
+import CompliancePanel from './components/compliance/CompliancePanel.jsx';
 import LeftNavigation from './components/navigation/LeftNavigation.jsx';
 import NotebooksPage from './pages/NotebooksPage.jsx';
 import AgentBuilderPage from './pages/AgentBuilderPage.jsx';
@@ -41,6 +46,8 @@ import TeamsPage from './pages/TeamsPage.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
+import QueryConsolePage from './pages/QueryConsolePage.jsx';
+import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -81,17 +88,38 @@ const App = () => {
   const isOnboardingOpen = useAppSelector(selectOnboardingModal);
   const shouldAutoTrigger = useAppSelector(selectShouldAutoTrigger);
   const isOnboardingLoading = useAppSelector(selectOnboardingLoading);
+  const unacknowledgedViolationsCount = useAppSelector(selectUnacknowledgedCount);
   const [selectedNotebook, setSelectedNotebook] = useState(null);
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(true);
   const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const [compliancePanelOpen, setCompliancePanelOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Fetch onboarding status on mount
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      console.log('[Onboarding] Fetching onboarding status...');
       dispatch(fetchOnboardingStatus());
+    }
+  }, [isAuthenticated, isLoading, dispatch]);
+
+  // Debug: Log onboarding state changes
+  useEffect(() => {
+    console.log('[Onboarding] State changed:', {
+      isOnboardingLoading,
+      shouldAutoTrigger,
+      isOnboardingOpen,
+      isAuthenticated,
+      isLoading
+    });
+  }, [isOnboardingLoading, shouldAutoTrigger, isOnboardingOpen, isAuthenticated, isLoading]);
+
+  // Fetch compliance summary on mount to show violation badge
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      dispatch(fetchComplianceSummary());
     }
   }, [isAuthenticated, isLoading, dispatch]);
 
@@ -100,8 +128,10 @@ const App = () => {
     // Wait for both auth and onboarding status to load before auto-triggering
     // Also check that the modal is not already open to prevent re-triggering
     if (isAuthenticated && !isLoading && !isOnboardingLoading && shouldAutoTrigger && !isOnboardingOpen) {
+      console.log('[Onboarding] Auto-trigger conditions met, opening modal in 1 second...');
       // Delay slightly to allow initial page load
       const timer = setTimeout(() => {
+        console.log('[Onboarding] Opening onboarding modal');
         dispatch(openOnboardingModal());
       }, 1000);
 
@@ -268,14 +298,25 @@ const App = () => {
             >
               Create New
             </button>
-            
-            {/* Audit Trail */}
-            <button 
-              onClick={() => setAuditTrailOpen(true)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Audit Trail"
+
+            {/* Compliance Violations */}
+            <button
+              onClick={() => setCompliancePanelOpen(true)}
+              className={`relative p-2 transition-colors ${
+                unacknowledgedViolationsCount > 0
+                  ? 'text-red-500 hover:text-red-700'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title={unacknowledgedViolationsCount > 0
+                ? `${unacknowledgedViolationsCount} Unacknowledged Violations`
+                : 'Compliance Violations'}
             >
               <Shield size={20} />
+              {unacknowledgedViolationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                  {unacknowledgedViolationsCount > 99 ? '99+' : unacknowledgedViolationsCount}
+                </span>
+              )}
             </button>
             
             {/* Notification Center */}
@@ -421,6 +462,10 @@ const App = () => {
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/streaming" element={<StreamingPage />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/query-console" element={<QueryConsolePage />} />
+            <Route path="/query-console/:connectionId" element={<QueryConsolePage />} />
+            <Route path="/schema-browser" element={<SchemaBrowserPage />} />
+            <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
           </Routes>
         </main>
       </div>
@@ -442,11 +487,17 @@ const App = () => {
       />
       
       {/* Audit Trail Modal */}
-      <AuditTrail 
+      <AuditTrail
         isOpen={auditTrailOpen}
         onClose={() => setAuditTrailOpen(false)}
       />
-      
+
+      {/* Compliance Violations Panel */}
+      <CompliancePanel
+        isOpen={compliancePanelOpen}
+        onClose={() => setCompliancePanelOpen(false)}
+      />
+
       {/* Create Notebook Modal */}
       <CreateNotebookModal
         isOpen={modals?.createNotebook || false}
@@ -464,8 +515,14 @@ const App = () => {
       {/* Toast Notifications */}
       <ToastNotification />
 
+      {/* Compliance Toast Notifications */}
+      <ComplianceToast onOpenAuditTrail={() => setAuditTrailOpen(true)} />
+
       {/* Permission Error Toast (403 handling) */}
       <PermissionErrorToast />
+
+      {/* Security Blocked Toast (403 with SECURITY_BLOCKED code) */}
+      <SecurityBlockedToast />
       </div>
     </FilterProvider>
   );

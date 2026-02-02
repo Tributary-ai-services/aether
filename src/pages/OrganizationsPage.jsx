@@ -107,7 +107,7 @@ const OrganizationsPage = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
         >
           <Plus size={20} />
           Create Organization
@@ -138,7 +138,7 @@ const OrganizationsPage = () => {
               placeholder="Search organizations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) w-64"
             />
           </div>
 
@@ -147,7 +147,7 @@ const OrganizationsPage = () => {
             <select
               value={filterBy}
               onChange={(e) => setFilterBy(e.target.value)}
-              className="pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              className="pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) appearance-none bg-white"
             >
               <option value="all">All Organizations</option>
               <option value="owner">Owner</option>
@@ -208,7 +208,7 @@ const OrganizationsPage = () => {
           {!searchQuery && filterBy === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="text-blue-600 hover:text-blue-700"
+              className="text-(--color-primary-600) hover:text-(--color-primary-700)"
             >
               Create your first organization
             </button>

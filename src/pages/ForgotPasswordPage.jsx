@@ -102,7 +102,7 @@ const ForgotPasswordPage = () => {
                   setIsSubmitted(false);
                   setEmail('');
                 }}
-                className="text-blue-600 hover:text-blue-500 font-medium"
+                className="text-(--color-primary-600) hover:text-(--color-primary-500) font-medium"
               >
                 Try again
               </button>
@@ -161,7 +161,7 @@ const ForgotPasswordPage = () => {
                   setEmail(e.target.value);
                   setError('');
                 }}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) transition-colors"
                 placeholder="Enter your email"
                 disabled={isSubmitting}
               />
@@ -171,7 +171,7 @@ const ForgotPasswordPage = () => {
           <button
             type="submit"
             disabled={isSubmitting || !email.trim()}
-            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-(--color-primary-600) hover:bg-(--color-primary-700) focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--color-primary-500) disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? (
               <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ const ForgotPasswordPage = () => {
         <div className="text-center">
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-500 font-medium"
+            className="inline-flex items-center gap-2 text-sm text-(--color-primary-600) hover:text-(--color-primary-500) font-medium"
           >
             <ArrowLeft size={16} />
             Back to sign in

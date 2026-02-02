@@ -95,7 +95,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment... Use @username to mention someone"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
               rows={3}
             />
             {showMentions && (
@@ -122,7 +122,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
           <button
             type="button"
             onClick={() => setShowMentions(!showMentions)}
-            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+            className="flex items-center gap-1 text-sm text-(--color-primary-600) hover:text-(--color-primary-700)"
           >
             <AtSign size={14} />
             Mention someone
@@ -130,7 +130,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
           <button
             type="submit"
             disabled={!newComment.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={14} />
             Comment
@@ -172,7 +172,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
                   {/* Reply Button */}
                   <button
                     onClick={() => setReplyToId(replyToId === comment.id ? null : comment.id)}
-                    className="flex items-center gap-1 mt-2 text-sm text-blue-600 hover:text-blue-800"
+                    className="flex items-center gap-1 mt-2 text-sm text-(--color-primary-600) hover:text-(--color-primary-700)"
                   >
                     <Reply size={14} />
                     Reply
@@ -190,7 +190,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
                           value={replyContent}
                           onChange={(e) => setReplyContent(e.target.value)}
                           placeholder="Write a reply..."
-                          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
                           rows={2}
                         />
                       </div>
@@ -205,7 +205,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
                         <button
                           type="submit"
                           disabled={!replyContent.trim()}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          className="px-3 py-1 text-sm bg-(--color-primary-600) text-(--color-primary-contrast) rounded hover:bg-(--color-primary-700) disabled:opacity-50"
                         >
                           Reply
                         </button>

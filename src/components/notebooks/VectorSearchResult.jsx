@@ -62,7 +62,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
   // Get score color and gradient based on value
   const getScoreStyle = (score) => {
     if (score >= 0.9) return { color: 'text-emerald-700', bg: 'bg-emerald-100', bar: 'bg-gradient-to-r from-emerald-400 to-emerald-600', ring: 'ring-emerald-200' };
-    if (score >= 0.7) return { color: 'text-blue-700', bg: 'bg-blue-100', bar: 'bg-gradient-to-r from-blue-400 to-blue-600', ring: 'ring-blue-200' };
+    if (score >= 0.7) return { color: 'text-(--color-primary-700)', bg: 'bg-(--color-primary-100)', bar: 'bg-gradient-to-r from-(--color-primary-400) to-(--color-primary-600)', ring: 'ring-(--color-primary-200)' };
     if (score >= 0.5) return { color: 'text-amber-700', bg: 'bg-amber-100', bar: 'bg-gradient-to-r from-amber-400 to-amber-600', ring: 'ring-amber-200' };
     return { color: 'text-gray-700', bg: 'bg-gray-100', bar: 'bg-gradient-to-r from-gray-400 to-gray-500', ring: 'ring-gray-200' };
   };
@@ -156,7 +156,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
 
   return (
     <div
-      className={`transition-all duration-200 ${isHovered ? 'bg-blue-50/50' : 'hover:bg-gray-50'} ${rank === 1 ? 'border-l-4 border-l-amber-400' : ''}`}
+      className={`transition-all duration-200 ${isHovered ? 'bg-(--color-primary-50)/50' : 'hover:bg-gray-50'} ${rank === 1 ? 'border-l-4 border-l-amber-400' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -173,7 +173,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
             {/* Header Row with Document Name and Scores */}
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="flex items-center gap-2 min-w-0">
-                <FileText size={16} className="text-blue-600 flex-shrink-0" />
+                <FileText size={16} className="text-(--color-primary-600) flex-shrink-0" />
                 <span className="font-medium text-gray-900 truncate" title={documentName}>
                   {documentName}
                 </span>
@@ -215,7 +215,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
             </div>
 
             {/* Content Preview */}
-            <div className={`relative bg-white rounded-lg border ${isExpanded ? 'border-blue-200 ring-2 ring-blue-100' : 'border-gray-200'} p-3 mb-3`}>
+            <div className={`relative bg-white rounded-lg border ${isExpanded ? 'border-(--color-primary-200) ring-2 ring-(--color-primary-100)' : 'border-gray-200'} p-3 mb-3`}>
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {highlightContent}
               </p>
@@ -225,7 +225,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
                 <div className={`${isExpanded ? 'mt-3 pt-3 border-t border-gray-100' : 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-8 pb-2 px-3'}`}>
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="flex items-center gap-1.5 text-sm text-(--color-primary-600) hover:text-(--color-primary-700) font-medium"
                   >
                     {isExpanded ? (
                       <>
@@ -249,7 +249,7 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
                 onClick={() => setShowMetadata(!showMetadata)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   showMetadata
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    ? 'bg-(--color-primary-100) text-(--color-primary-700) hover:bg-(--color-primary-200)'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -354,12 +354,12 @@ const VectorSearchResult = ({ result, rank, queryTerms = [] }) => {
 
             {/* Explanation (if provided) */}
             {result.explanation && (
-              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <h5 className="text-xs font-medium text-blue-600 mb-1 flex items-center gap-1">
+              <div className="mt-3 p-3 bg-(--color-primary-50) rounded-lg border border-(--color-primary-200)">
+                <h5 className="text-xs font-medium text-(--color-primary-600) mb-1 flex items-center gap-1">
                   <Sparkles size={12} />
                   Search Explanation
                 </h5>
-                <p className="text-xs text-blue-700">{JSON.stringify(result.explanation)}</p>
+                <p className="text-xs text-(--color-primary-700)">{JSON.stringify(result.explanation)}</p>
               </div>
             )}
           </div>

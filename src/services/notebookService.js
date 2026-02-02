@@ -290,7 +290,8 @@ class NotebookService {
       accessLogging: true,
       auditTrail: true,
       dataClassification: 'internal',
-      redactionEnabled: false,
+      redactionMode: 'mask',        // Options: mask, replace, hash, remove, tokenize, none
+      redactionEnabled: true,       // Legacy flag for backwards compatibility
       complianceFrameworks: ['SOC2']
     };
   }

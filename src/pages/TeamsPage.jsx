@@ -92,8 +92,8 @@ const TeamsPage = () => {
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'owner': return 'bg-purple-100 text-purple-800';
-      case 'admin': return 'bg-blue-100 text-blue-800';
-      case 'member': return 'bg-green-100 text-green-800';
+      case 'admin': return 'bg-(--color-primary-100) text-(--color-primary-800)';
+      case 'member': return 'bg-(--color-success-light) text-(--color-success-dark)';
       case 'viewer': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -103,7 +103,7 @@ const TeamsPage = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--color-primary-600) mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading teams...</p>
         </div>
       </div>
@@ -145,7 +145,7 @@ const TeamsPage = () => {
               placeholder="Search teams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
             />
           </div>
 
@@ -155,7 +155,7 @@ const TeamsPage = () => {
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
             >
               <option value="all">All Teams</option>
               <option value="owner">My Teams</option>
@@ -168,7 +168,7 @@ const TeamsPage = () => {
           {/* Create Team Button */}
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
           >
             <Plus size={20} />
             Create Team
@@ -192,7 +192,7 @@ const TeamsPage = () => {
             {!searchQuery && (
               <button
                 onClick={() => setCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
               >
                 <Plus size={20} />
                 Create Team

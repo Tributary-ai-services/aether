@@ -31,7 +31,7 @@ const NotificationCenter = () => {
       case 'success': return <CheckCircle size={16} className="text-green-600" />;
       case 'warning': return <AlertTriangle size={16} className="text-yellow-600" />;
       case 'error': return <XCircle size={16} className="text-red-600" />;
-      case 'info': return <Info size={16} className="text-blue-600" />;
+      case 'info': return <Info size={16} className="text-(--color-primary-600)" />;
       default: return <Bell size={16} className="text-gray-600" />;
     }
   };
@@ -42,7 +42,7 @@ const NotificationCenter = () => {
       case 'success': return `bg-green-50 ${opacity}`;
       case 'warning': return `bg-yellow-50 ${opacity}`;
       case 'error': return `bg-red-50 ${opacity}`;
-      case 'info': return `bg-blue-50 ${opacity}`;
+      case 'info': return `bg-(--color-primary-50) ${opacity}`;
       default: return `bg-gray-50 ${opacity}`;
     }
   };
@@ -97,9 +97,9 @@ const NotificationCenter = () => {
                 <button
                   onClick={togglePauseNotifications}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                    notificationsPaused 
-                      ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    notificationsPaused
+                      ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                      : 'bg-(--color-primary-100) text-(--color-primary-700) hover:bg-(--color-primary-200)'
                   }`}
                   title={notificationsPaused ? 'Resume notifications' : 'Pause notifications'}
                 >
@@ -142,7 +142,7 @@ const NotificationCenter = () => {
                     <div
                       key={notification.id}
                       className={`p-4 hover:bg-gray-50 transition-colors ${
-                        !notification.read ? 'border-l-4 border-l-blue-500' : ''
+                        !notification.read ? 'border-l-4 border-l-(--color-primary-500)' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -195,7 +195,7 @@ const NotificationCenter = () => {
             {notifications.length > 0 && (
               <div className="p-3 border-t border-gray-200 bg-gray-50">
                 <div className="text-center">
-                  <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                  <button className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700) font-medium">
                     View all notifications
                   </button>
                 </div>

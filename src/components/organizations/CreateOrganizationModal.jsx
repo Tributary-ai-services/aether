@@ -113,7 +113,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="e.g. Acme Corporation"
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) ${
               errors.name ? 'border-red-500' : 'border-gray-300'
             }`}
             disabled={loading}
@@ -136,7 +136,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
             placeholder="Brief description of your organization..."
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) resize-none ${
               errors.description ? 'border-red-500' : 'border-gray-300'
             }`}
             disabled={loading}
@@ -168,7 +168,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
               value={formData.website}
               onChange={(e) => handleInputChange('website', e.target.value)}
               placeholder="https://yourcompany.com"
-              className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) ${
                 errors.website ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={loading}
@@ -194,7 +194,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
               value={formData.location}
               onChange={(e) => handleInputChange('location', e.target.value)}
               placeholder="e.g. San Francisco, CA"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
               disabled={loading}
             />
           </div>
@@ -262,7 +262,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
               value={formData.billingEmail}
               onChange={(e) => handleInputChange('billingEmail', e.target.value)}
               placeholder="billing@yourcompany.com"
-              className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) ${
                 errors.billingEmail ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={loading}
@@ -282,7 +282,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
         {/* Info Box */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start gap-2">
-            <Building className="text-blue-600 mt-0.5" size={16} />
+            <Building className="text-(--color-primary-600) mt-0.5" size={16} />
             <div className="text-sm text-blue-700">
               <p className="font-medium mb-1">Organization Setup</p>
               <p>
@@ -306,7 +306,7 @@ const CreateOrganizationModal = ({ isOpen, onClose, onCreateOrganization }) => {
           <button
             type="submit"
             disabled={loading || !formData.name.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
           >
             {loading ? (
               <>

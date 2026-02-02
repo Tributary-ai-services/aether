@@ -43,7 +43,7 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
 
   const getPermissionIcon = (permission) => {
     switch (permission) {
-      case 'view': return <Eye size={14} className="text-blue-600" />;
+      case 'view': return <Eye size={14} className="text-(--color-primary-600)" />;
       case 'edit': return <Edit size={14} className="text-green-600" />;
       case 'admin': return <Users size={14} className="text-purple-600" />;
       default: return <Eye size={14} className="text-gray-600" />;
@@ -88,12 +88,12 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
                 value={shareEmail}
                 onChange={(e) => setShareEmail(e.target.value)}
                 placeholder="Enter email address"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               />
               <select
                 value={permissions}
                 onChange={(e) => setPermissions(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               >
                 <option value="view">Can view</option>
                 <option value="edit">Can edit</option>
@@ -102,7 +102,7 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
               <button
                 type="submit"
                 disabled={!shareEmail.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Share
               </button>
@@ -166,7 +166,7 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
                   onChange={(e) => setPublicAccess(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-(--color-primary-300) rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-(--color-primary-600)"></div>
               </label>
             </div>
 
@@ -177,7 +177,7 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
               <select
                 value={expirationDays}
                 onChange={(e) => setExpirationDays(parseInt(e.target.value))}
-                className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
               >
                 <option value={1}>1 day</option>
                 <option value={7}>7 days</option>
@@ -215,10 +215,10 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
           <div className="space-y-3">
             <textarea
               placeholder="Add a message (optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
               rows={3}
             />
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors">
               <Mail size={16} />
               Send Email Invitation
             </button>

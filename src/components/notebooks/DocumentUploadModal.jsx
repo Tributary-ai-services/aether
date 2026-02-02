@@ -73,7 +73,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       return <Image size={20} className="text-green-600" />;
     }
     if (supportedFormats.videos.some(ext => extension.includes(ext.slice(1)))) {
-      return <Film size={20} className="text-blue-600" />;
+      return <Film size={20} className="text-(--color-primary-600)" />;
     }
     if (supportedFormats.audio.some(ext => extension.includes(ext.slice(1)))) {
       return <Music size={20} className="text-purple-600" />;
@@ -265,7 +265,18 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           
           console.log('Upload debug - Space context:', spaceContext);
 
-          // Prepare base64 upload payload
+          // Get compliance settings from notebook (parse if string)
+          let complianceSettings = notebook.complianceSettings || notebook.compliance_settings || {};
+          if (typeof complianceSettings === 'string') {
+            try {
+              complianceSettings = JSON.parse(complianceSettings);
+            } catch (e) {
+              console.warn('Failed to parse compliance settings:', e);
+              complianceSettings = {};
+            }
+          }
+
+          // Prepare base64 upload payload with compliance settings
           const uploadPayload = {
             name: fileData.name,
             description: `Uploaded document: ${fileData.name}`,
@@ -273,7 +284,15 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             file_name: fileData.name,
             mime_type: fileData.type || 'application/octet-stream',
             file_content: fileContent,
-            tags: [`notebook:${notebook.name.replace(/\s+/g, '_').toLowerCase()}`, 'document']
+            tags: [`notebook:${notebook.name.replace(/\s+/g, '_').toLowerCase()}`, 'document'],
+            // Include compliance settings for DLP scanning and redaction
+            compliance_settings: {
+              dlp_scan_enabled: complianceSettings.piiDetection !== false,
+              redaction_mode: complianceSettings.redactionMode || 'mask',
+              hipaa_compliant: complianceSettings.hipaaCompliant || false,
+              pii_detection: complianceSettings.piiDetection !== false,
+              compliance_frameworks: complianceSettings.complianceFrameworks || []
+            }
           };
 
           console.log('Upload debug - Base64 payload:', {
@@ -365,7 +384,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         return <Clock size={16} className="text-gray-500" />;
       case 'uploading':
         return (
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-(--color-primary-500) border-t-transparent rounded-full animate-spin" />
         );
       case 'completed':
         return <CheckCircle size={16} className="text-green-600" />;
@@ -387,7 +406,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive 
-              ? 'border-blue-500 bg-blue-50' 
+              ? 'border-(--color-primary-500) bg-(--color-primary-50)' 
               : 'border-gray-300 hover:border-gray-400'
           }`}
           onDrop={handleDrop}
@@ -404,7 +423,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
             disabled={uploading}
           >
             <Plus size={16} className="inline mr-2" />
@@ -474,7 +493,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                           {formatFileSize(fileData.size)}
                         </p>
                         {fileData.status === 'uploading' && (
-                          <div className="text-xs text-blue-600 font-medium">
+                          <div className="text-xs text-(--color-primary-600) font-medium">
                             {Math.round(uploadProgress[fileData.id] || 0)}%
                             {fileData.statusText && (
                               <span className="text-xs text-gray-600 ml-1">
@@ -490,7 +509,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                     {fileData.status === 'uploading' && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
                         <div
-                          className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                          className="bg-(--color-primary-600) h-1 rounded-full transition-all duration-300"
                           style={{ width: `${uploadProgress[fileData.id] || 0}%` }}
                         />
                       </div>
@@ -538,7 +557,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             </button>
             <button
               onClick={handleUpload}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
               disabled={validFiles.length === 0 || uploading}
             >
               {uploading ? (

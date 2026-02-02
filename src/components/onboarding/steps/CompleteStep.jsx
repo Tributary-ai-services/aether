@@ -96,7 +96,7 @@ const CompleteStep = ({ onComplete, onBack, onClose, isCompleting }) => {
             const colorClasses = {
               green: 'bg-green-100 text-green-600',
               purple: 'bg-purple-100 text-purple-600',
-              blue: 'bg-blue-100 text-blue-600'
+              blue: 'bg-(--color-primary-100) text-(--color-primary-600)'
             };
 
             return (
@@ -113,7 +113,7 @@ const CompleteStep = ({ onComplete, onBack, onClose, isCompleting }) => {
                 </div>
                 <button
                   onClick={() => handleNavigate(step.route)}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-(--color-primary-600) hover:bg-(--color-primary-50) rounded-lg transition-colors duration-200"
                 >
                   {step.action}
                 </button>
@@ -134,7 +134,7 @@ const CompleteStep = ({ onComplete, onBack, onClose, isCompleting }) => {
         <button
           onClick={onComplete}
           disabled={isCompleting}
-          className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-(--color-primary-600) to-purple-600 text-white font-medium rounded-lg hover:from-(--color-primary-700) hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Rocket className="mr-2 w-5 h-5" />
           {isCompleting ? 'Completing...' : 'Start Using Aether'}

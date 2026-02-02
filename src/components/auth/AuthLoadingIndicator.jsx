@@ -10,7 +10,7 @@ const AuthLoadingIndicator = ({ children, showRefreshIndicator = true, showLoadi
       <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 shadow-lg">
           <div className="flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-(--color-primary-600)"></div>
             <span className="text-gray-700">Authenticating...</span>
           </div>
         </div>
@@ -25,7 +25,7 @@ const AuthLoadingIndicator = ({ children, showRefreshIndicator = true, showLoadi
       {/* Token refresh indicator */}
       {showRefreshIndicator && isRefreshing && (
         <div className="fixed top-4 right-4 z-50">
-          <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+          <div className="bg-(--color-primary-600) text-(--color-primary-contrast) px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-opacity-20 border-t-white"></div>
             <span className="text-sm">Refreshing session...</span>
           </div>
@@ -54,8 +54,8 @@ export const AuthRefreshIndicator = () => {
   if (!isRefreshing) return null;
 
   return (
-    <div className="inline-flex items-center space-x-2 text-blue-600 text-sm">
-      <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-opacity-20 border-t-blue-600"></div>
+    <div className="inline-flex items-center space-x-2 text-(--color-primary-600) text-sm">
+      <div className="animate-spin rounded-full h-3 w-3 border border-(--color-primary-600) border-opacity-20 border-t-(--color-primary-600)"></div>
       <span>Refreshing...</span>
     </div>
   );

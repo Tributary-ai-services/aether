@@ -20,20 +20,20 @@ const ToastNotification = () => {
 
   const getToastIcon = (type) => {
     switch (type) {
-      case 'success': return <CheckCircle size={20} className="text-green-600" />;
-      case 'warning': return <AlertTriangle size={20} className="text-yellow-600" />;
-      case 'error': return <XCircle size={20} className="text-red-600" />;
-      case 'info': return <Info size={20} className="text-blue-600" />;
+      case 'success': return <CheckCircle size={20} className="text-(--color-success-dark)" />;
+      case 'warning': return <AlertTriangle size={20} className="text-(--color-warning-dark)" />;
+      case 'error': return <XCircle size={20} className="text-(--color-error-dark)" />;
+      case 'info': return <Info size={20} className="text-(--color-info-dark)" />;
       default: return <Info size={20} className="text-gray-600" />;
     }
   };
 
   const getToastStyles = (type) => {
     switch (type) {
-      case 'success': return 'bg-green-50 border-green-200';
-      case 'warning': return 'bg-yellow-50 border-yellow-200';
-      case 'error': return 'bg-red-50 border-red-200';
-      case 'info': return 'bg-blue-50 border-blue-200';
+      case 'success': return 'bg-(--color-success-light) border-(--color-success)';
+      case 'warning': return 'bg-(--color-warning-light) border-(--color-warning)';
+      case 'error': return 'bg-(--color-error-light) border-(--color-error)';
+      case 'info': return 'bg-(--color-info-light) border-(--color-primary-300)';
       default: return 'bg-gray-50 border-gray-200';
     }
   };

@@ -107,7 +107,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
   const getRoleBadge = (role) => {
     const badges = {
       owner: { color: 'bg-purple-100 text-purple-800', icon: Crown },
-      admin: { color: 'bg-blue-100 text-blue-800', icon: Shield },
+      admin: { color: 'bg-(--color-primary-100) text-(--color-primary-800)', icon: Shield },
       member: { color: 'bg-green-100 text-green-800', icon: Users },
       viewer: { color: 'bg-gray-100 text-gray-800', icon: Eye }
     };
@@ -134,7 +134,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
             onClick={() => setActiveTab('members')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'members'
-                ? 'text-blue-600 border-blue-600'
+                ? 'text-(--color-primary-600) border-(--color-primary-600)'
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
@@ -144,7 +144,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
             onClick={() => setActiveTab('settings')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'settings'
-                ? 'text-blue-600 border-blue-600'
+                ? 'text-(--color-primary-600) border-(--color-primary-600)'
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
@@ -277,7 +277,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                   {canEditTeam && !isEditingDetails && (
                     <button
                       onClick={() => setIsEditingDetails(true)}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                      className="flex items-center gap-2 text-(--color-primary-600) hover:text-(--color-primary-700)"
                     >
                       <Edit2 size={16} />
                       Edit
@@ -295,7 +295,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                         type="text"
                         value={teamDetails.name}
                         onChange={(e) => setTeamDetails({ ...teamDetails, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                       />
                     </div>
 
@@ -339,7 +339,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                         rows={3}
                         value={teamDetails.description}
                         onChange={(e) => setTeamDetails({ ...teamDetails, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) resize-none"
                       />
                     </div>
 
@@ -350,7 +350,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                       <select
                         value={teamDetails.visibility}
                         onChange={(e) => setTeamDetails({ ...teamDetails, visibility: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-(--color-primary-500)"
                       >
                         <option value="private">Private</option>
                         <option value="organization">Organization</option>
@@ -362,7 +362,7 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                       <button
                         onClick={handleUpdateTeam}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
                       >
                         <Save size={16} />
                         Save Changes

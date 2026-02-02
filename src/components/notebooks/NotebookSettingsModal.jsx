@@ -199,7 +199,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
               onClick={() => setActiveTab('general')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'general'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -211,7 +211,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
               onClick={() => setActiveTab('compliance')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'compliance'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -223,7 +223,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
               onClick={() => setActiveTab('vectorSearch')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'vectorSearch'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -235,7 +235,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
               onClick={() => setActiveTab('advanced')}
               className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                 activeTab === 'advanced'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-(--color-primary-500) text-(--color-primary-600)'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -258,7 +258,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) ${
                     errors.name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter notebook name"
@@ -279,7 +279,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                 <select
                   value={formData.visibility}
                   onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   disabled={isSaving}
                 >
                   <option value="private">🔒 Private (Only you)</option>
@@ -298,7 +298,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 rows={3}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none ${
                   errors.description ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Describe the purpose and contents of this notebook"
@@ -323,14 +323,14 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                   value={currentTag}
                   onChange={(e) => setCurrentTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                   placeholder="Add tags for better organization"
                   disabled={isSaving}
                 />
                 <button
                   type="button"
                   onClick={addTag}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
                   disabled={!currentTag.trim() || isSaving}
                 >
                   <Tag size={16} />
@@ -340,13 +340,13 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                 {formData.tags.map(tag => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-(--color-primary-100) text-(--color-primary-700) rounded-full text-xs"
                   >
                     {tag}
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
-                      className="hover:text-blue-600"
+                      className="hover:text-(--color-primary-600)"
                       disabled={isSaving}
                     >
                       <X size={12} />
@@ -368,14 +368,14 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
                     value={collaboratorEmail}
                     onChange={(e) => setCollaboratorEmail(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCollaborator())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     placeholder="Enter collaborator email"
                     disabled={isSaving}
                   />
                   <button
                     type="button"
                     onClick={addCollaborator}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
                     disabled={!collaboratorEmail.trim() || isSaving}
                   >
                     <Users size={16} />
@@ -504,7 +504,7 @@ const NotebookSettingsModal = ({ isOpen, onClose, notebook, onUpdateNotebook }) 
             <button
               type="button"
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
               disabled={isSaving || !hasUnsavedChanges}
             >
               {isSaving ? (
