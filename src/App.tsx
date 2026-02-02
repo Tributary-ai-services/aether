@@ -48,6 +48,7 @@ import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
 import QueryConsolePage from './pages/QueryConsolePage.jsx';
 import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
+import DeveloperToolsPage from './pages/DeveloperToolsPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -74,7 +75,8 @@ import {
   FileText,
   Activity,
   Shield,
-  Sparkles
+  Sparkles,
+  Code2
 } from 'lucide-react';
 
 const App = () => {
@@ -171,6 +173,7 @@ const App = () => {
     if (path === '/analytics') return 'analytics';
     if (path === '/community') return 'community';
     if (path === '/streaming') return 'streaming';
+    if (path.startsWith('/developer-tools')) return 'developer-tools';
     return 'documents';
   };
 
@@ -184,7 +187,8 @@ const App = () => {
       'workflows': visibleTabs.workflows,
       'analytics': visibleTabs.analytics,
       'community': visibleTabs.community,
-      'streaming': visibleTabs.streaming
+      'streaming': visibleTabs.streaming,
+      'developer-tools': visibleTabs['developer-tools']
     };
 
     if (!tabVisibilityMap[activeTab]) {
@@ -197,7 +201,8 @@ const App = () => {
           'workflows': '/workflows',
           'analytics': '/analytics',
           'community': '/community',
-          'streaming': '/streaming'
+          'streaming': '/streaming',
+          'developer-tools': '/developer-tools'
         };
         navigate(routes[firstVisibleTab[0]]);
       }
@@ -211,7 +216,8 @@ const App = () => {
       'workflows': '/workflows',
       'analytics': '/analytics',
       'community': '/community',
-      'streaming': '/streaming'
+      'streaming': '/streaming',
+      'developer-tools': '/developer-tools'
     };
     navigate(routes[tabId] || '/notebooks');
     
@@ -431,12 +437,21 @@ const App = () => {
             />
           )}
           {visibleTabs.streaming && (
-            <TabButton 
-              id="streaming" 
-              label="Live Streams" 
-              icon={Radio} 
-              isActive={activeTab === 'streaming'} 
-              onClick={handleTabClick} 
+            <TabButton
+              id="streaming"
+              label="Live Streams"
+              icon={Radio}
+              isActive={activeTab === 'streaming'}
+              onClick={handleTabClick}
+            />
+          )}
+          {visibleTabs['developer-tools'] && (
+            <TabButton
+              id="developer-tools"
+              label="Developer Tools"
+              icon={Code2}
+              isActive={activeTab === 'developer-tools'}
+              onClick={handleTabClick}
             />
           )}
         </div>
@@ -466,6 +481,8 @@ const App = () => {
             <Route path="/query-console/:connectionId" element={<QueryConsolePage />} />
             <Route path="/schema-browser" element={<SchemaBrowserPage />} />
             <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
+            <Route path="/developer-tools" element={<DeveloperToolsPage />} />
+            <Route path="/developer-tools/:tab" element={<DeveloperToolsPage />} />
           </Routes>
         </main>
       </div>

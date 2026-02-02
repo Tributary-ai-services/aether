@@ -17,7 +17,11 @@ import {
   Code,
   Settings,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FolderOpen,
+  Save,
+  BookmarkPlus,
+  X
 } from 'lucide-react';
 import {
   executeQuery,
@@ -33,6 +37,11 @@ import {
   selectQueryHistory,
   clearQueryHistory
 } from '../../store/slices/databaseConnectionsSlice.js';
+import {
+  fetchSavedQueries,
+  selectFilteredQueries,
+  selectQueriesLoading
+} from '../../store/slices/savedQueriesSlice.js';
 import { getDatabaseTypeById } from '../../config/databaseTypes.js';
 import QueryResults from './QueryResults.jsx';
 import QueryHistory from './QueryHistory.jsx';
@@ -50,6 +59,8 @@ const QueryConsole = ({
   const queryExecution = useSelector(selectQueryExecution);
   const schemaLoading = useSelector(selectSchemaLoading);
   const queryHistory = useSelector(selectQueryHistory);
+  const savedQueries = useSelector(selectFilteredQueries);
+  const savedQueriesLoading = useSelector(selectQueriesLoading);
 
   // Local state
   const [selectedConnectionId, setSelectedConnectionId] = useState(initialConnectionId);
@@ -57,6 +68,7 @@ const QueryConsole = ({
   const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSchema, setShowSchema] = useState(true);
+  const [showSavedQueries, setShowSavedQueries] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [queryStartTime, setQueryStartTime] = useState(null);
@@ -64,6 +76,7 @@ const QueryConsole = ({
   // Refs
   const textareaRef = useRef(null);
   const dropdownRef = useRef(null);
+  const savedQueriesRef = useRef(null);
 
   // Get selected connection
   const selectedConnection = connections.find(c => c.id === selectedConnectionId);
@@ -80,6 +93,11 @@ const QueryConsole = ({
     }
   }, [dispatch, connections.length]);
 
+  // Fetch saved queries on mount
+  useEffect(() => {
+    dispatch(fetchSavedQueries());
+  }, [dispatch]);
+
   // Auto-select first connection if none selected
   useEffect(() => {
     if (!selectedConnectionId && connections.length > 0) {
@@ -94,11 +112,14 @@ const QueryConsole = ({
     }
   }, [dispatch, selectedConnectionId, schema]);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowConnectionDropdown(false);
+      }
+      if (savedQueriesRef.current && !savedQueriesRef.current.contains(event.target)) {
+        setShowSavedQueries(false);
       }
     };
 
@@ -183,6 +204,20 @@ const QueryConsole = ({
       setSelectedConnectionId(historyItem.connectionId);
     }
     setShowHistory(false);
+    textareaRef.current?.focus();
+  };
+
+  // Handle loading a saved query
+  const handleLoadSavedQuery = (savedQuery) => {
+    setQueryText(savedQuery.query);
+    // If the saved query has a database connection, switch to it
+    if (savedQuery.database_id) {
+      const matchingConnection = connections.find(c => c.id === savedQuery.database_id);
+      if (matchingConnection) {
+        setSelectedConnectionId(savedQuery.database_id);
+      }
+    }
+    setShowSavedQueries(false);
     textareaRef.current?.focus();
   };
 
@@ -358,6 +393,78 @@ const QueryConsole = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Load from Saved Query */}
+          <div className="relative" ref={savedQueriesRef}>
+            <button
+              onClick={() => setShowSavedQueries(!showSavedQueries)}
+              className={`p-2 rounded-lg transition-colors ${
+                showSavedQueries ? 'bg-(--color-primary-100) text-(--color-primary-600)' : 'hover:bg-gray-200 text-gray-500'
+              }`}
+              title="Load from saved query"
+            >
+              <FolderOpen className="w-4 h-4" />
+            </button>
+
+            {/* Saved Queries Dropdown */}
+            {showSavedQueries && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden">
+                <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-gray-700">Saved Queries</h4>
+                  <button
+                    onClick={() => setShowSavedQueries(false)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto max-h-72">
+                  {savedQueriesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    </div>
+                  ) : savedQueries.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      <BookmarkPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No saved queries yet</p>
+                      <p className="text-xs mt-1">Save queries from Developer Tools</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {savedQueries.map(query => (
+                        <button
+                          key={query.id}
+                          onClick={() => handleLoadSavedQuery(query)}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-gray-900 truncate">
+                                {query.name}
+                              </div>
+                              {query.description && (
+                                <div className="text-xs text-gray-500 truncate mt-0.5">
+                                  {query.description}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-400 mt-1 font-mono truncate">
+                                {query.query.substring(0, 50)}...
+                              </div>
+                            </div>
+                            {query.database_name && (
+                              <span className="ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded flex-shrink-0">
+                                {query.database_name}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => setShowHistory(!showHistory)}
             className={`p-2 rounded-lg transition-colors ${

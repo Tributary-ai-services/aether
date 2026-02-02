@@ -1,65 +1,153 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useFilters } from '../../context/FilterContext.jsx';
+import { SECTION_FILTER_CONFIGS, getRouteSection } from '../../config/filterConfigs.ts';
+import {
+  SearchFilter,
+  CheckboxFilter,
+  ToggleFilter,
+  SelectFilter
+} from './filters/index.js';
 import {
   Search,
   Calendar,
   Tag,
   Folder,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Image,
   Video,
   Mic,
   FileText,
-  Activity
+  Activity,
+  Bot,
+  Workflow,
+  Users,
+  BarChart3,
+  Radio,
+  X
 } from 'lucide-react';
 
+// Section icons for collapsed state
+const sectionIcons = {
+  'notebooks': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: Activity, title: 'Status', color: 'text-gray-600 group-hover:text-green-600' },
+    { icon: Calendar, title: 'Date Range', color: 'text-gray-600 group-hover:text-purple-600' },
+    { icon: Tag, title: 'Media Types', color: 'text-gray-600 group-hover:text-orange-600' }
+  ],
+  'agent-builder': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: Bot, title: 'System Agents', color: 'text-gray-600 group-hover:text-purple-600' },
+    { icon: Activity, title: 'Status', color: 'text-gray-600 group-hover:text-green-600' },
+    { icon: Tag, title: 'Type', color: 'text-gray-600 group-hover:text-blue-600' }
+  ],
+  'workflows': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: Activity, title: 'Status', color: 'text-gray-600 group-hover:text-green-600' },
+    { icon: Workflow, title: 'Trigger', color: 'text-gray-600 group-hover:text-blue-600' }
+  ],
+  'community': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: Bot, title: 'System Tools', color: 'text-gray-600 group-hover:text-purple-600' },
+    { icon: Folder, title: 'Item Type', color: 'text-gray-600 group-hover:text-orange-600' },
+    { icon: Activity, title: 'Rating', color: 'text-gray-600 group-hover:text-yellow-600' }
+  ],
+  'analytics': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: BarChart3, title: 'Model Status', color: 'text-gray-600 group-hover:text-blue-600' },
+    { icon: Activity, title: 'Experiments', color: 'text-gray-600 group-hover:text-green-600' }
+  ],
+  'streaming': [
+    { icon: Search, title: 'Search', color: 'text-gray-600 group-hover:text-(--color-primary-600)' },
+    { icon: Radio, title: 'Status', color: 'text-gray-600 group-hover:text-red-600' },
+    { icon: Tag, title: 'Source', color: 'text-gray-600 group-hover:text-blue-600' }
+  ]
+};
+
+// Section display names
+const sectionNames = {
+  'notebooks': 'Notebooks',
+  'agent-builder': 'Agent Builder',
+  'workflows': 'Workflows',
+  'community': 'Community',
+  'analytics': 'Analytics',
+  'streaming': 'Streaming',
+  'developer-tools': 'Developer Tools'
+};
+
 const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
+  const location = useLocation();
   const {
-    filters,
-    setSearch,
-    toggleStatus,
-    setDateRange,
-    toggleMediaType,
-    toggleCategory,
-    clearAllFilters
+    sectionFilters,
+    setCurrentSection,
+    clearSectionFilters,
+    hasActiveFilters
   } = useFilters();
 
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
+  // Get current section from route
+  const currentSection = getRouteSection(location.pathname);
+  const filterConfig = SECTION_FILTER_CONFIGS[currentSection];
+  const icons = sectionIcons[currentSection] || sectionIcons['notebooks'];
+
+  // Update context when section changes
+  useEffect(() => {
+    setCurrentSection(currentSection);
+  }, [currentSection, setCurrentSection]);
+
+  // Render a filter based on its type
+  const renderFilter = (filter) => {
+    const key = `${currentSection}-${filter.id}`;
+
+    switch (filter.type) {
+      case 'search':
+        return <SearchFilter key={key} config={filter} sectionId={currentSection} />;
+      case 'checkbox':
+        return <CheckboxFilter key={key} config={filter} sectionId={currentSection} />;
+      case 'toggle':
+        return <ToggleFilter key={key} config={filter} sectionId={currentSection} />;
+      case 'select':
+        return <SelectFilter key={key} config={filter} sectionId={currentSection} />;
+      default:
+        return null;
+    }
   };
 
-  const handleStatusChange = (status) => {
-    toggleStatus(status);
+  // Get active filter count for badge
+  const getActiveFilterCount = () => {
+    const filters = sectionFilters[currentSection] || {};
+    let count = 0;
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length > 0) count++;
+      else if (typeof value === 'string' && value !== '' && key === 'search') count++;
+      else if (typeof value === 'boolean' && value === true) count++;
+    });
+
+    return count;
   };
 
-  const handleDateRangeChange = (e) => {
-    setDateRange(e.target.value);
-  };
-
-  const handleMediaTypeChange = (mediaType) => {
-    toggleMediaType(mediaType);
-  };
-
-  const handleCategoryChange = (category) => {
-    toggleCategory(category);
-  };
+  const activeCount = getActiveFilterCount();
+  const hasFilters = hasActiveFilters(currentSection);
 
   return (
-    <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} relative`}>
+    <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} relative flex flex-col`}>
       {/* Toggle Button - Filter Icon */}
       <div className="absolute top-4 right-3 z-10">
-        <button 
+        <button
           onClick={onToggleCollapse}
-          className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-400 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) transition-all"
+          className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-400 hover:text-(--color-primary-600) hover:bg-(--color-primary-50) transition-all relative"
           title={isCollapsed ? 'Expand Filters' : 'Collapse Filters'}
         >
           <Filter size={16} />
+          {activeCount > 0 && isCollapsed && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-(--color-primary-600) text-white text-xs rounded-full flex items-center justify-center">
+              {activeCount}
+            </span>
+          )}
         </button>
       </div>
 
-      <div className={`p-4 ${isCollapsed ? 'pt-16' : 'pt-4'}`}>
+      <div className={`p-4 ${isCollapsed ? 'pt-16' : 'pt-4'} flex-1 overflow-y-auto`}>
         {/* Header */}
         <div className="mb-6">
           {isCollapsed ? (
@@ -68,175 +156,99 @@ const LeftNavigation = ({ isCollapsed, onToggleCollapse }) => {
             </div>
           ) : (
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+                {activeCount > 0 && (
+                  <span className="px-2 py-0.5 bg-(--color-primary-100) text-(--color-primary-700) text-xs font-medium rounded-full">
+                    {activeCount} active
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {sectionNames[currentSection] || 'Filters'}
+              </p>
             </div>
           )}
         </div>
-        
+
         {isCollapsed ? (
           /* Collapsed State - Show only icons */
           <div className="flex flex-col items-center space-y-4">
-            <button 
-              className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
-              title="Search"
-              onClick={() => !isCollapsed && document.querySelector('#search-input')?.focus()}
-            >
-              <Search size={18} className="text-gray-600 group-hover:text-(--color-primary-600)" />
-            </button>
-            <button 
-              className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
-              title="Status Filter"
-            >
-              <Activity size={18} className="text-gray-600 group-hover:text-green-600" />
-            </button>
-            <button 
-              className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
-              title="Date Range"
-            >
-              <Calendar size={18} className="text-gray-600 group-hover:text-purple-600" />
-            </button>
-            <button 
-              className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
-              title="Media Types"
-            >
-              <Tag size={18} className="text-gray-600 group-hover:text-orange-600" />
-            </button>
-            <button 
-              className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
-              title="Categories"
-            >
-              <Folder size={18} className="text-gray-600 group-hover:text-indigo-600" />
-            </button>
+            {icons.map(({ icon: Icon, title, color }, index) => (
+              <button
+                key={index}
+                className="p-3 rounded-lg hover:bg-gray-100 transition-colors group"
+                title={title}
+                onClick={onToggleCollapse}
+              >
+                <Icon size={18} className={color} />
+              </button>
+            ))}
           </div>
         ) : (
-          /* Expanded State - Show full filters */
+          /* Expanded State - Show dynamic filters based on section */
           <div className="space-y-6">
-            {/* Search Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input 
-                  id="search-input"
-                  type="text" 
-                  placeholder="Search..." 
-                  value={filters.search}
-                  onChange={handleSearchChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
-                />
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <div className="space-y-2">
-                {['Active', 'Paused', 'Training', 'Public', 'Private'].map(status => (
-                  <label key={status} className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={filters.status.includes(status)}
-                      onChange={() => handleStatusChange(status)}
-                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
-                    />
-                    <span className="ml-2 text-sm text-gray-700">{status}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Date Range Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar size={16} className="inline mr-1" />
-                Date Range
-              </label>
-              <select 
-                value={filters.dateRange}
-                onChange={handleDateRangeChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
-              >
-                <option>Last 24 hours</option>
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
-                <option>Custom range</option>
-              </select>
-            </div>
-
-            {/* Media Type Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Tag size={16} className="inline mr-1" />
-                Media Types
-              </label>
-              <div className="space-y-2">
-                {[
-                  { key: 'image', label: 'Images', icon: Image, color: 'text-blue-600' },
-                  { key: 'video', label: 'Videos', icon: Video, color: 'text-purple-600' },
-                  { key: 'audio', label: 'Audio', icon: Mic, color: 'text-green-600' },
-                  { key: 'document', label: 'Documents', icon: FileText, color: 'text-gray-600' }
-                ].map(({ key, label, icon: Icon, color }) => (
-                  <label key={key} className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={filters.mediaTypes.includes(key)}
-                      onChange={() => handleMediaTypeChange(key)}
-                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
-                    />
-                    <Icon size={14} className={`ml-2 mr-1 ${color}`} />
-                    <span className="text-sm text-gray-700">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Folder size={16} className="inline mr-1" />
-                Categories
-              </label>
-              <div className="space-y-2">
-                {['agent', 'workflow', 'notebook', 'Legal', 'Medical', 'Financial', 'General'].map(category => (
-                  <label key={category} className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={filters.categories.includes(category)}
-                      onChange={() => handleCategoryChange(category)}
-                      className="rounded border-gray-300 text-(--color-primary-600) focus:ring-(--color-primary-500)" 
-                    />
-                    <span className="ml-2 text-sm text-gray-700 capitalize">{category}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Clear Filters Button */}
-            <div className="pt-4">
-              <button 
-                onClick={clearAllFilters}
-                className="w-full px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Clear All Filters
-              </button>
-            </div>
-
-            {/* Active Filters Summary */}
-            {(filters.search || filters.status.length > 0 || filters.mediaTypes.length > 0 || filters.categories.length > 0) && (
-              <div className="pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Active Filters</h4>
-                <div className="space-y-1 text-xs text-gray-600">
-                  {filters.search && <div>Search: "{filters.search}"</div>}
-                  {filters.status.length > 0 && <div>Status: {filters.status.join(', ')}</div>}
-                  {filters.mediaTypes.length > 0 && <div>Media: {filters.mediaTypes.join(', ')}</div>}
-                  {filters.categories.length > 0 && <div>Categories: {filters.categories.join(', ')}</div>}
+            {/* Developer Tools has no filters */}
+            {currentSection === 'developer-tools' ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Filter size={20} className="text-gray-400" />
                 </div>
+                <p className="text-sm text-gray-500">
+                  No filters available for this section
+                </p>
               </div>
+            ) : (
+              <>
+                {/* Render dynamic filters */}
+                {filterConfig?.filters.map(filter => renderFilter(filter))}
+
+                {/* Clear Filters Button */}
+                {hasFilters && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => clearSectionFilters(currentSection)}
+                      className="w-full px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <X size={14} />
+                      Clear All Filters
+                    </button>
+                  </div>
+                )}
+
+                {/* Active Filters Summary */}
+                {hasFilters && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Active Filters</h4>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      {Object.entries(sectionFilters[currentSection] || {}).map(([key, value]) => {
+                        // Skip empty values
+                        if (Array.isArray(value) && value.length === 0) return null;
+                        if (typeof value === 'string' && value === '') return null;
+                        if (typeof value === 'boolean' && !value) return null;
+                        // Skip default select values
+                        const filter = filterConfig?.filters.find(f => f.id === key);
+                        if (filter?.type === 'select' && value === filter.defaultValue) return null;
+
+                        // Format display
+                        let displayValue = value;
+                        if (Array.isArray(value)) {
+                          displayValue = value.join(', ');
+                        } else if (typeof value === 'boolean') {
+                          displayValue = 'Enabled';
+                        }
+
+                        return (
+                          <div key={key} className="flex items-center gap-1">
+                            <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            <span className="truncate">{displayValue}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

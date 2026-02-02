@@ -18,7 +18,8 @@ export const NavigationProvider = ({ children }) => {
     workflows: false,
     analytics: false,
     community: true,        // Default to true
-    streaming: false
+    streaming: false,
+    'developer-tools': true // Developer Tools - default visible
   };
 
   const [visibleTabs, setVisibleTabs] = useState(() => {

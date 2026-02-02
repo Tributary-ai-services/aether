@@ -1423,6 +1423,233 @@ class AetherApiService {
      */
     listTools: (serverId) => this.request(`/mcp/servers/${serverId}/tools`),
   };
+
+  // ============================================================================
+  // Saved Queries API - Developer Tools
+  // ============================================================================
+  savedQueries = {
+    /**
+     * Get all saved queries with optional filtering
+     * @param {Object} filters - Query filters
+     * @returns {Promise} Paginated list of saved queries
+     */
+    getAll: (filters = {}) => {
+      const queryParams = new URLSearchParams();
+      if (filters.page) queryParams.append('page', filters.page);
+      if (filters.page_size) queryParams.append('page_size', filters.page_size);
+      if (filters.database_id) queryParams.append('database_id', filters.database_id);
+      if (filters.visibility) queryParams.append('visibility', filters.visibility);
+      if (filters.folder) queryParams.append('folder', filters.folder);
+      if (filters.search) queryParams.append('search', filters.search);
+      if (filters.sort_by) queryParams.append('sort_by', filters.sort_by);
+      if (filters.sort_order) queryParams.append('sort_order', filters.sort_order);
+      const queryString = queryParams.toString();
+      return this.request(`/saved-queries${queryString ? '?' + queryString : ''}`);
+    },
+
+    /**
+     * Get a single saved query
+     * @param {string} id - Query ID
+     * @returns {Promise} Query details
+     */
+    get: (id) => this.request(`/saved-queries/${id}`),
+
+    /**
+     * Create a new saved query
+     * @param {Object} data - Query data
+     * @returns {Promise} Created query
+     */
+    create: (data) => this.request('/saved-queries', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update an existing saved query
+     * @param {string} id - Query ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated query
+     */
+    update: (id, updates) => this.request(`/saved-queries/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a saved query
+     * @param {string} id - Query ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/saved-queries/${id}`, {
+      method: 'DELETE',
+    }),
+
+    /**
+     * Execute a saved query
+     * @param {string} id - Query ID
+     * @param {Array} parameters - Query parameters
+     * @returns {Promise} Query execution result
+     */
+    execute: (id, parameters = []) => this.request(`/saved-queries/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ parameters }),
+    }),
+
+    /**
+     * Duplicate a saved query
+     * @param {string} id - Query ID to duplicate
+     * @param {string} name - New query name
+     * @returns {Promise} Duplicated query
+     */
+    duplicate: (id, name) => this.request(`/saved-queries/${id}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  };
+
+  // ============================================================================
+  // AI Playground API - Developer Tools
+  // ============================================================================
+  aiPlayground = {
+    /**
+     * Get available LLM providers and their models
+     * @returns {Promise} List of providers with models
+     */
+    getProviders: () => this.request('/developer-tools/ai/providers'),
+
+    /**
+     * Get models for a specific provider
+     * @param {string} provider - Provider name
+     * @returns {Promise} List of models
+     */
+    getModels: (provider) => this.request(`/developer-tools/ai/providers/${provider}/models`),
+
+    /**
+     * Run LLM completion
+     * @param {Object} data - Completion request data
+     * @returns {Promise} Completion result
+     */
+    llmCompletion: (data) => this.request('/developer-tools/ai/llm/completions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Compare completions across multiple models
+     * @param {Object} data - Comparison request data
+     * @returns {Promise} Comparison results
+     */
+    compareCompletions: (data) => this.request('/developer-tools/ai/llm/completions/compare', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Get testable agents (system + user + shared)
+     * @returns {Promise} List of agents
+     */
+    getAgents: () => this.request('/developer-tools/ai/agents'),
+
+    /**
+     * Get agent configuration
+     * @param {string} id - Agent ID
+     * @returns {Promise} Agent configuration
+     */
+    getAgent: (id) => this.request(`/developer-tools/ai/agents/${id}`),
+
+    /**
+     * Test an agent
+     * @param {string} id - Agent ID
+     * @param {Object} data - Test request data
+     * @returns {Promise} Agent test result with execution trace
+     */
+    testAgent: (id, data) => this.request(`/developer-tools/ai/agents/${id}/test`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Compare multiple agents
+     * @param {Object} data - Comparison request data
+     * @returns {Promise} Agent comparison results
+     */
+    compareAgents: (data) => this.request('/developer-tools/ai/agents/compare', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Get testable workflows
+     * @returns {Promise} List of workflows
+     */
+    getWorkflows: () => this.request('/developer-tools/ai/workflows'),
+
+    /**
+     * Get workflow configuration
+     * @param {string} id - Workflow ID
+     * @returns {Promise} Workflow configuration
+     */
+    getWorkflow: (id) => this.request(`/developer-tools/ai/workflows/${id}`),
+
+    /**
+     * Test a workflow
+     * @param {string} id - Workflow ID
+     * @param {Object} data - Test request data
+     * @returns {Promise} Workflow test result
+     */
+    testWorkflow: (id, data) => this.request(`/developer-tools/ai/workflows/${id}/test`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Execute a single workflow step (for step-by-step mode)
+     * @param {string} id - Workflow ID
+     * @param {number} stepIndex - Step index
+     * @param {Object} data - Step input data
+     * @returns {Promise} Step execution result
+     */
+    executeWorkflowStep: (id, stepIndex, data) => this.request(`/developer-tools/ai/workflows/${id}/step`, {
+      method: 'POST',
+      body: JSON.stringify({ step_index: stepIndex, ...data }),
+    }),
+
+    /**
+     * Get saved prompts
+     * @returns {Promise} List of saved prompts
+     */
+    getSavedPrompts: () => this.request('/developer-tools/ai/prompts'),
+
+    /**
+     * Save a prompt
+     * @param {Object} data - Prompt data
+     * @returns {Promise} Saved prompt
+     */
+    savePrompt: (data) => this.request('/developer-tools/ai/prompts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update a saved prompt
+     * @param {string} id - Prompt ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise} Updated prompt
+     */
+    updatePrompt: (id, updates) => this.request(`/developer-tools/ai/prompts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+    /**
+     * Delete a saved prompt
+     * @param {string} id - Prompt ID
+     * @returns {Promise} Deletion result
+     */
+    deletePrompt: (id) => this.request(`/developer-tools/ai/prompts/${id}`, {
+      method: 'DELETE',
+    }),
+  };
 }
 
 // Create singleton instance

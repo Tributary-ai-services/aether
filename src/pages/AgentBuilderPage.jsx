@@ -3,6 +3,7 @@ import { useSpace } from '../hooks/useSpaces.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useAgentBuilder, useAgentProviders } from '../hooks/useAgentBuilder.js';
 import { useFilters } from '../context/FilterContext.jsx';
+import { api } from '../services/api.js';
 import AgentCard from '../components/cards/AgentCard.jsx';
 import AgentDetailModal from '../components/modals/AgentDetailModal.jsx';
 import AgentCreateModal from '../components/modals/AgentCreateModal.jsx';
@@ -12,7 +13,7 @@ import { Bot, Plus, Settings, Zap, Brain, Cpu, CheckCircle, AlertCircle, Clock }
 
 /**
  * Agent Builder Page - Advanced agent creation and management platform
- * 
+ *
  * This page provides comprehensive agent management with real backend integration,
  * including creation, testing, configuration, and analytics.
  */
@@ -21,7 +22,7 @@ const AgentBuilderPage = () => {
   const { user } = useAuth();
   const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent } = useAgentBuilder();
   const { providers, loading: providersLoading, error: providersError } = useAgentProviders();
-  const { filterAgents } = useFilters();
+  const { filterAgents, sectionFilters } = useFilters();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -32,6 +33,14 @@ const AgentBuilderPage = () => {
     providers: 'checking',
     database: 'checking'
   });
+
+  // Internal/system agents state
+  const [internalAgents, setInternalAgents] = useState([]);
+  const [loadingInternal, setLoadingInternal] = useState(false);
+
+  // Get current filter state for agent-builder section
+  const agentFilters = sectionFilters['agent-builder'] || {};
+  const showSystemAgents = agentFilters.showInternal ?? false;
 
   // Initialize spaces - but don't block on it
   useEffect(() => {
@@ -50,6 +59,35 @@ const AgentBuilderPage = () => {
     }
   }, [agentsLoading, providersLoading]);
 
+  // Fetch internal agents when toggle is enabled
+  useEffect(() => {
+    const fetchInternalAgents = async () => {
+      if (!showSystemAgents) {
+        setInternalAgents([]);
+        return;
+      }
+
+      try {
+        setLoadingInternal(true);
+        const response = await api.internalAgents.getAll();
+        // Mark internal agents with is_internal flag
+        const internalAgentsData = (response.agents || []).map(agent => ({
+          ...agent,
+          is_internal: true,
+          status: 'active' // Internal agents are always active
+        }));
+        setInternalAgents(internalAgentsData);
+      } catch (error) {
+        console.error('Failed to fetch internal agents:', error);
+        setInternalAgents([]);
+      } finally {
+        setLoadingInternal(false);
+      }
+    };
+
+    fetchInternalAgents();
+  }, [showSystemAgents]);
+
   // Test integration status
   useEffect(() => {
     const testIntegration = async () => {
@@ -62,7 +100,7 @@ const AgentBuilderPage = () => {
         setIntegrationStatus(prev => ({ ...prev, backend: 'error' }));
       }
 
-      // Test provider connectivity  
+      // Test provider connectivity
       try {
         if (providersError) {
           setIntegrationStatus(prev => ({ ...prev, providers: 'error' }));
@@ -89,8 +127,23 @@ const AgentBuilderPage = () => {
     }
   }, [agents, agentsError, providers, providersError, agentsLoading, providersLoading]);
 
-  // Apply filters to agents
-  const filteredAgents = filterAgents(agents || []);
+  // Combine regular agents with internal agents (when toggle is enabled)
+  const allAgents = React.useMemo(() => {
+    // Preserve is_internal from backend, default to false if not set
+    const regularAgents = (agents || []).map(agent => ({
+      ...agent,
+      is_internal: agent.is_internal ?? false
+    }));
+
+    if (showSystemAgents) {
+      return [...regularAgents, ...internalAgents];
+    }
+
+    return regularAgents;
+  }, [agents, internalAgents, showSystemAgents]);
+
+  // Apply filters to combined agents
+  const filteredAgents = filterAgents(allAgents);
 
   const handleCreateAgent = () => {
     console.log('🔵 Create Agent button clicked');
@@ -142,7 +195,8 @@ const AgentBuilderPage = () => {
   };
 
   const backendConnected = integrationStatus.backend === 'connected';
-  const hasAgents = Array.isArray(agents) && agents.length > 0;
+  const hasAgents = Array.isArray(allAgents) && allAgents.length > 0;
+  const isLoadingAgents = agentsLoading || (showSystemAgents && loadingInternal);
 
   if (isLoading) {
     return (
@@ -164,16 +218,21 @@ const AgentBuilderPage = () => {
           <p className="text-gray-600 mt-1">
             Advanced agent creation and management platform
           </p>
+          {showSystemAgents && internalAgents.length > 0 && (
+            <p className="text-sm text-purple-600 mt-1">
+              Showing {internalAgents.length} system agent{internalAgents.length !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={handleCreateAgent}
             className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors bg-(--color-primary-600) text-(--color-primary-contrast) hover:bg-(--color-primary-700)"
           >
             <Plus size={16} />
             Create Agent
           </button>
-          <button 
+          <button
             className="px-4 py-2 border rounded-lg flex items-center gap-2 transition-colors border-gray-200 text-gray-700 hover:bg-gray-50"
           >
             <Settings size={16} />
@@ -185,7 +244,7 @@ const AgentBuilderPage = () => {
       {/* Agents Grid */}
       {true ? (
         <LoadingWrapper
-          loading={agentsLoading}
+          loading={isLoadingAgents}
           error={agentsError}
           SkeletonComponent={AgentCardSkeleton}
           skeletonCount={6}
@@ -195,12 +254,13 @@ const AgentBuilderPage = () => {
           {hasAgents ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAgents.map(agent => (
-                <AgentCard 
-                  key={agent.id} 
-                  agent={agent} 
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
                   onOpenDetail={() => handleOpenDetail(agent)}
                   onTestAgent={() => handleTestAgent(agent)}
                   onDuplicateAgent={() => handleDuplicateAgent(agent)}
+                  isSystemAgent={agent.is_internal}
                 />
               ))}
             </div>
@@ -211,7 +271,7 @@ const AgentBuilderPage = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No agents yet</h3>
               <p className="text-gray-600 mb-4">Create your first intelligent agent to get started</p>
-              <button 
+              <button
                 onClick={handleCreateAgent}
                 className="px-6 py-3 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors flex items-center gap-2 mx-auto"
               >
@@ -234,13 +294,13 @@ const AgentBuilderPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Connecting to Agent Builder Backend
             </h2>
-            
+
             <p className="text-gray-600 mb-6 leading-relaxed">
-              The Agent Builder backend needs to be started to enable agent creation and management. 
+              The Agent Builder backend needs to be started to enable agent creation and management.
               Please start the backend service on port 8087 to continue.
             </p>
 
@@ -262,7 +322,7 @@ const AgentBuilderPage = () => {
           <Settings className="text-gray-600" size={18} />
           Real-time Integration Status
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="bg-white rounded-lg p-4 border">
             <div className="flex items-center gap-3 mb-2">
@@ -350,7 +410,7 @@ const AgentBuilderPage = () => {
       </div>
 
       {/* Modals */}
-      <AgentDetailModal 
+      <AgentDetailModal
         isOpen={detailModalOpen}
         onClose={() => {
           setDetailModalOpen(false);

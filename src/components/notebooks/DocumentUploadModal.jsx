@@ -4,7 +4,7 @@ import { aetherApi } from '../../services/aetherApi.js';
 import UploadSummaryModal from './UploadSummaryModal';
 import { useAppDispatch } from '../../store/index.js';
 import { fetchNotebooks } from '../../store/slices/notebooksSlice.js';
-import { 
+import {
   Upload,
   File,
   FileText,
@@ -20,7 +20,10 @@ import {
   Plus,
   Trash2,
   Shield,
-  Eye
+  Eye,
+  Presentation,
+  Table,
+  Mail
 } from 'lucide-react';
 
 const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = null }) => {
@@ -54,11 +57,16 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   }, [isOpen, preSelectedFiles]);
 
   const supportedFormats = {
-    documents: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'],
-    images: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'],
+    documents: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.html', '.htm', '.xhtml'],
+    spreadsheets: ['.xlsx', '.xls', '.csv', '.tsv'],
+    presentations: ['.pptx', '.ppt'],
+    images: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp', '.tiff'],
     videos: ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'],
     audio: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'],
-    data: ['.csv', '.xlsx', '.json', '.xml', '.yaml', '.sql']
+    email: ['.eml', '.msg', '.pst'],
+    archives: ['.zip'],
+    data: ['.json', '.xml', '.yaml', '.sql'],
+    microsoft: ['.one']
   };
 
   const maxFileSize = 100 * 1024 * 1024; // 100MB
@@ -69,6 +77,12 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     if (supportedFormats.documents.some(ext => extension.includes(ext.slice(1)))) {
       return <FileText size={20} className="text-red-600" />;
     }
+    if (supportedFormats.presentations.some(ext => extension.includes(ext.slice(1)))) {
+      return <Presentation size={20} className="text-orange-600" />;
+    }
+    if (supportedFormats.spreadsheets.some(ext => extension.includes(ext.slice(1)))) {
+      return <Table size={20} className="text-green-700" />;
+    }
     if (supportedFormats.images.some(ext => extension.includes(ext.slice(1)))) {
       return <Image size={20} className="text-green-600" />;
     }
@@ -77,6 +91,9 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     }
     if (supportedFormats.audio.some(ext => extension.includes(ext.slice(1)))) {
       return <Music size={20} className="text-purple-600" />;
+    }
+    if (supportedFormats.email.some(ext => extension.includes(ext.slice(1)))) {
+      return <Mail size={20} className="text-blue-600" />;
     }
     return <Archive size={20} className="text-gray-600" />;
   };
@@ -92,10 +109,15 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     const fileName = file.name.toLowerCase();
     const allFormats = [
       ...supportedFormats.documents,
+      ...supportedFormats.presentations,
+      ...supportedFormats.spreadsheets,
       ...supportedFormats.images,
       ...supportedFormats.videos,
       ...supportedFormats.audio,
-      ...supportedFormats.data
+      ...supportedFormats.email,
+      ...supportedFormats.archives,
+      ...supportedFormats.data,
+      ...supportedFormats.microsoft
     ];
     
     const isSupported = allFormats.some(ext => fileName.endsWith(ext));

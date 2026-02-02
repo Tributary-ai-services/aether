@@ -9,6 +9,8 @@ import spacesReducer from './slices/spacesSlice.js';
 import dataSourcesReducer from './slices/dataSourcesSlice.js';
 import databaseConnectionsReducer from './slices/databaseConnectionsSlice.js';
 import complianceReducer from './slices/complianceSlice.js';
+import savedQueriesReducer from './slices/savedQueriesSlice.js';
+import aiPlaygroundReducer from './slices/aiPlaygroundSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -23,6 +25,8 @@ const store = configureStore({
     dataSources: dataSourcesReducer,
     databaseConnections: databaseConnectionsReducer,
     compliance: complianceReducer,
+    savedQueries: savedQueriesReducer,
+    aiPlayground: aiPlaygroundReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
