@@ -4,9 +4,9 @@ import Comments from '../collaboration/Comments.jsx';
 import ShareDialog from '../collaboration/ShareDialog.jsx';
 import AgentTestModal from './AgentTestModal.jsx';
 import { useAgentBuilder, useAgentStats, useAgentExecution } from '../../hooks/useAgentBuilder.js';
-import { 
-  Bot, 
-  Play, 
+import {
+  Bot,
+  Play,
   Settings,
   Download,
   Edit,
@@ -26,7 +26,12 @@ import {
   Eye,
   EyeOff,
   Crown,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  Search,
+  FileText,
+  Layers,
+  Sliders
 } from 'lucide-react';
 
 const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, onDeleteAgent }) => {
@@ -304,8 +309,8 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
                       <div>
                         <span className="text-gray-600">Max Cost Increase:</span>
                         <span className="ml-2 font-medium">
-                          {agent.llm_config.fallback_config.max_cost_increase === -1 
-                            ? 'No limit' 
+                          {agent.llm_config.fallback_config.max_cost_increase === -1
+                            ? 'No limit'
                             : `${(agent.llm_config.fallback_config.max_cost_increase * 100).toFixed(0)}%`}
                         </span>
                       </div>
@@ -320,6 +325,149 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
                 )}
               </div>
             </div>
+
+            {/* Knowledge Configuration */}
+            {agent.enable_knowledge && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Knowledge Configuration</h3>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BookOpen className="text-blue-600" size={18} />
+                    <h4 className="font-medium text-gray-900">Document Context</h4>
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                      Enabled
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <span className="text-gray-600">Context Strategy:</span>
+                      <div className="flex items-center gap-1 mt-1">
+                        {agent.context_strategy === 'vector' && <Search size={14} className="text-purple-600" />}
+                        {agent.context_strategy === 'full' && <FileText size={14} className="text-green-600" />}
+                        {agent.context_strategy === 'hybrid' && <Layers size={14} className="text-blue-600" />}
+                        <span className="font-medium capitalize">{agent.context_strategy || 'hybrid'}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Max Context Tokens:</span>
+                      <span className="ml-2 font-medium">{agent.max_context_tokens?.toLocaleString() || '8,000'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Include Sub-notebooks:</span>
+                      <span className="ml-2 font-medium">{agent.include_sub_notebooks ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Multi-pass Processing:</span>
+                      <span className="ml-2 font-medium">{agent.multi_pass_enabled ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                  </div>
+
+                  {/* Hybrid Configuration Details */}
+                  {agent.context_strategy === 'hybrid' && agent.hybrid_config && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sliders size={14} className="text-gray-600" />
+                        <span className="text-sm font-medium text-gray-900">Hybrid Settings</span>
+                      </div>
+
+                      {/* Weight Distribution */}
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 w-28">Vector Search:</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-purple-600 h-2 rounded-full"
+                              style={{ width: `${(agent.hybrid_config.vector_weight || 0.6) * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-medium w-12 text-right">
+                            {((agent.hybrid_config.vector_weight || 0.6) * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 w-28">Full Document:</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full"
+                              style={{ width: `${(agent.hybrid_config.full_doc_weight || 0.3) * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-medium w-12 text-right">
+                            {((agent.hybrid_config.full_doc_weight || 0.3) * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 w-28">Position:</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-orange-500 h-2 rounded-full"
+                              style={{ width: `${(agent.hybrid_config.position_weight || 0.1) * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-medium w-12 text-right">
+                            {((agent.hybrid_config.position_weight || 0.1) * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Additional Settings */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div className="bg-gray-50 rounded p-2">
+                          <span className="text-gray-500">Vector Top-K</span>
+                          <div className="font-medium">{agent.hybrid_config.vector_top_k || 20}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2">
+                          <span className="text-gray-500">Min Score</span>
+                          <div className="font-medium">{agent.hybrid_config.vector_min_score || 0.5}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2">
+                          <span className="text-gray-500">Token Budget</span>
+                          <div className="font-medium">{(agent.hybrid_config.token_budget || 8000).toLocaleString()}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2">
+                          <span className="text-gray-500">Summary Boost</span>
+                          <div className="font-medium">{agent.hybrid_config.summary_boost || 1.5}x</div>
+                        </div>
+                      </div>
+
+                      {/* Feature Flags */}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {agent.hybrid_config.include_summaries !== false && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                            Include Summaries
+                          </span>
+                        )}
+                        {agent.hybrid_config.deduplicate_by_content !== false && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                            Deduplicate Content
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Linked Notebooks */}
+                  {agent.notebook_ids && agent.notebook_ids.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <span className="text-sm text-gray-600">Linked Notebooks:</span>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {agent.notebook_ids.slice(0, 3).map(id => (
+                          <span key={id} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-mono">
+                            {id.substring(0, 8)}...
+                          </span>
+                        ))}
+                        {agent.notebook_ids.length > 3 && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                            +{agent.notebook_ids.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Recent Executions */}
             <div>

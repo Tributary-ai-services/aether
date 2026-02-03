@@ -6,6 +6,7 @@ import Modal from '../ui/Modal.jsx';
 import ConfigurationTemplateSelector from '../agent/ConfigurationTemplateSelector.jsx';
 import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
 import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
+import KnowledgeConfigurationForm from '../agent/KnowledgeConfigurationForm.jsx';
 import { AIAssistLabel } from '../agent/AIAssistButton.jsx';
 import PromptAssistDialog from '../agent/PromptAssistDialog.jsx';
 import {
@@ -20,7 +21,8 @@ import {
   ChevronUp,
   AlertCircle,
   CheckCircle,
-  Info
+  Info,
+  BookOpen
 } from 'lucide-react';
 
 const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent }) => {
@@ -59,7 +61,25 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
     is_public: false,
     is_template: false,
     tags: [],
-    notebook_ids: []
+    notebook_ids: [],
+    // Knowledge configuration
+    enable_knowledge: true,
+    context_strategy: 'hybrid',
+    include_sub_notebooks: false,
+    max_context_tokens: 8000,
+    multi_pass_enabled: false,
+    hybrid_config: {
+      vector_weight: 0.6,
+      full_doc_weight: 0.3,
+      position_weight: 0.1,
+      summary_boost: 1.5,
+      vector_top_k: 20,
+      vector_min_score: 0.5,
+      full_doc_max_chunks: 50,
+      token_budget: 8000,
+      include_summaries: true,
+      deduplicate_by_content: true
+    }
   });
 
   const [currentTag, setCurrentTag] = useState('');
@@ -106,7 +126,25 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           is_public: agent.is_public || false,
           is_template: agent.is_template || false,
           tags: agent.tags || [],
-          notebook_ids: agent.notebook_ids || []
+          notebook_ids: agent.notebook_ids || [],
+          // Knowledge configuration
+          enable_knowledge: agent.enable_knowledge !== false,
+          context_strategy: agent.context_strategy || 'hybrid',
+          include_sub_notebooks: agent.include_sub_notebooks || false,
+          max_context_tokens: agent.max_context_tokens || 8000,
+          multi_pass_enabled: agent.multi_pass_enabled || false,
+          hybrid_config: agent.hybrid_config || {
+            vector_weight: 0.6,
+            full_doc_weight: 0.3,
+            position_weight: 0.1,
+            summary_boost: 1.5,
+            vector_top_k: 20,
+            vector_min_score: 0.5,
+            full_doc_max_chunks: 50,
+            token_budget: 8000,
+            include_summaries: true,
+            deduplicate_by_content: true
+          }
         });
       } else {
         // Creation mode - use defaults
@@ -136,7 +174,25 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           is_public: false,
           is_template: false,
           tags: [],
-          notebook_ids: []
+          notebook_ids: [],
+          // Knowledge configuration
+          enable_knowledge: true,
+          context_strategy: 'hybrid',
+          include_sub_notebooks: false,
+          max_context_tokens: 8000,
+          multi_pass_enabled: false,
+          hybrid_config: {
+            vector_weight: 0.6,
+            full_doc_weight: 0.3,
+            position_weight: 0.1,
+            summary_boost: 1.5,
+            vector_top_k: 20,
+            vector_min_score: 0.5,
+            full_doc_max_chunks: 50,
+            token_budget: 8000,
+            include_summaries: true,
+            deduplicate_by_content: true
+          }
         });
       }
       setError(null);
@@ -192,6 +248,18 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
     setFormData(prev => ({
       ...prev,
       llm_config: { ...prev.llm_config, [field]: value }
+    }));
+  };
+
+  const handleKnowledgeConfigChange = (knowledgeConfig) => {
+    setFormData(prev => ({
+      ...prev,
+      enable_knowledge: knowledgeConfig.enable_knowledge,
+      context_strategy: knowledgeConfig.context_strategy,
+      include_sub_notebooks: knowledgeConfig.include_sub_notebooks,
+      max_context_tokens: knowledgeConfig.max_context_tokens,
+      multi_pass_enabled: knowledgeConfig.multi_pass_enabled,
+      hybrid_config: knowledgeConfig.hybrid_config
     }));
   };
 
@@ -711,6 +779,26 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
           {showAdvanced && (
             <div className="px-4 pb-4 space-y-4 border-t border-gray-200">
+              {/* Knowledge Configuration */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <BookOpen className="text-blue-600" size={16} />
+                  Knowledge & Document Context
+                </h4>
+                <KnowledgeConfigurationForm
+                  config={{
+                    enable_knowledge: formData.enable_knowledge,
+                    context_strategy: formData.context_strategy,
+                    include_sub_notebooks: formData.include_sub_notebooks,
+                    max_context_tokens: formData.max_context_tokens,
+                    multi_pass_enabled: formData.multi_pass_enabled,
+                    hybrid_config: formData.hybrid_config
+                  }}
+                  onChange={handleKnowledgeConfigChange}
+                  agentType={formData.type}
+                />
+              </div>
+
               {/* Configuration Template Selector */}
               <ConfigurationTemplateSelector
                 selectedTemplate={selectedTemplate}

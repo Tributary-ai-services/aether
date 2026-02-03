@@ -687,6 +687,71 @@ class AetherApiService {
     }),
   };
 
+  // Producers API - Producer agents and productions (artifacts)
+  producers = {
+    // Get available producer agents for a notebook
+    getNotebookProducers: (notebookId) => this.request(`/notebooks/${notebookId}/producers`),
+
+    // Execute a producer agent on a notebook
+    executeProducer: (notebookId, agentId, data) => this.request(`/notebooks/${notebookId}/producers/${agentId}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    // Get producer preferences for current user
+    getPreferences: () => this.request('/users/me/preferences/producers'),
+
+    // Update producer preferences (pin/unpin, settings)
+    updatePreferences: (data) => this.request('/users/me/preferences/producers', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  };
+
+  // Productions API - Generated artifacts from producer agents
+  productions = {
+    // List productions for a notebook
+    getByNotebook: (notebookId, options = {}) => {
+      const params = new URLSearchParams({
+        limit: options.limit || 20,
+        offset: options.offset || 0
+      }).toString();
+      return this.request(`/notebooks/${notebookId}/productions?${params}`);
+    },
+
+    // Get a production by ID
+    getById: (id) => this.request(`/productions/${id}`),
+
+    // Get production content
+    getContent: (id) => this.request(`/productions/${id}/content`),
+
+    // Delete a production
+    delete: (id) => this.request(`/productions/${id}`, {
+      method: 'DELETE',
+    }),
+
+    // Bulk delete multiple productions
+    bulkDelete: (productionIds) => this.request('/productions/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ production_ids: productionIds }),
+    }),
+  };
+
+  // Chat API - Notebook conversations using the Notebook Chat Assistant agent
+  chat = {
+    // Send a chat message for a notebook using the internal Notebook Chat Assistant
+    sendMessage: (notebookId, message, history = []) => this.request(`/notebooks/${notebookId}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({
+        message: message,
+        history: history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+      }),
+    }),
+  };
+
   // Users API
   users = {
     getCurrentUser: () => this.request('/users/me'),
@@ -736,6 +801,10 @@ class AetherApiService {
       body: JSON.stringify(data)
     }),
     delete: (id) => this.request(`/documents/${id}`, { method: 'DELETE' }),
+    update: (id, data) => this.request(`/documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
     // ML Analysis - fetches analysis summary from AudiModal via aether-be proxy
     getAnalysis: (id) => this.request(`/documents/${id}/analysis`),
     // Extracted text - fetches text content from AudiModal chunks

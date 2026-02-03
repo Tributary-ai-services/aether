@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, User, Clock, DollarSign, RotateCcw, ArrowRight, AlertTriangle, CheckCircle, Play, Square } from 'lucide-react';
+import { X, Send, Bot, User, Clock, DollarSign, RotateCcw, ArrowRight, AlertTriangle, CheckCircle, Play, Square, BookOpen, Search, FileText, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAgentExecution } from '../../hooks/useAgentBuilder.js';
 
 const AgentTestModal = ({ isOpen, onClose, agent }) => {
@@ -117,7 +117,12 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
   };
 
   const ExecutionMetrics = ({ execution }) => {
+    const [showContextDetails, setShowContextDetails] = useState(false);
+
     if (!execution) return null;
+
+    const contextInfo = execution.context_metadata || execution.knowledge_context;
+    const hasContextInfo = contextInfo && (contextInfo.chunks_retrieved > 0 || contextInfo.total_tokens > 0);
 
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2 text-xs">
@@ -128,14 +133,14 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
               {execution.response_time_ms ? formatDuration(execution.response_time_ms) : 'Running...'}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <DollarSign size={12} className="text-green-600" />
             <span className="text-gray-600">
               {formatCurrency(execution.cost_usd)}
             </span>
           </div>
-          
+
           {execution.retry_attempts > 0 && (
             <div className="flex items-center gap-1">
               <RotateCcw size={12} className="text-orange-500" />
@@ -144,7 +149,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
               </span>
             </div>
           )}
-          
+
           {execution.fallback_used && (
             <div className="flex items-center gap-1">
               <ArrowRight size={12} className="text-blue-500" />
@@ -154,7 +159,7 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
             </div>
           )}
         </div>
-        
+
         {execution.provider_chain && execution.provider_chain.length > 1 && (
           <div className="mt-2 pt-2 border-t border-gray-200">
             <div className="text-gray-500 mb-1">Provider chain:</div>
@@ -172,6 +177,119 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
                 </React.Fragment>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Knowledge/Context Retrieval Info */}
+        {hasContextInfo && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <button
+              onClick={() => setShowContextDetails(!showContextDetails)}
+              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <BookOpen size={12} />
+              <span>Knowledge Context</span>
+              {showContextDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+
+            {showContextDetails && (
+              <div className="mt-2 space-y-2">
+                {/* Context Strategy Badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Strategy:</span>
+                  <span className={`px-2 py-0.5 rounded-full ${
+                    contextInfo.strategy === 'vector' ? 'bg-purple-100 text-purple-800' :
+                    contextInfo.strategy === 'full' ? 'bg-green-100 text-green-800' :
+                    contextInfo.strategy === 'hybrid' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {contextInfo.strategy === 'vector' && <Search size={10} className="inline mr-1" />}
+                    {contextInfo.strategy === 'full' && <FileText size={10} className="inline mr-1" />}
+                    {contextInfo.strategy === 'hybrid' && <Layers size={10} className="inline mr-1" />}
+                    {contextInfo.strategy || 'hybrid'}
+                  </span>
+                </div>
+
+                {/* Retrieval Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {contextInfo.chunks_retrieved !== undefined && (
+                    <div className="bg-white rounded p-2 border border-gray-100">
+                      <div className="text-gray-500">Chunks Retrieved</div>
+                      <div className="font-medium text-gray-900">{contextInfo.chunks_retrieved}</div>
+                    </div>
+                  )}
+                  {contextInfo.total_tokens !== undefined && (
+                    <div className="bg-white rounded p-2 border border-gray-100">
+                      <div className="text-gray-500">Context Tokens</div>
+                      <div className="font-medium text-gray-900">{contextInfo.total_tokens.toLocaleString()}</div>
+                    </div>
+                  )}
+                  {contextInfo.retrieval_time_ms !== undefined && (
+                    <div className="bg-white rounded p-2 border border-gray-100">
+                      <div className="text-gray-500">Retrieval Time</div>
+                      <div className="font-medium text-gray-900">{formatDuration(contextInfo.retrieval_time_ms)}</div>
+                    </div>
+                  )}
+                  {contextInfo.documents_searched !== undefined && (
+                    <div className="bg-white rounded p-2 border border-gray-100">
+                      <div className="text-gray-500">Docs Searched</div>
+                      <div className="font-medium text-gray-900">{contextInfo.documents_searched}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hybrid-specific stats */}
+                {contextInfo.strategy === 'hybrid' && contextInfo.hybrid_stats && (
+                  <div className="bg-blue-50 rounded p-2 mt-2">
+                    <div className="text-blue-800 font-medium mb-1">Hybrid Retrieval Breakdown</div>
+                    <div className="grid grid-cols-3 gap-2 text-blue-700">
+                      <div>
+                        <span className="text-blue-600">Vector:</span>
+                        <span className="ml-1 font-medium">{contextInfo.hybrid_stats.vector_chunks || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600">Full Doc:</span>
+                        <span className="ml-1 font-medium">{contextInfo.hybrid_stats.full_doc_chunks || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600">Deduplicated:</span>
+                        <span className="ml-1 font-medium">{contextInfo.hybrid_stats.deduplicated || 0}</span>
+                      </div>
+                    </div>
+                    {contextInfo.hybrid_stats.avg_score !== undefined && (
+                      <div className="mt-1">
+                        <span className="text-blue-600">Avg Relevance Score:</span>
+                        <span className="ml-1 font-medium">{(contextInfo.hybrid_stats.avg_score * 100).toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Priority Tiers (if available) */}
+                {contextInfo.priority_breakdown && (
+                  <div className="mt-2">
+                    <div className="text-gray-500 mb-1">Priority Distribution:</div>
+                    <div className="flex gap-1">
+                      {contextInfo.priority_breakdown.high_relevance > 0 && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded">
+                          High: {contextInfo.priority_breakdown.high_relevance}
+                        </span>
+                      )}
+                      {contextInfo.priority_breakdown.medium_relevance > 0 && (
+                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded">
+                          Med: {contextInfo.priority_breakdown.medium_relevance}
+                        </span>
+                      )}
+                      {contextInfo.priority_breakdown.context > 0 && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded">
+                          Context: {contextInfo.priority_breakdown.context}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -284,8 +402,8 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
 
         {/* Agent Info */}
         <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <span className="text-gray-600">
                 <strong>Provider:</strong> {agent?.llm_config?.provider || 'Unknown'}
               </span>
@@ -304,6 +422,27 @@ const AgentTestModal = ({ isOpen, onClose, agent }) => {
                 </span>
               )}
             </div>
+            {/* Knowledge Configuration Badge */}
+            {agent?.enable_knowledge && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className={`px-2 py-1 rounded-full flex items-center gap-1 ${
+                  agent.context_strategy === 'vector' ? 'bg-purple-100 text-purple-700' :
+                  agent.context_strategy === 'full' ? 'bg-green-100 text-green-700' :
+                  agent.context_strategy === 'hybrid' ? 'bg-blue-100 text-blue-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {agent.context_strategy === 'vector' && <Search size={12} />}
+                  {agent.context_strategy === 'full' && <FileText size={12} />}
+                  {(agent.context_strategy === 'hybrid' || !agent.context_strategy) && <Layers size={12} />}
+                  <span className="capitalize">{agent.context_strategy || 'hybrid'} Context</span>
+                </span>
+                {agent.max_context_tokens && (
+                  <span className="text-gray-500 text-xs">
+                    {agent.max_context_tokens.toLocaleString()} tokens max
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

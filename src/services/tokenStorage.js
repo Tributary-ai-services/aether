@@ -8,9 +8,10 @@ const REFRESH_EXPIRY_KEY = 'aether_refresh_expiry';
 
 class TokenStorageService {
   constructor() {
-    // Use sessionStorage for more security (cleared when tab closes)
-    // localStorage persists across browser sessions
-    this.storage = sessionStorage;
+    // Use localStorage to persist tokens across browser tabs/windows
+    // This allows the "Manage Productions" feature to open in new windows
+    // while maintaining authentication
+    this.storage = localStorage;
     
     // Basic XSS protection - validate environment
     this.validateSecurityContext();
