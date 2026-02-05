@@ -28,12 +28,48 @@ const PRODUCTION_TYPES = [
   { value: 'custom', label: 'Custom', description: 'Custom production based on agent configuration' },
 ];
 
-// Map internal producer agent IDs to their production types
+// Map internal producer agent IDs to their production types (legacy support)
 const PRODUCER_TYPE_MAP = {
   '00000000-0000-0000-0000-000000000010': 'summary',  // Document Summarizer
   '00000000-0000-0000-0000-000000000011': 'qa',       // Q&A Generator
   '00000000-0000-0000-0000-000000000012': 'outline',  // Outline Creator
   '00000000-0000-0000-0000-000000000013': 'insight',  // Insights Extractor
+};
+
+/**
+ * Infer the production type from a producer's properties.
+ * Checks in order: UUID mapping, producer.producerType, producer.type, name-based inference.
+ */
+const inferProductionType = (producer) => {
+  if (!producer) return 'custom';
+
+  // 1. Check hardcoded UUID mapping (legacy support)
+  if (PRODUCER_TYPE_MAP[producer.id]) {
+    return PRODUCER_TYPE_MAP[producer.id];
+  }
+
+  // 2. Check if producer has explicit producerType or productionType field
+  if (producer.producerType && PRODUCTION_TYPES.some(t => t.value === producer.producerType)) {
+    return producer.producerType;
+  }
+  if (producer.productionType && PRODUCTION_TYPES.some(t => t.value === producer.productionType)) {
+    return producer.productionType;
+  }
+
+  // 3. Check if producer.type matches a production type (not 'producer' agent type)
+  if (producer.type && producer.type !== 'producer' && PRODUCTION_TYPES.some(t => t.value === producer.type)) {
+    return producer.type;
+  }
+
+  // 4. Infer from producer name using keywords
+  const nameLower = (producer.name || '').toLowerCase();
+  if (nameLower.includes('summar')) return 'summary';
+  if (nameLower.includes('q&a') || nameLower.includes('qa') || nameLower.includes('question')) return 'qa';
+  if (nameLower.includes('outline')) return 'outline';
+  if (nameLower.includes('insight') || nameLower.includes('extract')) return 'insight';
+
+  // 5. Default to custom for unknown producers
+  return 'custom';
 };
 
 const PRODUCTION_FORMATS = [
@@ -64,16 +100,12 @@ const ProducerExecutionModal = ({
 
   // Initialize production type based on selected producer
   useEffect(() => {
-    if (producer?.id) {
-      // Check if this is an internal producer with a known type
-      const producerType = PRODUCER_TYPE_MAP[producer.id];
-      if (producerType) {
-        setProductionType(producerType);
-      } else if (preferences.settings?.defaultType) {
-        setProductionType(preferences.settings.defaultType);
-      }
+    if (producer) {
+      // Infer the production type from producer properties
+      const inferredType = inferProductionType(producer);
+      setProductionType(inferredType);
     }
-  }, [producer?.id, preferences.settings?.defaultType]);
+  }, [producer]);
 
   // Initialize format from preferences
   useEffect(() => {
@@ -82,14 +114,14 @@ const ProducerExecutionModal = ({
     }
   }, [preferences.settings?.defaultFormat]);
 
-  // Generate default title when producer or type changes
+  // Generate default title when producer changes
+  // Use producer name to reflect the type of producer being run
   useEffect(() => {
     if (producer) {
-      const typeLabel = PRODUCTION_TYPES.find(t => t.value === productionType)?.label || productionType;
       const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      setTitle(`${typeLabel} - ${date}`);
+      setTitle(`${producer.name} - ${date}`);
     }
-  }, [producer, productionType]);
+  }, [producer]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -176,18 +208,18 @@ const ProducerExecutionModal = ({
             />
           </div>
 
-          {/* Production Type - disabled for internal producers as it's determined by the agent */}
+          {/* Production Type - disabled for producers with a determined type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Production Type
-              {PRODUCER_TYPE_MAP[producer?.id] && (
+              {inferProductionType(producer) !== 'custom' && (
                 <span className="ml-2 text-xs text-gray-500 font-normal">(set by producer)</span>
               )}
             </label>
             <select
               value={productionType}
               onChange={(e) => setProductionType(e.target.value)}
-              disabled={isExecuting || hasCompleted || !!PRODUCER_TYPE_MAP[producer?.id]}
+              disabled={isExecuting || hasCompleted || inferProductionType(producer) !== 'custom'}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) disabled:bg-gray-50 disabled:text-gray-500"
             >
               {PRODUCTION_TYPES.map(type => (

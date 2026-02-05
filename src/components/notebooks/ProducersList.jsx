@@ -28,6 +28,50 @@ const TYPE_CONFIG = {
   default: { icon: Sparkles, color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 
+// Map internal producer agent IDs to their production types (legacy support)
+const PRODUCER_TYPE_MAP = {
+  '00000000-0000-0000-0000-000000000010': 'summary',  // Document Summarizer
+  '00000000-0000-0000-0000-000000000011': 'qa',       // Q&A Generator
+  '00000000-0000-0000-0000-000000000012': 'outline',  // Outline Creator
+  '00000000-0000-0000-0000-000000000013': 'insight',  // Insights Extractor
+};
+
+/**
+ * Infer the production type from a producer's properties.
+ * Used to determine the correct icon and color for display.
+ */
+const inferProductionType = (producer) => {
+  if (!producer) return 'default';
+
+  // 1. Check hardcoded UUID mapping (legacy support)
+  if (PRODUCER_TYPE_MAP[producer.id]) {
+    return PRODUCER_TYPE_MAP[producer.id];
+  }
+
+  // 2. Check if producer has explicit producerType or productionType field
+  if (producer.producerType && TYPE_CONFIG[producer.producerType]) {
+    return producer.producerType;
+  }
+  if (producer.productionType && TYPE_CONFIG[producer.productionType]) {
+    return producer.productionType;
+  }
+
+  // 3. Check if producer.type matches a production type (not 'producer' agent type)
+  if (producer.type && producer.type !== 'producer' && TYPE_CONFIG[producer.type]) {
+    return producer.type;
+  }
+
+  // 4. Infer from producer name using keywords
+  const nameLower = (producer.name || '').toLowerCase();
+  if (nameLower.includes('summar')) return 'summary';
+  if (nameLower.includes('q&a') || nameLower.includes('qa') || nameLower.includes('question')) return 'qa';
+  if (nameLower.includes('outline')) return 'outline';
+  if (nameLower.includes('insight') || nameLower.includes('extract')) return 'insight';
+
+  // 5. Default for unknown producers
+  return 'custom';
+};
+
 const ProducersList = ({ notebookId, onExecuteProducer }) => {
   const dispatch = useAppDispatch();
 
@@ -74,7 +118,8 @@ const ProducersList = ({ notebookId, onExecuteProducer }) => {
   // Render producer item
   const renderProducerItem = (producer) => {
     const isPinned = producer.isPinned || preferences.pinned?.global?.includes(producer.id);
-    const config = TYPE_CONFIG[producer.type] || TYPE_CONFIG.default;
+    const inferredType = inferProductionType(producer);
+    const config = TYPE_CONFIG[inferredType] || TYPE_CONFIG.default;
     const Icon = config.icon;
 
     return (
