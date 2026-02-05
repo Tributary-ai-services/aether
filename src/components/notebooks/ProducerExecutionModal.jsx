@@ -28,11 +28,12 @@ const PRODUCTION_TYPES = [
   { value: 'custom', label: 'Custom', description: 'Custom production based on agent configuration' },
 ];
 
-// Map internal producer agent IDs to their production types (legacy support)
+// Map internal producer agent IDs to their production types
+// IMPORTANT: These must match the agent-builder database (016_seed_producer_agents.sql)
 const PRODUCER_TYPE_MAP = {
-  '00000000-0000-0000-0000-000000000010': 'summary',  // Document Summarizer
-  '00000000-0000-0000-0000-000000000011': 'qa',       // Q&A Generator
-  '00000000-0000-0000-0000-000000000012': 'outline',  // Outline Creator
+  '00000000-0000-0000-0000-000000000010': 'qa',       // Q&A Generator
+  '00000000-0000-0000-0000-000000000011': 'outline',  // Outline Creator
+  '00000000-0000-0000-0000-000000000012': 'summary',  // Document Summarizer
   '00000000-0000-0000-0000-000000000013': 'insight',  // Insights Extractor
 };
 
