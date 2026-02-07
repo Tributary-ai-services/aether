@@ -1,67 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { communityItems } from '../data/mockData.js';
 import CommunityCard from '../components/cards/CommunityCard.jsx';
-import { api } from '../services/api.js';
+import { useAgentBuilder } from '../hooks/useAgentBuilder.js';
 import { useFilters } from '../context/FilterContext.jsx';
 import { Sparkles, Wrench } from 'lucide-react';
 
 const CommunityPage = () => {
-  const [internalAgents, setInternalAgents] = useState([]);
-  const [loadingInternal, setLoadingInternal] = useState(true);
   const { sectionFilters, filterCommunityItems } = useFilters();
 
   // Get current filter state for community section
   const communityFilters = sectionFilters['community'] || {};
   const showSystemTools = communityFilters.showInternal ?? false;
 
-  // Fetch internal (system) agents on mount
-  useEffect(() => {
-    const fetchInternalAgents = async () => {
-      try {
-        setLoadingInternal(true);
-        console.log('[Community] Fetching internal agents...');
-        const response = await api.internalAgents.getAll();
-        console.log('[Community] Internal agents response:', response);
-        const agents = response.agents || [];
-        console.log('[Community] Setting internal agents:', agents.length, 'agents');
-        setInternalAgents(agents);
-      } catch (error) {
-        console.error('[Community] Failed to fetch internal agents:', error);
-        setInternalAgents([]);
-      } finally {
-        setLoadingInternal(false);
-      }
-    };
+  // Unified fetch: always include internal agents for the community page
+  const { agents: allFetchedAgents, loading: loadingAgents } = useAgentBuilder({}, { includeInternal: true });
 
-    fetchInternalAgents();
-  }, []);
-
-  // Convert internal agents to community card format
-  // System tools are agents, so set type to 'agent' for filtering with "Agents" item type
-  const systemTools = useMemo(() => internalAgents.map(agent => ({
-    id: agent.id,
-    title: agent.name,
-    name: agent.name,
-    description: agent.description,
-    type: 'agent', // System tools are agents - ensures they filter with "Agents" item type
-    author: 'Aether System',
-    downloads: 0,
-    rating: 5.0,
-    tags: agent.tags || ['system', 'tool'],
-    isInternal: true,
-    isPublic: true,
-    isSystemTool: true // Separate flag for visual styling and toggle behavior
-  })), [internalAgents]);
+  // Extract internal agents and convert to community card format
+  const systemTools = useMemo(() => {
+    const internalAgents = (allFetchedAgents || []).filter(a => a.is_internal);
+    return internalAgents.map(agent => ({
+      id: agent.id,
+      title: agent.name,
+      name: agent.name,
+      description: agent.description,
+      type: 'agent',
+      author: 'Aether System',
+      downloads: 0,
+      rating: 5.0,
+      tags: agent.tags || ['system', 'tool'],
+      is_internal: true,
+      isPublic: true,
+      isSystemTool: true
+    }));
+  }, [allFetchedAgents]);
 
   // Combine all items and apply filters
   const allItems = useMemo(() => {
-    // Add isInternal: false to community items if not set
     const regularItems = communityItems.map(item => ({
       ...item,
-      isInternal: item.isInternal ?? false
+      is_internal: item.is_internal ?? false
     }));
 
-    // When toggle is on, include system tools in the filterable list
     if (showSystemTools) {
       return [...regularItems, ...systemTools];
     }
@@ -78,20 +57,7 @@ const CommunityPage = () => {
 
   // Determine if we should show system tools section
   const shouldShowSystemTools = showSystemTools && filteredSystemTools.length > 0;
-  const shouldShowLoading = showSystemTools && loadingInternal;
-
-  // Debug logging
-  console.log('[Community] Filter state:', {
-    showSystemTools,
-    internalAgentsCount: internalAgents.length,
-    systemToolsCount: systemTools.length,
-    allItemsCount: allItems.length,
-    filteredItemsCount: filteredItems.length,
-    filteredSystemToolsCount: filteredSystemTools.length,
-    loadingInternal,
-    shouldShowSystemTools,
-    shouldShowLoading
-  });
+  const shouldShowLoading = showSystemTools && loadingAgents;
 
   return (
     <div>

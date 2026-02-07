@@ -308,7 +308,7 @@ export const FilterProvider = ({ children }) => {
 
     return items.filter(item => {
       // Internal/System tools filter
-      if (!showInternal && item.isInternal) {
+      if (!showInternal && (item.is_internal || item.isInternal)) {
         return false;
       }
 

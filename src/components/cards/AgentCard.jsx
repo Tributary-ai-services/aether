@@ -16,7 +16,7 @@ import {
 import { useAgentExecution } from '../../hooks/useAgentBuilder.js';
 import ShareDialog from '../collaboration/ShareDialog.jsx';
 
-const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
+const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent, isSystemAgent = false }) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const { startExecution, loading: executionLoading } = useAgentExecution(agent.id);
 
@@ -84,18 +84,23 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+      className={`bg-white rounded-xl shadow-sm border ${isSystemAgent ? 'border-purple-200' : 'border-gray-200'} p-6 hover:shadow-md transition-shadow cursor-pointer`}
       onClick={onOpenDetail}
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
+          <div className={`p-2 ${isSystemAgent ? 'bg-purple-200' : 'bg-purple-100'} rounded-lg`}>
             <Bot className="text-purple-600" size={20} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-gray-900">{agent.name}</h3>
+              {isSystemAgent && (
+                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                  System
+                </span>
+              )}
               {agent.is_public && (
                 <Eye className="text-(--color-primary-500)" size={14} title="Public Agent" />
               )}
@@ -131,26 +136,30 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent }) => {
               <Play size={16} />
             )}
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDuplicateAgent();
-            }}
-            className="p-2 text-gray-400 hover:text-(--color-primary-600)"
-            title="Duplicate Agent"
-          >
-            <Copy size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShareDialogOpen(true);
-            }}
-            className="p-2 text-gray-400 hover:text-(--color-primary-600)"
-            title="Share Agent"
-          >
-            <Share2 size={16} />
-          </button>
+          {!isSystemAgent && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDuplicateAgent();
+                }}
+                className="p-2 text-gray-400 hover:text-(--color-primary-600)"
+                title="Duplicate Agent"
+              >
+                <Copy size={16} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShareDialogOpen(true);
+                }}
+                className="p-2 text-gray-400 hover:text-(--color-primary-600)"
+                title="Share Agent"
+              >
+                <Share2 size={16} />
+              </button>
+            </>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

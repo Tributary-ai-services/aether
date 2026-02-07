@@ -3,7 +3,6 @@ import { useSpace } from '../hooks/useSpaces.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useAgentBuilder, useAgentProviders } from '../hooks/useAgentBuilder.js';
 import { useFilters } from '../context/FilterContext.jsx';
-import { api } from '../services/api.js';
 import AgentCard from '../components/cards/AgentCard.jsx';
 import AgentDetailModal from '../components/modals/AgentDetailModal.jsx';
 import AgentCreateModal from '../components/modals/AgentCreateModal.jsx';
@@ -20,9 +19,15 @@ import { Bot, Plus, Settings, Zap, Brain, Cpu, CheckCircle, AlertCircle, Clock }
 const AgentBuilderPage = () => {
   const { currentSpace, loadAvailableSpaces, initialized, loading: spacesLoading } = useSpace();
   const { user } = useAuth();
-  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent } = useAgentBuilder();
-  const { providers, loading: providersLoading, error: providersError } = useAgentProviders();
   const { filterAgents, sectionFilters } = useFilters();
+
+  // Get current filter state for agent-builder section
+  const agentFilters = sectionFilters['agent-builder'] || {};
+  const showSystemAgents = agentFilters.showInternal ?? false;
+
+  // Unified fetch: pass includeInternal to get both user and system agents in one request
+  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent } = useAgentBuilder({}, { includeInternal: showSystemAgents });
+  const { providers, loading: providersLoading, error: providersError } = useAgentProviders();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -33,14 +38,6 @@ const AgentBuilderPage = () => {
     providers: 'checking',
     database: 'checking'
   });
-
-  // Internal/system agents state
-  const [internalAgents, setInternalAgents] = useState([]);
-  const [loadingInternal, setLoadingInternal] = useState(false);
-
-  // Get current filter state for agent-builder section
-  const agentFilters = sectionFilters['agent-builder'] || {};
-  const showSystemAgents = agentFilters.showInternal ?? false;
 
   // Initialize spaces - but don't block on it
   useEffect(() => {
@@ -58,35 +55,6 @@ const AgentBuilderPage = () => {
       setIsLoading(false);
     }
   }, [agentsLoading, providersLoading]);
-
-  // Fetch internal agents when toggle is enabled
-  useEffect(() => {
-    const fetchInternalAgents = async () => {
-      if (!showSystemAgents) {
-        setInternalAgents([]);
-        return;
-      }
-
-      try {
-        setLoadingInternal(true);
-        const response = await api.internalAgents.getAll();
-        // Mark internal agents with is_internal flag
-        const internalAgentsData = (response.agents || []).map(agent => ({
-          ...agent,
-          is_internal: true,
-          status: 'active' // Internal agents are always active
-        }));
-        setInternalAgents(internalAgentsData);
-      } catch (error) {
-        console.error('Failed to fetch internal agents:', error);
-        setInternalAgents([]);
-      } finally {
-        setLoadingInternal(false);
-      }
-    };
-
-    fetchInternalAgents();
-  }, [showSystemAgents]);
 
   // Test integration status
   useEffect(() => {
@@ -127,22 +95,10 @@ const AgentBuilderPage = () => {
     }
   }, [agents, agentsError, providers, providersError, agentsLoading, providersLoading]);
 
-  // Combine regular agents with internal agents (when toggle is enabled)
-  const allAgents = React.useMemo(() => {
-    // Preserve is_internal from backend, default to false if not set
-    const regularAgents = (agents || []).map(agent => ({
-      ...agent,
-      is_internal: agent.is_internal ?? false
-    }));
+  // Agents come from the unified endpoint (already includes internal agents when requested)
+  const allAgents = agents || [];
 
-    if (showSystemAgents) {
-      return [...regularAgents, ...internalAgents];
-    }
-
-    return regularAgents;
-  }, [agents, internalAgents, showSystemAgents]);
-
-  // Apply filters to combined agents
+  // Apply filters
   const filteredAgents = filterAgents(allAgents);
 
   const handleCreateAgent = () => {
@@ -196,7 +152,7 @@ const AgentBuilderPage = () => {
 
   const backendConnected = integrationStatus.backend === 'connected';
   const hasAgents = Array.isArray(allAgents) && allAgents.length > 0;
-  const isLoadingAgents = agentsLoading || (showSystemAgents && loadingInternal);
+  const isLoadingAgents = agentsLoading;
 
   if (isLoading) {
     return (
@@ -218,9 +174,9 @@ const AgentBuilderPage = () => {
           <p className="text-gray-600 mt-1">
             Advanced agent creation and management platform
           </p>
-          {showSystemAgents && internalAgents.length > 0 && (
+          {showSystemAgents && allAgents.some(a => a.is_internal) && (
             <p className="text-sm text-purple-600 mt-1">
-              Showing {internalAgents.length} system agent{internalAgents.length !== 1 ? 's' : ''}
+              Including system agents
             </p>
           )}
         </div>

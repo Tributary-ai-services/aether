@@ -6,7 +6,7 @@ import { api } from '../services/api.js';
  * Hook for Agent Builder operations
  * Comprehensive integration with real backend APIs including execution and stats
  */
-export const useAgentBuilder = (filter = {}) => {
+export const useAgentBuilder = (filter = {}, { includeInternal = false } = {}) => {
   const { currentSpace } = useSpace();
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,12 +17,13 @@ export const useAgentBuilder = (filter = {}) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Combine space context with custom filter
       const requestFilter = {
         ...filter,
         ...customFilter,
-        ...(currentSpace?.id && { space_id: currentSpace.id })
+        ...(currentSpace?.id && { space_id: currentSpace.id }),
+        ...(includeInternal && { include_internal: true })
       };
       
       const response = await api.agentBuilder.getAll(requestFilter);
@@ -55,7 +56,7 @@ export const useAgentBuilder = (filter = {}) => {
   useEffect(() => {
     // Fetch agents even without a space - the backend will handle filtering
     fetchAgents();
-  }, [currentSpace?.id]);
+  }, [currentSpace?.id, includeInternal]);
 
   // Agent CRUD Operations
   const createAgent = async (agentData) => {
