@@ -1494,6 +1494,69 @@ class AetherApiService {
   };
 
   // ============================================================================
+  // Skills API
+  // ============================================================================
+  skills = {
+    /**
+     * List all skills with optional filters
+     * @param {Object} params - Filter parameters
+     * @param {string} params.type - Filter by type (mcp, function, builtin)
+     * @param {string} params.tags - Comma-separated tags
+     * @param {string} params.search - Search text
+     * @param {number} params.page - Page number
+     * @param {number} params.size - Page size
+     * @returns {Promise} Paginated skill list
+     */
+    list: (params = {}) => {
+      const searchParams = new URLSearchParams();
+      if (params.type) searchParams.append('type', params.type);
+      if (params.tags) searchParams.append('tags', params.tags);
+      if (params.search) searchParams.append('search', params.search);
+      if (params.page) searchParams.append('page', params.page);
+      if (params.size) searchParams.append('size', params.size);
+      const queryString = searchParams.toString();
+      return this.request(`/skills${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get a skill by ID
+     * @param {string} id - Skill ID
+     * @returns {Promise} Skill details
+     */
+    getById: (id) => this.request(`/skills/${id}`),
+
+    /**
+     * Create a new skill
+     * @param {Object} data - Skill data
+     * @returns {Promise} Created skill
+     */
+    create: (data) => this.request('/skills', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Update a skill
+     * @param {string} id - Skill ID
+     * @param {Object} data - Updated skill data
+     * @returns {Promise} Updated skill
+     */
+    update: (id, data) => this.request(`/skills/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+    /**
+     * Delete a skill
+     * @param {string} id - Skill ID
+     * @returns {Promise} Deletion result
+     */
+    delete: (id) => this.request(`/skills/${id}`, {
+      method: 'DELETE',
+    }),
+  };
+
+  // ============================================================================
   // Saved Queries API - Developer Tools
   // ============================================================================
   savedQueries = {

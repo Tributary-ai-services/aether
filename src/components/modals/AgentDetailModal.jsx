@@ -34,14 +34,21 @@ import {
   Sliders
 } from 'lucide-react';
 
-const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, onDeleteAgent }) => {
+const AgentDetailModal = ({ isOpen, onClose, agent: agentProp, onTestAgent, onEditAgent, onDeleteAgent }) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [localAgent, setLocalAgent] = useState(null);
   const { updateAgent } = useAgentBuilder();
+  const agent = localAgent || agentProp;
   const { stats, loading: statsLoading, refetch: refreshStats } = useAgentStats(agent?.id);
   const { executions, refetch: refreshExecutions, loading: executionsLoading } = useAgentExecution(agent?.id);
-  
+
+  // Sync local state when prop changes (e.g., modal opens with a new agent)
+  useEffect(() => {
+    setLocalAgent(agentProp);
+  }, [agentProp]);
+
   useEffect(() => {
     if (isOpen && agent?.id) {
       refreshStats();
@@ -119,7 +126,7 @@ const AgentDetailModal = ({ isOpen, onClose, agent, onTestAgent, onEditAgent, on
     try {
       const newStatus = agent.status === 'published' ? 'draft' : 'published';
       await updateAgent(agent.id, { status: newStatus });
-      // Optionally trigger a refresh or update parent component
+      setLocalAgent(prev => ({ ...prev, status: newStatus }));
     } catch (error) {
       console.error('Failed to update agent status:', error);
     } finally {

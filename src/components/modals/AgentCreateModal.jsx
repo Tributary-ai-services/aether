@@ -1,28 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSpace } from '../../hooks/useSpaces.js';
 import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
 import { api } from '../../services/api.js';
 import Modal from '../ui/Modal.jsx';
-import ConfigurationTemplateSelector from '../agent/ConfigurationTemplateSelector.jsx';
 import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
 import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
 import KnowledgeConfigurationForm from '../agent/KnowledgeConfigurationForm.jsx';
 import { AIAssistLabel } from '../agent/AIAssistButton.jsx';
 import PromptAssistDialog from '../agent/PromptAssistDialog.jsx';
+import SkillCard from '../community/SkillCard.jsx';
+import { mockSkills } from '../../data/mockData.js';
 import {
   Bot,
   Settings,
-  Zap,
-  DollarSign,
   Brain,
   Save,
   X,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
   CheckCircle,
   Info,
-  BookOpen
+  BookOpen,
+  Wrench,
+  Shield,
+  Tag
 } from 'lucide-react';
 
 const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent }) => {
@@ -61,6 +61,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
     is_public: false,
     is_template: false,
     tags: [],
+    skills: [],
     notebook_ids: [],
     // Knowledge configuration
     enable_knowledge: true,
@@ -86,13 +87,69 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [configValidation, setConfigValidation] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('Balanced');
 
   // Prompt Assist Dialog state
   const [promptAssistOpen, setPromptAssistOpen] = useState(false);
   const [promptAssistField, setPromptAssistField] = useState('description'); // 'description' or 'system_prompt'
+
+  // Modal tab state
+  const [activeModalTab, setActiveModalTab] = useState('general');
+
+  // Skills state
+  const [availableSkills, setAvailableSkills] = useState([]);
+  const [loadingSkills, setLoadingSkills] = useState(false);
+  const [autoDetectSkills, setAutoDetectSkills] = useState(true);
+
+  // Fetch available skills
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchSkills = async () => {
+      try {
+        setLoadingSkills(true);
+        const response = await api.skills.list();
+        const skillList = response.skills || response || [];
+        setAvailableSkills(Array.isArray(skillList) ? skillList : []);
+      } catch (err) {
+        console.warn('[AgentCreate] Failed to fetch skills, using mocks:', err);
+        setAvailableSkills(mockSkills);
+      } finally {
+        setLoadingSkills(false);
+      }
+    };
+    fetchSkills();
+  }, [isOpen]);
+
+  // Auto-detect skills from system prompt keywords
+  const autoDetectedSkills = useMemo(() => {
+    if (!autoDetectSkills || !formData.system_prompt) return [];
+    const promptLower = formData.system_prompt.toLowerCase();
+    return availableSkills
+      .filter(skill => {
+        const keywords = Array.isArray(skill.keywords)
+          ? skill.keywords
+          : (typeof skill.keywords === 'string' ? JSON.parse(skill.keywords || '[]') : []);
+        return keywords.some(kw => promptLower.includes(kw.toLowerCase()));
+      })
+      .map(s => s.name)
+      .filter(name => !formData.skills.includes(name));
+  }, [formData.system_prompt, formData.skills, availableSkills, autoDetectSkills]);
+
+  // Combined skills (explicit + auto-detected)
+  const effectiveSkills = useMemo(() => {
+    return [...new Set([...formData.skills, ...autoDetectedSkills])];
+  }, [formData.skills, autoDetectedSkills]);
+
+  const handleToggleSkill = (skillName) => {
+    setFormData(prev => {
+      const current = prev.skills || [];
+      const updated = current.includes(skillName)
+        ? current.filter(s => s !== skillName)
+        : [...current, skillName];
+      return { ...prev, skills: updated };
+    });
+  };
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -126,6 +183,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           is_public: agent.is_public || false,
           is_template: agent.is_template || false,
           tags: agent.tags || [],
+          skills: agent.skills || [],
           notebook_ids: agent.notebook_ids || [],
           // Knowledge configuration
           enable_knowledge: agent.enable_knowledge !== false,
@@ -174,6 +232,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           is_public: false,
           is_template: false,
           tags: [],
+          skills: [],
           notebook_ids: [],
           // Knowledge configuration
           enable_knowledge: true,
@@ -198,6 +257,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       setError(null);
       setValidationErrors({});
       setConfigValidation(null);
+      setActiveModalTab('general');
     }
   }, [isOpen, agent, providers]);
 
@@ -434,6 +494,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       const agentData = {
         ...formData,
         type: formData.type || 'qa', // Explicitly ensure type is included
+        skills: effectiveSkills, // Include both explicit and auto-detected skills
         space_id: currentSpace.space_id
       };
       
@@ -759,28 +820,60 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           )}
         </div>
 
-        {/* Advanced Configuration */}
+        {/* Configuration Tabs */}
         <div className="border border-gray-200 rounded-lg">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="w-full flex items-center justify-between p-4 text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="text-gray-600" size={18} />
-              <span className="font-medium text-gray-900">Advanced Configuration</span>
-            </div>
-            {showAdvanced ? (
-              <ChevronUp className="text-gray-400" size={20} />
-            ) : (
-              <ChevronDown className="text-gray-400" size={20} />
-            )}
-          </button>
+          {/* Tab Bar */}
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            {[
+              { id: 'general', label: 'General', icon: Settings },
+              { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
+              { id: 'skills', label: 'Skills', icon: Wrench, count: effectiveSkills.length },
+              { id: 'reliability', label: 'Reliability', icon: Shield },
+              { id: 'advanced', label: 'Advanced', icon: Tag },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              const isActive = activeModalTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveModalTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    isActive
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <TabIcon size={15} />
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          {showAdvanced && (
-            <div className="px-4 pb-4 space-y-4 border-t border-gray-200">
-              {/* Knowledge Configuration */}
-              <div className="border border-gray-200 rounded-lg p-4">
+          {/* Tab Content */}
+          <div className="p-4">
+            {/* General Tab - placeholder, content is above */}
+            {activeModalTab === 'general' && (
+              <div className="text-sm text-gray-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info size={16} className="text-blue-500" />
+                  <span className="font-medium text-gray-700">General Configuration</span>
+                </div>
+                <p>The general agent settings (name, type, description, system prompt, and LLM configuration) are shown above. Use the other tabs to configure additional capabilities.</p>
+              </div>
+            )}
+
+            {/* Knowledge Tab */}
+            {activeModalTab === 'knowledge' && (
+              <div>
                 <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                   <BookOpen className="text-blue-600" size={16} />
                   Knowledge & Document Context
@@ -798,92 +891,178 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                   agentType={formData.type}
                 />
               </div>
+            )}
 
-              {/* Configuration Template Selector */}
-              <ConfigurationTemplateSelector
-                selectedTemplate={selectedTemplate}
-                onTemplateChange={handleTemplateChange}
-              />
-
-              {/* Retry Configuration */}
-              <RetryConfigurationForm
-                config={formData.llm_config.retry_config}
-                onChange={(config) => handleLLMConfigChange('retry_config', config)}
-              />
-
-              {/* Fallback Configuration */}
-              <FallbackConfigurationForm
-                config={formData.llm_config.fallback_config}
-                onChange={(config) => handleLLMConfigChange('fallback_config', config)}
-              />
-
-              {/* Tags */}
+            {/* Skills Tab */}
+            {activeModalTab === 'skills' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
-                    placeholder="Add tag..."
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
-                  >
-                    Add
-                  </button>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                      <Wrench className="text-purple-600" size={16} />
+                      Agent Skills
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Skills give your agent access to MCP tools and external capabilities.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={autoDetectSkills}
+                      onChange={(e) => setAutoDetectSkills(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
+                    />
+                    <span className="text-gray-600">Auto-detect from prompt</span>
+                  </label>
                 </div>
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {(formData.tags || []).map(tag => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <X size={12} />
-                        </button>
-                      </span>
+
+                {loadingSkills ? (
+                  <div className="space-y-3">
+                    {[1, 2].map(i => (
+                      <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
                     ))}
+                  </div>
+                ) : availableSkills.length > 0 ? (
+                  <div className="space-y-2">
+                    {availableSkills.map(skill => {
+                      const isExplicit = formData.skills.includes(skill.name);
+                      const isAutoDetected = autoDetectedSkills.includes(skill.name);
+                      const isSelected = isExplicit || isAutoDetected;
+                      return (
+                        <SkillCard
+                          key={skill.id || skill.name}
+                          skill={skill}
+                          compact={true}
+                          selected={isSelected}
+                          autoDetected={isAutoDetected && !isExplicit}
+                          onSelect={() => handleToggleSkill(skill.name)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Wrench size={24} className="mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No skills available yet.</p>
+                    <p className="text-xs text-gray-400 mt-1">Skills will appear here once configured in the platform.</p>
+                  </div>
+                )}
+
+                {effectiveSkills.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-200">
+                    <p className="text-xs font-medium text-gray-600 mb-2">
+                      Active Skills ({effectiveSkills.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {effectiveSkills.map(name => {
+                        const skill = availableSkills.find(s => s.name === name);
+                        const isAuto = autoDetectedSkills.includes(name) && !formData.skills.includes(name);
+                        return (
+                          <span
+                            key={name}
+                            className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                              isAuto
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            }`}
+                          >
+                            {skill?.display_name || name}
+                            {isAuto && <span className="text-[10px] opacity-75">(auto)</span>}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Publishing Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_public}
-                    onChange={(e) => handleInputChange('is_public', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
-                  />
-                  <span className="text-sm text-gray-700">Make Public</span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_template}
-                    onChange={(e) => handleInputChange('is_template', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
-                  />
-                  <span className="text-sm text-gray-700">Save as Template</span>
-                </label>
+            {/* Reliability Tab */}
+            {activeModalTab === 'reliability' && (
+              <div className="space-y-4">
+                <RetryConfigurationForm
+                  config={formData.llm_config.retry_config}
+                  onChange={(config) => handleLLMConfigChange('retry_config', config)}
+                />
+                <FallbackConfigurationForm
+                  config={formData.llm_config.fallback_config}
+                  onChange={(config) => handleLLMConfigChange('fallback_config', config)}
+                />
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Advanced Tab */}
+            {activeModalTab === 'advanced' && (
+              <div className="space-y-4">
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={currentTag}
+                      onChange={(e) => setCurrentTag(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+                      placeholder="Add tag..."
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTag}
+                      className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {formData.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {(formData.tags || []).map(tag => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Publishing Options */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_public}
+                      onChange={(e) => handleInputChange('is_public', e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
+                    />
+                    <span className="text-sm text-gray-700">Make Public</span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_template}
+                      onChange={(e) => handleInputChange('is_template', e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
+                    />
+                    <span className="text-sm text-gray-700">Save as Template</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Form Actions */}
