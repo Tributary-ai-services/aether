@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '../ui/Modal.jsx';
 import {
   CheckCircle,
@@ -12,86 +12,199 @@ import { aetherApi } from '../../services/aetherApi.js';
 
 export default function UploadSummaryModal({ isOpen, onClose, uploadResults, notebookName }) {
   const [fileAnalyses, setFileAnalyses] = useState({});
+  const [fileStatuses, setFileStatuses] = useState({});
   const [overallInsights, setOverallInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
+  const pollIntervalRef = useRef(null);
 
+  const POLL_INTERVAL_MS = 4000;
+  const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+  const pollStartRef = useRef(null);
+
+  // Cleanup polling on close or unmount
+  useEffect(() => {
+    if (!isOpen) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [isOpen]);
+
+  // Start status polling + analysis fetching when modal opens
   useEffect(() => {
     if (isOpen && uploadResults.length > 0) {
-      fetchAnalysisData();
+      initStatusPolling();
     }
   }, [isOpen, uploadResults]);
 
-  const fetchAnalysisData = async () => {
-    setLoading(true);
-    try {
-      const successfulUploads = uploadResults.filter(r => r.status === 'fulfilled');
+  const getFileName = (result) => {
+    const v = result.value;
+    return v?.filename || v?.metadata?.original_name || v?.original_name || v?.name || 'Unknown file';
+  };
 
-      // Get individual file analyses for all successful uploads
-      const analyses = {};
+  const initStatusPolling = () => {
+    const successfulUploads = uploadResults.filter(r => r.status === 'fulfilled');
+
+    // Initialize file statuses and analyses with basic info
+    const initialStatuses = {};
+    const initialAnalyses = {};
+    for (const result of successfulUploads) {
+      if (result.value?.id) {
+        const id = result.value.id;
+        initialStatuses[id] = { status: 'checking', progress: 0 };
+        initialAnalyses[id] = {
+          fileName: getFileName(result),
+          fileSize: result.value.size,
+          uploadedAt: result.value.created_at || new Date().toISOString(),
+          pending: true
+        };
+      }
+    }
+    setFileStatuses(initialStatuses);
+    setFileAnalyses(initialAnalyses);
+    setLoading(true);
+    pollStartRef.current = Date.now();
+
+    // Do an immediate check, then start interval
+    pollDocumentStatuses(successfulUploads);
+    pollIntervalRef.current = setInterval(() => {
+      pollDocumentStatuses(successfulUploads);
+    }, POLL_INTERVAL_MS);
+  };
+
+  const pollDocumentStatuses = async (successfulUploads) => {
+    // Timeout failsafe
+    if (pollStartRef.current && (Date.now() - pollStartRef.current > MAX_POLL_DURATION_MS)) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      setLoading(false);
+      return;
+    }
+
+    let allDone = true;
+
+    for (const result of successfulUploads) {
+      const docId = result.value?.id;
+      if (!docId) continue;
+
+      try {
+        const statusResponse = await aetherApi.documents.getStatus(docId);
+        const statusData = statusResponse.data || statusResponse;
+        const docStatus = statusData.status;
+        const progress = statusData.progress || 0;
+
+        setFileStatuses(prev => ({ ...prev, [docId]: { status: docStatus, progress } }));
+
+        if (docStatus === 'processed') {
+          // Document is done — fetch analysis if we haven't already
+          setFileAnalyses(prev => {
+            if (prev[docId] && !prev[docId].pending) return prev; // already fetched
+            return prev; // will be updated by fetchAnalysisForDoc
+          });
+          fetchAnalysisForDoc(docId, result);
+        } else if (docStatus === 'failed') {
+          setFileAnalyses(prev => ({
+            ...prev,
+            [docId]: {
+              ...prev[docId],
+              pending: false,
+              error: 'Document processing failed'
+            }
+          }));
+        } else {
+          // Still processing
+          allDone = false;
+        }
+      } catch (err) {
+        console.warn(`Failed to check status for ${docId}:`, err);
+        allDone = false;
+      }
+    }
+
+    if (allDone) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      setLoading(false);
+      buildOverallInsights();
+    }
+  };
+
+  const fetchAnalysisForDoc = async (docId, result) => {
+    try {
+      const analysisResponse = await aetherApi.documents.getAnalysis(docId);
+      if (analysisResponse?.data?.analysis) {
+        const analysis = analysisResponse.data.analysis;
+        setFileAnalyses(prev => ({
+          ...prev,
+          [docId]: {
+            ...analysis,
+            fileName: getFileName(result),
+            fileSize: result.value.size,
+            uploadedAt: result.value.created_at || new Date().toISOString(),
+            pending: false
+          }
+        }));
+      } else {
+        setFileAnalyses(prev => ({
+          ...prev,
+          [docId]: {
+            ...prev[docId],
+            pending: false
+          }
+        }));
+      }
+    } catch (error) {
+      console.warn(`Analysis not yet available for ${docId}:`, error);
+      setFileAnalyses(prev => ({
+        ...prev,
+        [docId]: {
+          ...prev[docId],
+          pending: false
+        }
+      }));
+    }
+    // Rebuild insights whenever an analysis arrives
+    buildOverallInsights();
+  };
+
+  const buildOverallInsights = useCallback(() => {
+    setFileAnalyses(currentAnalyses => {
       let totalChunks = 0;
       let totalConfidence = 0;
       let validAnalysisCount = 0;
       const allTopics = [];
-      const allEntities = [];
 
-      for (const result of successfulUploads) {
-        if (result.value?.id) {
-          try {
-            // Fetch ML analysis from aether-be (which proxies to AudiModal)
-            const analysisResponse = await aetherApi.documents.getAnalysis(result.value.id);
-
-            if (analysisResponse?.data?.analysis) {
-              const analysis = analysisResponse.data.analysis;
-              analyses[result.value.id] = {
-                ...analysis,
-                fileName: result.value.filename || result.value.metadata?.original_name || result.value.original_name || result.value.name || 'Unknown file',
-                fileSize: result.value.size,
-                uploadedAt: result.value.created_at || new Date().toISOString()
-              };
-
-              // Aggregate for overall insights
-              totalChunks += analysis.total_chunks || 0;
-              if (analysis.avg_confidence) {
-                totalConfidence += analysis.avg_confidence;
-                validAnalysisCount++;
-              }
-              if (analysis.main_topics) {
-                allTopics.push(...analysis.main_topics);
-              }
-              if (analysis.key_entities) {
-                allEntities.push(...analysis.key_entities);
-              }
-            } else {
-              // No analysis data available yet
-              analyses[result.value.id] = {
-                fileName: result.value.filename || result.value.metadata?.original_name || result.value.original_name || result.value.name || 'Unknown file',
-                fileSize: result.value.size,
-                uploadedAt: result.value.created_at || new Date().toISOString(),
-                pending: true
-              };
-            }
-          } catch (error) {
-            console.warn(`Failed to get analysis for file ${result.value.id}:`, error);
-            // Still store basic info even if analysis fails
-            analyses[result.value.id] = {
-              fileName: result.value.filename || result.value.metadata?.original_name || result.value.original_name || result.value.name || 'Unknown file',
-              fileSize: result.value.size,
-              uploadedAt: result.value.created_at || new Date().toISOString(),
-              error: 'Analysis not available'
-            };
-          }
+      for (const analysis of Object.values(currentAnalyses)) {
+        if (analysis.pending || analysis.error) continue;
+        totalChunks += analysis.total_chunks || 0;
+        if (analysis.avg_confidence) {
+          totalConfidence += analysis.avg_confidence;
+          validAnalysisCount++;
+        }
+        if (analysis.main_topics) {
+          allTopics.push(...analysis.main_topics);
         }
       }
-      setFileAnalyses(analyses);
 
-      // Build overall insights from aggregated data
+      const successfulUploads = uploadResults.filter(r => r.status === 'fulfilled');
       const insights = {
         summary: {
           total_files: successfulUploads.length,
           total_chunks: totalChunks,
           confidence_score: validAnalysisCount > 0 ? totalConfidence / validAnalysisCount : 0,
-          avg_processing_time_ms: 0 // Will be updated with real data
+          avg_processing_time_ms: 0
         },
         content_insights: {
           dominant_language: 'English',
@@ -104,26 +217,19 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
         } : null,
         recommendations: validAnalysisCount > 0
           ? ['Documents processed successfully', 'ML analysis complete']
-          : ['Documents uploaded - analysis pending']
+          : ['Documents uploaded successfully']
       };
       setOverallInsights(insights);
 
-    } catch (error) {
-      console.error('Failed to fetch analysis data:', error);
-      // Set fallback insights
-      setOverallInsights({
-        summary: {
-          total_files: uploadResults.filter(r => r.status === 'fulfilled').length,
-        },
-        recommendations: ['Upload successful - analysis may take a moment']
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return currentAnalyses; // don't mutate
+    });
+  }, [uploadResults]);
 
-  const successCount = uploadResults.filter(r => r.status === 'fulfilled').length;
-  const failCount = uploadResults.filter(r => r.status === 'rejected').length;
+  const uploadSuccessCount = uploadResults.filter(r => r.status === 'fulfilled').length;
+  const uploadFailCount = uploadResults.filter(r => r.status === 'rejected').length;
+  const processingCount = Object.values(fileStatuses).filter(s => s.status === 'processing' || s.status === 'uploading' || s.status === 'checking').length;
+  const processedCount = Object.values(fileStatuses).filter(s => s.status === 'processed').length;
+  const processingFailedCount = Object.values(fileStatuses).filter(s => s.status === 'failed').length;
 
   return (
     <Modal 
@@ -179,38 +285,90 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
         </div>
 
         <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--color-primary-600)"></div>
-                <span className="ml-2 text-gray-600">Analyzing content...</span>
-              </div>
-            ) : (
               <>
                 {/* Summary Tab */}
                 {activeTab === 'summary' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
+                      {/* Uploaded successfully */}
                       <div className="bg-green-50 rounded-lg p-4">
                         <div className="flex items-center gap-2">
                           <CheckCircle className="h-8 w-8 text-green-600" />
                           <div>
-                            <p className="text-2xl font-bold text-green-900">{successCount}</p>
-                            <p className="text-sm text-green-700">Successfully Processed</p>
+                            <p className="text-2xl font-bold text-green-900">{uploadSuccessCount}</p>
+                            <p className="text-sm text-green-700">Uploaded Successfully</p>
                           </div>
                         </div>
                       </div>
-                      {failCount > 0 && (
+                      {/* Upload failures (actual upload errors) */}
+                      {uploadFailCount > 0 && (
                         <div className="bg-red-50 rounded-lg p-4">
                           <div className="flex items-center gap-2">
                             <XCircle className="h-8 w-8 text-red-600" />
                             <div>
-                              <p className="text-2xl font-bold text-red-900">{failCount}</p>
-                              <p className="text-sm text-red-700">Failed</p>
+                              <p className="text-2xl font-bold text-red-900">{uploadFailCount}</p>
+                              <p className="text-sm text-red-700">Upload Failed</p>
                             </div>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {uploadResults.filter(r => r.status === 'rejected').map((result, idx) => (
+                              <div key={idx} className="flex items-start gap-2 text-sm">
+                                <FileText className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium text-red-900">
+                                    {result.reason?.fileName || `File ${idx + 1}`}
+                                  </p>
+                                  <p className="text-red-700">
+                                    {result.reason?.message || 'Unknown error'}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Processing status */}
+                    {uploadSuccessCount > 0 && (
+                      <div className={`rounded-lg p-4 ${processedCount === uploadSuccessCount ? 'bg-green-50' : 'bg-blue-50'}`}>
+                        <h3 className="font-medium text-gray-900 mb-3">Document Processing</h3>
+                        <div className="space-y-2">
+                          {uploadResults.filter(r => r.status === 'fulfilled' && r.value?.id).map((result) => {
+                            const docId = result.value.id;
+                            const status = fileStatuses[docId];
+                            const docStatus = status?.status || 'checking';
+                            return (
+                              <div key={docId} className="flex items-center gap-3 text-sm">
+                                {docStatus === 'processed' ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                ) : docStatus === 'failed' ? (
+                                  <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                                ) : (
+                                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                )}
+                                <span className="flex-1 truncate font-medium">{getFileName(result)}</span>
+                                <span className={`text-xs ${
+                                  docStatus === 'processed' ? 'text-green-600' :
+                                  docStatus === 'failed' ? 'text-red-600' :
+                                  'text-blue-600'
+                                }`}>
+                                  {docStatus === 'processed' ? 'Processed' :
+                                   docStatus === 'failed' ? 'Failed' :
+                                   docStatus === 'processing' ? 'Processing...' :
+                                   'Checking...'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {processingCount > 0 && (
+                          <p className="mt-3 text-xs text-blue-600">
+                            {processingCount} document{processingCount > 1 ? 's' : ''} still processing. Analysis will be available when complete.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {overallInsights?.summary && (
                       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -319,26 +477,45 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                 {activeTab === 'files' && (
                   <div className="space-y-4">
                     {uploadResults.map((result, idx) => {
-                      const analysis = result.status === 'fulfilled' && result.value?.id ? fileAnalyses[result.value.id] : null;
+                      const docId = result.status === 'fulfilled' ? result.value?.id : null;
+                      const analysis = docId ? fileAnalyses[docId] : null;
+                      const status = docId ? fileStatuses[docId] : null;
+                      const docStatus = status?.status || 'checking';
+                      const isFailed = result.status === 'rejected';
+                      const isProcessingFailed = docStatus === 'failed';
+                      const borderClass = isFailed || isProcessingFailed
+                        ? 'border-red-200 bg-red-50'
+                        : docStatus === 'processed'
+                          ? 'border-green-200 bg-green-50'
+                          : 'border-blue-200 bg-blue-50';
+                      const iconClass = isFailed || isProcessingFailed
+                        ? 'text-red-600'
+                        : docStatus === 'processed'
+                          ? 'text-green-600'
+                          : 'text-blue-600';
                       return (
-                        <div key={idx} className={`border rounded-lg p-4 ${
-                          result.status === 'fulfilled' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-                        }`}>
+                        <div key={idx} className={`border rounded-lg p-4 ${borderClass}`}>
                           <div className="space-y-3">
                             <div className="flex items-start gap-3">
-                              <FileText className={`h-5 w-5 mt-0.5 ${
-                                result.status === 'fulfilled' ? 'text-green-600' : 'text-red-600'
-                              }`} />
+                              <FileText className={`h-5 w-5 mt-0.5 ${iconClass}`} />
                               <div className="flex-1">
                                 <p className="font-medium text-gray-900">
-                                  {analysis?.fileName || result.value?.filename || result.value?.metadata?.original_name || result.value?.original_name || result.value?.name || `File ${idx + 1}`}
+                                  {result.status === 'fulfilled'
+                                    ? (analysis?.fileName || getFileName(result))
+                                    : (result.reason?.fileName || `File ${idx + 1}`)
+                                  }
                                 </p>
                                 {result.status === 'fulfilled' ? (
                                   <>
                                     <div className="mt-1 text-sm text-gray-600">
                                       <p>File ID: {result.value?.id}</p>
                                       <p>Size: {result.value?.size_bytes ? `${(result.value.size_bytes / 1024).toFixed(1)} KB` : (analysis?.fileSize ? `${(analysis.fileSize / 1024).toFixed(1)} KB` : 'Unknown')}</p>
-                                      <p>Status: Successfully uploaded and processed</p>
+                                      <p>Status: {
+                                        docStatus === 'processed' ? 'Uploaded and processed' :
+                                        docStatus === 'failed' ? 'Processing failed' :
+                                        docStatus === 'processing' ? 'Processing document...' :
+                                        'Checking status...'
+                                      }</p>
                                       {(result.value?.created_at || analysis?.uploadedAt) && (
                                         <p>Uploaded: {(() => {
                                           const dateStr = result.value?.created_at || analysis?.uploadedAt;
@@ -347,16 +524,14 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                                         })()}</p>
                                       )}
                                     </div>
-                                    {analysis?.error && (
-                                      <p className="mt-2 text-sm text-orange-600">
-                                        ⚠️ {analysis.error}
-                                      </p>
-                                    )}
                                   </>
                                 ) : (
-                                  <p className="text-sm text-red-600">
-                                    Failed: {result.reason?.message || 'Unknown error'}
-                                  </p>
+                                  <div className="mt-1 text-sm text-red-600 space-y-1">
+                                    <p>Error: {result.reason?.message || 'Unknown error'}</p>
+                                    {result.reason?.fileSize && (
+                                      <p className="text-gray-500">Size: {(result.reason.fileSize / 1024).toFixed(1)} KB</p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -367,7 +542,6 @@ export default function UploadSummaryModal({ isOpen, onClose, uploadResults, not
                   </div>
                 )}
               </>
-            )}
           </div>
       </div>
     </Modal>

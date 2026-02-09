@@ -805,6 +805,8 @@ class AetherApiService {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+    // Processing status - polls backend for document processing progress
+    getStatus: (id) => this.request(`/documents/${id}/status`),
     // ML Analysis - fetches analysis summary from AudiModal via aether-be proxy
     getAnalysis: (id) => this.request(`/documents/${id}/analysis`),
     // Extracted text - fetches text content from AudiModal chunks
