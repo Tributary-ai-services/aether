@@ -26,7 +26,7 @@ const AgentBuilderPage = () => {
   const showSystemAgents = agentFilters.showInternal ?? false;
 
   // Unified fetch: pass includeInternal to get both user and system agents in one request
-  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent } = useAgentBuilder({}, { includeInternal: showSystemAgents });
+  const { agents, loading: agentsLoading, error: agentsError, stats, createAgent, updateAgent, deleteAgent, refetch: refetchAgents } = useAgentBuilder({}, { includeInternal: showSystemAgents });
   const { providers, loading: providersLoading, error: providersError } = useAgentProviders();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -384,6 +384,7 @@ const AgentBuilderPage = () => {
           console.log('🔴 AgentCreateModal onClose called');
           setCreateModalOpen(false);
           setSelectedAgent(null);
+          refetchAgents();
         }}
         agent={selectedAgent} // For editing
         onCreateAgent={createAgent}

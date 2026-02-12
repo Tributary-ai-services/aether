@@ -235,6 +235,12 @@ const AgentDetailModal = ({ isOpen, onClose, agent: agentProp, onTestAgent, onEd
                     <span className="font-medium text-gray-700">Max Tokens:</span>
                     <span className="ml-2 text-gray-900">{agent.llm_config?.max_tokens || 'Default'}</span>
                   </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Streaming:</span>
+                    <span className={`ml-2 ${agent.llm_config?.streaming !== false ? 'text-green-700' : 'text-gray-500'}`}>
+                      {agent.llm_config?.streaming !== false ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

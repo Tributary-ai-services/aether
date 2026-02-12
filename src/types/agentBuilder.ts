@@ -40,6 +40,7 @@ export interface AgentLLMConfig {
   max_cost?: number;                   // Maximum cost threshold
   retry_config?: RetryConfig;          // Retry configuration
   fallback_config?: FallbackConfig;    // Fallback configuration
+  streaming?: boolean;                 // Enable SSE streaming (default true)
 }
 
 // Main Agent Model

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
 import { useSpace } from '../hooks/useSpaces.js';
 import { aetherApi } from '../services/aetherApi.js';
@@ -554,6 +554,38 @@ const NotebooksPage = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [modals.uploadDocument, pendingRefreshAfterUpload, notebooks.length, selectedNotebook, dispatch]);
+
+  // Poll for processing documents — auto-refresh when documents are still being processed
+  const processingPollRef = useRef(null);
+  useEffect(() => {
+    // Check if the currently selected notebook has any documents in "processing" status
+    const currentDocs = selectedNotebook ? (notebookDocuments[selectedNotebook.id] || []) : [];
+    const hasProcessingDocs = currentDocs.some(doc =>
+      doc.status === 'processing' || doc.status === 'uploading'
+    );
+
+    if (hasProcessingDocs && selectedNotebook) {
+      // Start polling if not already polling
+      if (!processingPollRef.current) {
+        processingPollRef.current = setInterval(() => {
+          dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
+        }, 5000);
+      }
+    } else {
+      // No processing docs — clear polling
+      if (processingPollRef.current) {
+        clearInterval(processingPollRef.current);
+        processingPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (processingPollRef.current) {
+        clearInterval(processingPollRef.current);
+        processingPollRef.current = null;
+      }
+    };
+  }, [selectedNotebook, notebookDocuments, dispatch]);
 
   // Apply filters to notebooks
   const allFilteredNotebooks = filterNotebooks(notebooks);

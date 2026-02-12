@@ -45,6 +45,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       temperature: 0.7,
       max_tokens: 1000,
       optimize_for: 'quality',
+      streaming: true,
       retry_config: {
         max_attempts: 3,
         backoff_type: 'exponential',
@@ -167,6 +168,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
             temperature: agent.llm_config?.temperature || 0.7,
             max_tokens: agent.llm_config?.max_tokens || 1000,
             optimize_for: agent.llm_config?.optimize_for || 'quality',
+            streaming: agent.llm_config?.streaming !== false, // default true if absent
             retry_config: agent.llm_config?.retry_config || {
               max_attempts: 3,
               backoff_type: 'exponential',
@@ -216,6 +218,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
             temperature: 0.7,
             max_tokens: 1000,
             optimize_for: 'quality',
+            streaming: true,
             retry_config: {
               max_attempts: 3,
               backoff_type: 'exponential',
@@ -786,6 +789,19 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                 <option value="performance">Performance</option>
               </select>
             </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.llm_config.streaming !== false}
+                onChange={(e) => handleLLMConfigChange('streaming', e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
+              />
+              <span className="text-sm text-gray-700">Enable Streaming</span>
+              <span className="text-xs text-gray-400">Stream LLM responses for faster time-to-first-token</span>
+            </label>
           </div>
 
           {/* Configuration Validation */}
