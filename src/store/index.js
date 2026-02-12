@@ -79,3 +79,32 @@ export {
   selectAcknowledgeLoading,
   selectBulkAcknowledgeLoading
 } from './slices/complianceSlice.js';
+
+export {
+  // Async thunks
+  fetchNotebookProducers,
+  executeProducer,
+  fetchNotebookProductions,
+  fetchProductionById,
+  fetchProductionContent,
+  deleteProduction,
+  fetchProducerPreferences,
+  updateProducerPreferences,
+  // Actions
+  clearError as clearProducersError,
+  clearExecutionState,
+  clearNotebookProducers,
+  clearNotebookProductions,
+  clearProductionContent,
+  addToRecent,
+  // Selectors
+  selectNotebookProducers,
+  selectNotebookProducersLoading,
+  selectNotebookProductions,
+  selectProductionContent,
+  selectExecutionState,
+  selectProducerPreferences,
+  selectPinnedProducers,
+  selectRecentProducers,
+  selectSortedProducers
+} from './slices/producersSlice.js';

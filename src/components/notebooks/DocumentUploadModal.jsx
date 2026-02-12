@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Modal from '../ui/Modal.jsx';
 import { aetherApi } from '../../services/aetherApi.js';
 import UploadSummaryModal from './UploadSummaryModal';
@@ -35,6 +35,101 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [uploadResults, setUploadResults] = useState([]);
   const fileInputRef = useRef(null);
+  const pollIntervalsRef = useRef({});
+  const pollStartTimesRef = useRef({});
+
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+  // Cleanup all polling intervals on unmount or modal close
+  useEffect(() => {
+    return () => {
+      Object.values(pollIntervalsRef.current).forEach(clearInterval);
+      pollIntervalsRef.current = {};
+      pollStartTimesRef.current = {};
+    };
+  }, []);
+
+  // Stop polling when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      Object.values(pollIntervalsRef.current).forEach(clearInterval);
+      pollIntervalsRef.current = {};
+      pollStartTimesRef.current = {};
+    }
+  }, [isOpen]);
+
+  // Start polling for a specific file's processing status
+  const startStatusPolling = useCallback((fileId, documentId) => {
+    // Don't start duplicate polling
+    if (pollIntervalsRef.current[fileId]) return;
+
+    pollStartTimesRef.current[fileId] = Date.now();
+
+    const interval = setInterval(async () => {
+      // Check for timeout
+      const elapsed = Date.now() - pollStartTimesRef.current[fileId];
+      if (elapsed > MAX_POLL_DURATION_MS) {
+        clearInterval(pollIntervalsRef.current[fileId]);
+        delete pollIntervalsRef.current[fileId];
+        delete pollStartTimesRef.current[fileId];
+        setFiles(prev => prev.map(f =>
+          f.id === fileId
+            ? { ...f, status: 'error', errors: ['Processing timed out'], statusText: 'Processing timed out' }
+            : f
+        ));
+        return;
+      }
+
+      try {
+        const response = await aetherApi.documents.getStatus(documentId);
+        const statusData = response.data || response;
+        const backendStatus = statusData.status;
+        const progress = statusData.progress || 0;
+
+        if (backendStatus === 'processed') {
+          clearInterval(pollIntervalsRef.current[fileId]);
+          delete pollIntervalsRef.current[fileId];
+          delete pollStartTimesRef.current[fileId];
+          setUploadProgress(prev => ({ ...prev, [fileId]: 100 }));
+          setFiles(prev => prev.map(f =>
+            f.id === fileId
+              ? { ...f, status: 'completed', statusText: 'Processing complete' }
+              : f
+          ));
+        } else if (backendStatus === 'failed') {
+          clearInterval(pollIntervalsRef.current[fileId]);
+          delete pollIntervalsRef.current[fileId];
+          delete pollStartTimesRef.current[fileId];
+          setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
+          setFiles(prev => prev.map(f =>
+            f.id === fileId
+              ? { ...f, status: 'error', errors: ['Document processing failed'], statusText: 'Processing failed' }
+              : f
+          ));
+        } else if (backendStatus === 'processing') {
+          setUploadProgress(prev => ({ ...prev, [fileId]: Math.max(prev[fileId] || 0, 50) }));
+          setFiles(prev => prev.map(f =>
+            f.id === fileId
+              ? { ...f, statusText: 'Processing document...' }
+              : f
+          ));
+        } else if (backendStatus === 'uploading') {
+          setUploadProgress(prev => ({ ...prev, [fileId]: Math.max(prev[fileId] || 0, 30) }));
+          setFiles(prev => prev.map(f =>
+            f.id === fileId
+              ? { ...f, statusText: 'Uploading to storage...' }
+              : f
+          ));
+        }
+      } catch (err) {
+        console.warn(`Failed to poll status for document ${documentId}:`, err);
+        // Don't stop polling on transient errors — just log and retry
+      }
+    }, POLL_INTERVAL_MS);
+
+    pollIntervalsRef.current[fileId] = interval;
+  }, []);
 
   // Helper function to format file sizes
   const formatFileSize = (bytes) => {
@@ -185,6 +280,12 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   };
 
   const removeFile = (fileId) => {
+    // Stop polling for this file if active
+    if (pollIntervalsRef.current[fileId]) {
+      clearInterval(pollIntervalsRef.current[fileId]);
+      delete pollIntervalsRef.current[fileId];
+      delete pollStartTimesRef.current[fileId];
+    }
     setFiles(prev => prev.filter(f => f.id !== fileId));
     setUploadProgress(prev => {
       const newProgress = { ...prev };
@@ -329,40 +430,62 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
 
           // Upload to aether-be /documents/upload-base64 endpoint
           const uploadResult = await aetherApi.documents.uploadBase64(uploadPayload);
-          
+          const resultData = uploadResult.data || uploadResult;
+          const documentId = resultData.id;
+
           setUploadProgress(prev => ({
             ...prev,
-            [fileData.id]: 100
+            [fileData.id]: 30
           }));
 
-          setFiles(prev => prev.map(f => 
-            f.id === fileData.id 
-              ? { 
-                  ...f, 
-                  status: 'completed', 
-                  statusText: 'Upload complete',
-                  uploadResult: uploadResult.data
+          setFiles(prev => prev.map(f =>
+            f.id === fileData.id
+              ? {
+                  ...f,
+                  status: 'uploading',
+                  statusText: 'Uploaded — waiting for processing...',
+                  uploadResult: resultData,
+                  documentId: documentId
                 }
               : f
           ));
 
-          console.log(`File uploaded successfully via Aether Backend (base64):`, uploadResult.data);
-          return uploadResult.data;
+          console.log(`File uploaded successfully via Aether Backend (base64):`, resultData);
+
+          // Start polling for processing status
+          if (documentId) {
+            startStatusPolling(fileData.id, documentId);
+          } else {
+            // No document ID returned — mark as completed immediately
+            setUploadProgress(prev => ({ ...prev, [fileData.id]: 100 }));
+            setFiles(prev => prev.map(f =>
+              f.id === fileData.id
+                ? { ...f, status: 'completed', statusText: 'Upload complete' }
+                : f
+            ));
+          }
+
+          return resultData;
 
         } catch (error) {
           console.error(`Failed to upload ${fileData.name} via Aether Backend (base64):`, error);
-          
-          setFiles(prev => prev.map(f => 
-            f.id === fileData.id 
-              ? { 
-                  ...f, 
-                  status: 'error', 
+
+          setFiles(prev => prev.map(f =>
+            f.id === fileData.id
+              ? {
+                  ...f,
+                  status: 'error',
                   errors: [error.message || 'Upload failed'],
                   statusText: 'Upload failed'
                 }
               : f
           ));
-          throw error;
+          // Enrich error with file context so UploadSummaryModal can display it
+          const enrichedError = new Error(error.message || 'Upload failed');
+          enrichedError.fileName = fileData.name;
+          enrichedError.fileSize = fileData.size;
+          enrichedError.originalError = error;
+          throw enrichedError;
         }
       });
 
@@ -400,11 +523,14 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     }
   };
 
+  const isFileInProgress = (status) => status === 'uploading' || status === 'processing';
+
   const getStatusIcon = (status, progress) => {
     switch (status) {
       case 'pending':
         return <Clock size={16} className="text-gray-500" />;
       case 'uploading':
+      case 'processing':
         return (
           <div className="w-4 h-4 border-2 border-(--color-primary-500) border-t-transparent rounded-full animate-spin" />
         );
@@ -514,7 +640,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                         <p className="text-xs text-gray-500">
                           {formatFileSize(fileData.size)}
                         </p>
-                        {fileData.status === 'uploading' && (
+                        {isFileInProgress(fileData.status) && (
                           <div className="text-xs text-(--color-primary-600) font-medium">
                             {Math.round(uploadProgress[fileData.id] || 0)}%
                             {fileData.statusText && (
@@ -524,11 +650,16 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
                             )}
                           </div>
                         )}
+                        {fileData.status === 'completed' && fileData.statusText && (
+                          <span className="text-xs text-green-600 font-medium">
+                            {fileData.statusText}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    {fileData.status === 'uploading' && (
+                    {isFileInProgress(fileData.status) && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
                         <div
                           className="bg-(--color-primary-600) h-1 rounded-full transition-all duration-300"
@@ -605,6 +736,10 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       onClose={() => {
         setShowSummaryModal(false);
         setUploadResults([]);
+        // Stop any active polling
+        Object.values(pollIntervalsRef.current).forEach(clearInterval);
+        pollIntervalsRef.current = {};
+        pollStartTimesRef.current = {};
         onClose();
         setFiles([]);
         setUploadProgress({});

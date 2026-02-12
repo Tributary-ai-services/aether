@@ -49,6 +49,7 @@ import HelpPage from './pages/HelpPage.jsx';
 import QueryConsolePage from './pages/QueryConsolePage.jsx';
 import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
 import DeveloperToolsPage from './pages/DeveloperToolsPage.jsx';
+import ProductionsManagementPage from './pages/ProductionsManagementPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -483,6 +484,7 @@ const App = () => {
             <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
             <Route path="/developer-tools" element={<DeveloperToolsPage />} />
             <Route path="/developer-tools/:tab" element={<DeveloperToolsPage />} />
+            <Route path="/notebooks/:notebookId/productions" element={<ProductionsManagementPage />} />
           </Routes>
         </main>
       </div>

@@ -40,6 +40,7 @@ export interface AgentLLMConfig {
   max_cost?: number;                   // Maximum cost threshold
   retry_config?: RetryConfig;          // Retry configuration
   fallback_config?: FallbackConfig;    // Fallback configuration
+  streaming?: boolean;                 // Enable SSE streaming (default true)
 }
 
 // Main Agent Model
@@ -58,6 +59,14 @@ export interface Agent {
   is_template: boolean;
   notebook_ids: string[];              // Array of notebook UUIDs
   tags: string[];                      // Array of tag strings
+  // Knowledge configuration
+  enable_knowledge: boolean;
+  context_strategy?: ContextStrategy;
+  hybrid_config?: HybridContextConfig;
+  include_sub_notebooks?: boolean;
+  max_context_tokens?: number;
+  multi_pass_enabled?: boolean;
+  // Execution stats
   total_executions: number;
   total_cost_usd: number;
   avg_response_time_ms: number;
@@ -78,6 +87,13 @@ export interface CreateAgentRequest {
   is_template?: boolean;
   notebook_ids?: string[];
   tags?: string[];
+  // Knowledge configuration
+  enable_knowledge?: boolean;
+  context_strategy?: ContextStrategy;
+  hybrid_config?: HybridContextConfig;
+  include_sub_notebooks?: boolean;
+  max_context_tokens?: number;
+  multi_pass_enabled?: boolean;
 }
 
 // Agent Update Request
@@ -91,6 +107,13 @@ export interface UpdateAgentRequest {
   is_template?: boolean;
   notebook_ids?: string[];
   tags?: string[];
+  // Knowledge configuration
+  enable_knowledge?: boolean;
+  context_strategy?: ContextStrategy;
+  hybrid_config?: HybridContextConfig;
+  include_sub_notebooks?: boolean;
+  max_context_tokens?: number;
+  multi_pass_enabled?: boolean;
 }
 
 // Agent List Response
@@ -297,4 +320,131 @@ export const PERFORMANCE_OPTIMIZED_FALLBACK_CONFIG: FallbackConfig = {
   preferred_chain: ['openai', 'anthropic'], // Prefer fast providers
   max_cost_increase: 0.3, // Allow moderate cost increase for speed
   require_same_features: true
+};
+
+// ============================================
+// Hybrid Context Configuration Types
+// ============================================
+
+export type ContextStrategy = 'none' | 'vector' | 'full' | 'hybrid';
+
+// Priority tier for token budget allocation
+export interface HybridPriorityTier {
+  name: string;                    // e.g., "high_relevance", "medium_relevance", "context"
+  min_score: number;               // Minimum score to qualify for this tier
+  max_tokens?: number;             // Maximum tokens for this tier
+  percentage: number;              // Percentage of budget for this tier (0.0 - 1.0)
+}
+
+// Configuration for hybrid context retrieval strategy
+export interface HybridContextConfig {
+  // Weight for vector search results (0.0 - 1.0)
+  vector_weight: number;
+  // Weight for full document content (0.0 - 1.0)
+  full_doc_weight: number;
+  // Weight for document position (earlier chunks score higher)
+  position_weight: number;
+  // Boost multiplier for document summaries
+  summary_boost: number;
+  // Number of top results to retrieve from vector search
+  vector_top_k: number;
+  // Minimum similarity score for vector results
+  vector_min_score: number;
+  // Maximum number of chunks from full documents
+  full_doc_max_chunks: number;
+  // Token budget for the merged result
+  token_budget: number;
+  // Include document summaries if available
+  include_summaries: boolean;
+  // Deduplicate by content hash
+  deduplicate_by_content: boolean;
+  // Priority tiers for token budget allocation
+  priority_tiers?: HybridPriorityTier[];
+}
+
+// Knowledge configuration for agents
+export interface AgentKnowledgeConfig {
+  // Enable knowledge retrieval
+  enable_knowledge: boolean;
+  // Context strategy to use
+  context_strategy: ContextStrategy;
+  // Hybrid context configuration (when strategy is 'hybrid')
+  hybrid_config?: HybridContextConfig;
+  // Include documents from sub-notebooks
+  include_sub_notebooks: boolean;
+  // Maximum context tokens to inject
+  max_context_tokens?: number;
+  // Enable multi-pass processing for large documents
+  multi_pass_enabled?: boolean;
+}
+
+// Default hybrid context configuration
+export const DEFAULT_HYBRID_CONTEXT_CONFIG: HybridContextConfig = {
+  vector_weight: 0.6,
+  full_doc_weight: 0.3,
+  position_weight: 0.1,
+  summary_boost: 1.5,
+  vector_top_k: 20,
+  vector_min_score: 0.5,
+  full_doc_max_chunks: 50,
+  token_budget: 8000,
+  include_summaries: true,
+  deduplicate_by_content: true,
+  priority_tiers: [
+    { name: 'high_relevance', min_score: 0.8, percentage: 0.5 },
+    { name: 'medium_relevance', min_score: 0.6, percentage: 0.3 },
+    { name: 'context', min_score: 0.0, percentage: 0.2 },
+  ]
+};
+
+// Default knowledge configuration
+export const DEFAULT_KNOWLEDGE_CONFIG: AgentKnowledgeConfig = {
+  enable_knowledge: true,
+  context_strategy: 'hybrid',
+  hybrid_config: DEFAULT_HYBRID_CONTEXT_CONFIG,
+  include_sub_notebooks: false,
+  max_context_tokens: 8000,
+  multi_pass_enabled: false
+};
+
+// Preset configurations for different use cases
+export const KNOWLEDGE_PRESETS = {
+  qa_agent: {
+    name: 'Q&A Agent',
+    description: 'Optimized for answering specific questions',
+    config: {
+      enable_knowledge: true,
+      context_strategy: 'vector' as ContextStrategy,
+      include_sub_notebooks: false,
+      max_context_tokens: 4000
+    }
+  },
+  research_agent: {
+    name: 'Research Agent',
+    description: 'Balanced retrieval for comprehensive research',
+    config: {
+      enable_knowledge: true,
+      context_strategy: 'hybrid' as ContextStrategy,
+      hybrid_config: {
+        ...DEFAULT_HYBRID_CONTEXT_CONFIG,
+        vector_weight: 0.5,
+        full_doc_weight: 0.4,
+        position_weight: 0.1,
+        token_budget: 12000
+      },
+      include_sub_notebooks: true,
+      max_context_tokens: 12000
+    }
+  },
+  document_analyzer: {
+    name: 'Document Analyzer',
+    description: 'Full document access for comprehensive analysis',
+    config: {
+      enable_knowledge: true,
+      context_strategy: 'full' as ContextStrategy,
+      include_sub_notebooks: false,
+      max_context_tokens: 16000,
+      multi_pass_enabled: true
+    }
+  }
 };

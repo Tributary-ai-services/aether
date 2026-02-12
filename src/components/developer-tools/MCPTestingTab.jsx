@@ -16,7 +16,9 @@ import {
   Zap,
   Settings,
   Link,
-  Unlink
+  Unlink,
+  Image,
+  HelpCircle
 } from 'lucide-react';
 import { aetherApi } from '../../services/aetherApi';
 
@@ -76,6 +78,14 @@ const MCPTestingTab = () => {
           description: 'Knowledge graph storage',
           status: 'connected',
           type: 'memory',
+          version: '1.0.0'
+        },
+        {
+          id: 'mcp-napkin',
+          name: 'Napkin AI MCP',
+          description: 'Visual generation from text using Napkin AI with MinIO storage',
+          status: 'connected',
+          type: 'visual-generation',
           version: '1.0.0'
         }
       ]);
@@ -176,6 +186,86 @@ const MCPTestingTab = () => {
             }
           }
         ]);
+      } else if (serverId === 'mcp-napkin') {
+        setTools([
+          {
+            name: 'generate_visual',
+            description: 'Generate a visual from text using Napkin AI. Submits text content, waits for processing, downloads the result, and stores it in MinIO.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                content: { type: 'string', description: 'Text content to visualize (1-10000 characters)' },
+                format: { type: 'string', enum: ['svg', 'png'], description: 'Output format (default: svg)' },
+                style_id: { type: 'string', description: 'Napkin AI style identifier' },
+                language: { type: 'string', description: 'Language code BCP 47 (default: en-US)' },
+                number_of_visuals: { type: 'number', description: 'Number of visuals to generate 1-4 (default: 1)' },
+                context_before: { type: 'string', description: 'Context text before the main content (max 5000 chars)' },
+                context_after: { type: 'string', description: 'Context text after the main content (max 5000 chars)' },
+                transparent_background: { type: 'boolean', description: 'Use transparent background (default: false)' },
+                inverted_color: { type: 'boolean', description: 'Use inverted/dark color mode (default: false)' }
+              },
+              required: ['content']
+            }
+          },
+          {
+            name: 'check_visual_status',
+            description: 'Check the status of a pending Napkin AI visual generation request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                request_id: { type: 'string', description: 'Napkin AI request ID returned by generate_visual' }
+              },
+              required: ['request_id']
+            }
+          },
+          {
+            name: 'list_styles',
+            description: 'List available Napkin AI visual styles',
+            inputSchema: {
+              type: 'object',
+              properties: {}
+            }
+          },
+          {
+            name: 'list_visuals',
+            description: 'List generated visuals stored in MinIO',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                prefix: { type: 'string', description: 'Object key prefix to filter by' },
+                bucket: { type: 'string', description: 'MinIO bucket name (default: napkin-visuals)' },
+                limit: { type: 'number', description: 'Maximum results 1-100 (default: 20)' }
+              }
+            }
+          },
+          {
+            name: 'download_visual',
+            description: 'Download a generated visual from MinIO storage',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                minio_key: { type: 'string', description: 'MinIO object key for the visual' },
+                bucket: { type: 'string', description: 'MinIO bucket name (default: napkin-visuals)' }
+              },
+              required: ['minio_key']
+            }
+          },
+          {
+            name: 'create_napkin_visual_cr',
+            description: 'Create a NapkinVisual Kubernetes custom resource for operator-managed generation',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'CR name (lowercase, alphanumeric, hyphens)' },
+                content: { type: 'string', description: 'Text content to visualize' },
+                format: { type: 'string', enum: ['svg', 'png'], description: 'Output format (default: svg)' },
+                namespace: { type: 'string', description: 'K8s namespace (default: tas-mcp-servers)' },
+                inverted_color: { type: 'boolean', description: 'Use inverted/dark color mode (default: false)' }
+              },
+              required: ['name', 'content']
+            }
+          }
+        ]);
       }
     } finally {
       setIsLoadingTools(false);
@@ -225,8 +315,39 @@ const MCPTestingTab = () => {
     }
   };
 
+  const renderTooltip = (description) => {
+    if (!description) return null;
+    return (
+      <div className="group relative inline-flex ml-1">
+        <HelpCircle size={14} className="text-gray-400 hover:text-gray-600 cursor-help" />
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-normal max-w-xs z-50">
+          {description}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900" />
+        </div>
+      </div>
+    );
+  };
+
   const renderParamInput = (name, schema) => {
     const value = toolParams[name] || '';
+
+    // Enum dropdown for string fields with enum values
+    if (schema.enum && Array.isArray(schema.enum)) {
+      return (
+        <select
+          value={value || schema.default || ''}
+          onChange={(e) => setToolParams(p => ({ ...p, [name]: e.target.value }))}
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+        >
+          <option value="">-- Select {name.replace(/_/g, ' ')} --</option>
+          {schema.enum.map(opt => (
+            <option key={opt} value={opt}>
+              {opt}{schema.default === opt ? ' (default)' : ''}
+            </option>
+          ))}
+        </select>
+      );
+    }
 
     if (schema.type === 'string') {
       return (
@@ -235,6 +356,7 @@ const MCPTestingTab = () => {
           value={value}
           onChange={(e) => setToolParams(p => ({ ...p, [name]: e.target.value }))}
           placeholder={schema.description || name}
+          title={schema.description || name}
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
         />
       );
@@ -247,6 +369,9 @@ const MCPTestingTab = () => {
           value={value}
           onChange={(e) => setToolParams(p => ({ ...p, [name]: parseFloat(e.target.value) || 0 }))}
           placeholder={schema.description || name}
+          title={schema.description || name}
+          min={schema.minimum}
+          max={schema.maximum}
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
         />
       );
@@ -279,6 +404,7 @@ const MCPTestingTab = () => {
             }
           }}
           placeholder={`JSON ${schema.type}`}
+          title={schema.description || `Enter JSON ${schema.type}`}
           rows={4}
           className="w-full px-3 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
         />
@@ -291,6 +417,7 @@ const MCPTestingTab = () => {
         value={value}
         onChange={(e) => setToolParams(p => ({ ...p, [name]: e.target.value }))}
         placeholder={schema.description || name}
+        title={schema.description || name}
         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
       />
     );
@@ -426,11 +553,12 @@ const MCPTestingTab = () => {
                 <div className="space-y-4">
                   {Object.entries(selectedTool.inputSchema.properties).map(([name, schema]) => (
                     <div key={name}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {name}
+                      <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                        {name.replace(/_/g, ' ')}
                         {selectedTool.inputSchema.required?.includes(name) && (
                           <span className="text-red-500 ml-1">*</span>
                         )}
+                        {schema.description && !schema.enum && schema.type !== 'boolean' && renderTooltip(schema.description)}
                       </label>
                       {renderParamInput(name, schema)}
                     </div>

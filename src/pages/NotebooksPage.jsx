@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFilters } from '../context/FilterContext.jsx';
 import { useSpace } from '../hooks/useSpaces.js';
 import { aetherApi } from '../services/aetherApi.js';
@@ -33,8 +33,15 @@ import ShareDialog from '../components/collaboration/ShareDialog.jsx';
 import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
 import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
 import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
+import ProducersList from '../components/notebooks/ProducersList.jsx';
+import ProductionsList from '../components/notebooks/ProductionsList.jsx';
+import ProducerExecutionModal from '../components/notebooks/ProducerExecutionModal.jsx';
+import ProductionViewer from '../components/notebooks/ProductionViewer.jsx';
+import DocumentsManagementModal from '../components/notebooks/DocumentsManagementModal.jsx';
+import ProducersManagementModal from '../components/notebooks/ProducersManagementModal.jsx';
+import { fetchNotebookProductions, deleteProduction, fetchNotebookProducers, selectSortedProducers } from '../store/slices/producersSlice.js';
 import { LoadingWrapper, NotebookCardSkeleton } from '../components/skeletons/index.js';
-import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder, CheckCircle2, Clock, XCircle, Circle, Square, CheckSquare, DownloadCloud, Eye, X, File, Image, Code } from 'lucide-react';
+import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder, CheckCircle2, Clock, XCircle, Circle, Square, CheckSquare, DownloadCloud, Eye, X, File, Image, Code, Settings2 } from 'lucide-react';
 
 // Document Preview Modal Component
 const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
@@ -399,7 +406,15 @@ const NotebooksPage = () => {
   
   // Space context
   const { currentSpace, loadAvailableSpaces, initialized } = useSpace();
-  
+
+  // Producers from Redux (for the management modal)
+  const producers = useAppSelector(state =>
+    selectedNotebook ? selectSortedProducers(state, selectedNotebook.id, {
+      spaceId: currentSpace?.space_id,
+      notebookId: selectedNotebook?.id,
+    }) : []
+  );
+
   // Local state for things not in Redux yet
   const [parentForCreate, setParentForCreate] = useState(null);
   const [uploadNotebook, setUploadNotebook] = useState(null);
@@ -433,7 +448,26 @@ const NotebooksPage = () => {
   const [dataSourceModalOpen, setDataSourceModalOpen] = useState(false);
   const [dataSourceNotebook, setDataSourceNotebook] = useState(null);
   const [pendingRefreshAfterUpload, setPendingRefreshAfterUpload] = useState(false);
-  
+
+  // Producer execution modal state
+  const [producerModalOpen, setProducerModalOpen] = useState(false);
+  const [selectedProducer, setSelectedProducer] = useState(null);
+
+  // Production viewer modal state
+  const [productionViewerOpen, setProductionViewerOpen] = useState(false);
+  const [selectedProduction, setSelectedProduction] = useState(null);
+
+  // Documents management modal state
+  const [documentsManagementOpen, setDocumentsManagementOpen] = useState(false);
+
+  // Producers management modal state
+  const [producersManagementOpen, setProducersManagementOpen] = useState(false);
+
+  // Chat state
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
   // Initialize spaces first, then data
   useEffect(() => {
     if (!initialized) {
@@ -520,6 +554,38 @@ const NotebooksPage = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [modals.uploadDocument, pendingRefreshAfterUpload, notebooks.length, selectedNotebook, dispatch]);
+
+  // Poll for processing documents — auto-refresh when documents are still being processed
+  const processingPollRef = useRef(null);
+  useEffect(() => {
+    // Check if the currently selected notebook has any documents in "processing" status
+    const currentDocs = selectedNotebook ? (notebookDocuments[selectedNotebook.id] || []) : [];
+    const hasProcessingDocs = currentDocs.some(doc =>
+      doc.status === 'processing' || doc.status === 'uploading'
+    );
+
+    if (hasProcessingDocs && selectedNotebook) {
+      // Start polling if not already polling
+      if (!processingPollRef.current) {
+        processingPollRef.current = setInterval(() => {
+          dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
+        }, 5000);
+      }
+    } else {
+      // No processing docs — clear polling
+      if (processingPollRef.current) {
+        clearInterval(processingPollRef.current);
+        processingPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (processingPollRef.current) {
+        clearInterval(processingPollRef.current);
+        processingPollRef.current = null;
+      }
+    };
+  }, [selectedNotebook, notebookDocuments, dispatch]);
 
   // Apply filters to notebooks
   const allFilteredNotebooks = filterNotebooks(notebooks);
@@ -870,6 +936,63 @@ const NotebooksPage = () => {
     // Don't refresh here - let the upload modal handle it
   };
 
+  // Producer handlers
+  const handleExecuteProducer = (producer) => {
+    setSelectedProducer(producer);
+    setProducerModalOpen(true);
+  };
+
+  const handleCloseProducerModal = () => {
+    setProducerModalOpen(false);
+    setSelectedProducer(null);
+  };
+
+  const handleProducerSuccess = (production) => {
+    // Refresh the productions list to show the new production
+    if (selectedNotebook?.id) {
+      dispatch(fetchNotebookProductions({ notebookId: selectedNotebook.id, limit: 20, offset: 0 }));
+    }
+    // Close the modal
+    handleCloseProducerModal();
+  };
+
+  // Production viewer handlers
+  const handleViewProduction = (production) => {
+    setSelectedProduction(production);
+    setProductionViewerOpen(true);
+  };
+
+  const handleCloseProductionViewer = () => {
+    setProductionViewerOpen(false);
+    setSelectedProduction(null);
+  };
+
+  const handleDeleteProduction = async (production) => {
+    if (!production?.id || !selectedNotebook?.id) return;
+
+    // Confirm deletion
+    if (!window.confirm(`Are you sure you want to delete "${production.title}"?`)) {
+      return;
+    }
+
+    try {
+      await dispatch(deleteProduction({
+        productionId: production.id,
+        notebookId: selectedNotebook.id
+      })).unwrap();
+
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Production deleted successfully'
+      }));
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || 'Failed to delete production'
+      }));
+    }
+  };
+
   const handleSelectFileUpload = () => {
     if (dataSourceNotebook) {
       // Set flag to indicate we expect uploads
@@ -982,6 +1105,74 @@ const NotebooksPage = () => {
     setShareNotebook(notebook);
     setShareNotebookModalOpen(true);
   };
+
+  // Chat handlers
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !selectedNotebook || chatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+
+    // Add user message to chat
+    const newUserMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    };
+    setChatMessages(prev => [...prev, newUserMessage]);
+    setChatLoading(true);
+
+    try {
+      // Send message to the Notebook Chat Assistant via the backend
+      const response = await aetherApi.chat.sendMessage(selectedNotebook.id, userMessage, chatMessages);
+
+      // Extract assistant response from the new API format
+      const assistantContent = response?.message
+        || response?.data?.message
+        || 'Sorry, I could not generate a response.';
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: assistantContent,
+        timestamp: new Date().toISOString(),
+      };
+      setChatMessages(prev => [...prev, assistantMessage]);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: `Error: ${error.message || 'Failed to get response. Please try again.'}`,
+        timestamp: new Date().toISOString(),
+        isError: true,
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Chat Error',
+        message: error.message || 'Failed to send message. Please try again.'
+      }));
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleChatKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Clear chat when notebook changes
+  useEffect(() => {
+    setChatMessages([]);
+    setChatInput('');
+  }, [selectedNotebook?.id]);
 
 
   return (
@@ -1205,25 +1396,35 @@ const NotebooksPage = () => {
                             <FileText size={14} />
                             Documents ({selectedNotebook.documentCount || 0})
                           </h4>
-                          {/* Bulk actions */}
-                          {selectedDocuments.size > 0 && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={handleBulkDownload}
-                                className="p-1 hover:bg-blue-100 rounded text-(--color-primary-600) hover:text-(--color-primary-700)"
-                                title={`Download ${selectedDocuments.size} selected`}
-                              >
-                                <DownloadCloud size={14} />
-                              </button>
-                              <button
-                                onClick={handleBulkDelete}
-                                className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
-                                title={`Delete ${selectedDocuments.size} selected`}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {/* Bulk actions */}
+                            {selectedDocuments.size > 0 && (
+                              <>
+                                <button
+                                  onClick={handleBulkDownload}
+                                  className="p-1 hover:bg-blue-100 rounded text-(--color-primary-600) hover:text-(--color-primary-700)"
+                                  title={`Download ${selectedDocuments.size} selected`}
+                                >
+                                  <DownloadCloud size={14} />
+                                </button>
+                                <button
+                                  onClick={handleBulkDelete}
+                                  className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-700"
+                                  title={`Delete ${selectedDocuments.size} selected`}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
+                            {/* Manage button - always visible */}
+                            <button
+                              onClick={() => setDocumentsManagementOpen(true)}
+                              className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700"
+                              title="Manage documents"
+                            >
+                              <Settings2 size={14} />
+                            </button>
+                          </div>
                         </div>
                         
                         {loadingDocuments ? (
@@ -1433,40 +1634,104 @@ const NotebooksPage = () => {
               {selectedNotebook ? (
                 <div className="flex flex-col h-full">
                   {/* Chat Messages Area */}
-                  <div className="flex-1 overflow-y-auto mb-4">
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      No messages yet. Start a conversation about your notebook content.
-                    </div>
+                  <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                    {chatMessages.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500 text-sm">
+                        No messages yet. Start a conversation about your notebook content.
+                      </div>
+                    ) : (
+                      chatMessages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                              message.role === 'user'
+                                ? 'bg-(--color-primary-600) text-white'
+                                : message.isError
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              message.role === 'user' ? 'text-white/70' : 'text-gray-500'
+                            }`}>
+                              {new Date(message.timestamp).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                            <span className="text-sm">Thinking...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
+
                   {/* Message Input */}
                   <div className="border-t border-gray-200 pt-3 mb-4">
                     <div className="flex gap-2 mb-3">
                       <input
                         type="text"
                         placeholder="Ask questions about your notebook content..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyPress={handleChatKeyPress}
+                        disabled={chatLoading}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) disabled:bg-gray-50 disabled:text-gray-500"
                       />
-                      <button className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors">
-                        Send
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || chatLoading}
+                        className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {chatLoading ? 'Sending...' : 'Send'}
                       </button>
                     </div>
-                    
+
                     {/* Quick Action Buttons */}
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => { setChatInput('Summarize the key points from these documents'); }}
+                        disabled={chatLoading}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors disabled:opacity-50"
+                      >
                         Summarize
                       </button>
-                      <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors">
+                      <button
+                        onClick={() => { setChatInput('What are the main takeaways from this content?'); }}
+                        disabled={chatLoading}
+                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors disabled:opacity-50"
+                      >
                         Extract Key Points
                       </button>
-                      <button className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors">
+                      <button
+                        onClick={() => { setChatInput('Generate some study questions based on this material'); }}
+                        disabled={chatLoading}
+                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors disabled:opacity-50"
+                      >
                         Generate Questions
                       </button>
-                      <button className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors">
+                      <button
+                        onClick={() => { setChatInput('Create a detailed outline of this content'); }}
+                        disabled={chatLoading}
+                        className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors disabled:opacity-50"
+                      >
                         Create Outline
                       </button>
-                      <button className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200 transition-colors">
+                      <button
+                        onClick={() => { setChatInput('Provide a deep analysis and insights on this topic'); }}
+                        disabled={chatLoading}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200 transition-colors disabled:opacity-50"
+                      >
                         Deep Research
                       </button>
                     </div>
@@ -1528,65 +1793,79 @@ const NotebooksPage = () => {
               />
             )}
             
-            {/* Right Panel - Producers */}
+            {/* Right Panel - Producers & Productions */}
             {!rightPanelCollapsed && (
-              <div 
-                className="bg-white border border-gray-200 rounded-lg p-4 flex-shrink-0"
+              <div
+                className="flex flex-col gap-4 flex-shrink-0 overflow-hidden"
                 style={{ width: `${rightPanelWidth}px` }}
               >
-                <div className="mb-4 pb-2 border-b border-gray-200 flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium text-gray-900">Producers</h3>
-                    <p className="text-xs text-gray-500 mt-1">Generate content for your notebook</p>
-                  </div>
-                  <button 
-                    onClick={() => setRightPanelCollapsed(true)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                    title="Collapse panel"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              
-              {selectedNotebook ? (
-                <div className="space-y-3">
-                  {/* Stylized Producer Buttons */}
-                  <button className="w-full p-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-150 transition-all text-left font-medium text-blue-900 text-sm">
-                    📄 Summarize Documents
-                  </button>
-                  
-                  <button className="w-full p-3 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg hover:from-green-100 hover:to-green-150 transition-all text-left font-medium text-green-900 text-sm">
-                    ❓ Generate Q&A
-                  </button>
-                  
-                  <button className="w-full p-3 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-purple-150 transition-all text-left font-medium text-purple-900 text-sm">
-                    📋 Create Outline
-                  </button>
-                  
-                  <button className="w-full p-3 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-lg hover:from-orange-100 hover:to-orange-150 transition-all text-left font-medium text-orange-900 text-sm">
-                    💡 Extract Insights
-                  </button>
-                  
-                  
-                  {/* Productions Section */}
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-sm">Productions</h4>
+                {/* Producers Container */}
+                <div className="bg-white border border-gray-200 rounded-lg flex-1 min-h-0 overflow-hidden flex flex-col">
+                  <div className="p-3 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+                    <div>
+                      <h3 className="font-medium text-gray-900 text-sm">Producers</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Generate content from your documents</p>
                     </div>
-                    
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                      No productions yet. Run a producer to generate content.
+                    <div className="flex items-center gap-1">
+                      {selectedNotebook && (
+                        <button
+                          onClick={() => setProducersManagementOpen(true)}
+                          className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700"
+                          title="Manage producers"
+                        >
+                          <Settings2 size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setRightPanelCollapsed(true)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                        title="Collapse panel"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
                     </div>
                   </div>
+
+                  {selectedNotebook ? (
+                    <div className="flex-1 overflow-auto">
+                      <ProducersList
+                        notebookId={selectedNotebook.id}
+                        onExecuteProducer={handleExecuteProducer}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-32 text-gray-500">
+                      <div className="text-center">
+                        <div className="text-sm mb-1">Select a notebook</div>
+                        <p className="text-xs">Producers will appear here</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center justify-center h-32 text-gray-500">
-                  <div className="text-center">
-                    <div className="text-sm mb-1">Select a notebook</div>
-                    <p className="text-xs">Producers will appear here</p>
-                  </div>
+
+                {/* Productions Container */}
+                <div className="bg-white border border-gray-200 rounded-lg flex-1 min-h-0 overflow-hidden flex flex-col">
+                  {selectedNotebook ? (
+                    <ProductionsList
+                      notebookId={selectedNotebook.id}
+                      onViewProduction={handleViewProduction}
+                      onDeleteProduction={handleDeleteProduction}
+                    />
+                  ) : (
+                    <>
+                      <div className="p-3 border-b border-gray-200 flex-shrink-0">
+                        <h3 className="font-medium text-gray-900 text-sm">Productions</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Generated content history</p>
+                      </div>
+                      <div className="flex items-center justify-center flex-1 text-gray-500">
+                        <div className="text-center">
+                          <div className="text-sm mb-1">Select a notebook</div>
+                          <p className="text-xs">Productions will appear here</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
               </div>
             )}
             
@@ -1745,6 +2024,56 @@ const NotebooksPage = () => {
             setPreviewModalOpen(false);
             setPreviewDocument(null);
           }}
+        />
+      )}
+
+      {/* Producer Execution Modal */}
+      {producerModalOpen && selectedProducer && selectedNotebook && (
+        <ProducerExecutionModal
+          isOpen={producerModalOpen}
+          onClose={handleCloseProducerModal}
+          producer={selectedProducer}
+          notebookId={selectedNotebook.id}
+          onSuccess={handleProducerSuccess}
+        />
+      )}
+
+      {/* Production Viewer Modal */}
+      {productionViewerOpen && selectedProduction && (
+        <ProductionViewer
+          isOpen={productionViewerOpen}
+          onClose={handleCloseProductionViewer}
+          production={selectedProduction}
+        />
+      )}
+
+      {/* Documents Management Modal */}
+      {documentsManagementOpen && selectedNotebook && (
+        <DocumentsManagementModal
+          isOpen={documentsManagementOpen}
+          onClose={() => setDocumentsManagementOpen(false)}
+          notebookId={selectedNotebook.id}
+          documents={notebookDocuments[selectedNotebook.id] || []}
+          onRefresh={() => {
+            if (selectedNotebook) {
+              dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
+            }
+          }}
+          onPreviewDocument={handlePreviewDocument}
+          onDownloadDocument={handleDownloadDocument}
+          onDeleteDocument={(docId) => handleDeleteDocument({ id: docId }, selectedNotebook.id)}
+        />
+      )}
+
+      {/* Producers Management Modal */}
+      {producersManagementOpen && selectedNotebook && (
+        <ProducersManagementModal
+          isOpen={producersManagementOpen}
+          onClose={() => setProducersManagementOpen(false)}
+          notebookId={selectedNotebook.id}
+          producers={producers}
+          onExecuteProducer={handleExecuteProducer}
+          onRefresh={() => dispatch(fetchNotebookProducers(selectedNotebook.id))}
         />
       )}
     </div>

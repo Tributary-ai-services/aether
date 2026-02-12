@@ -26,6 +26,7 @@
   "homepage": "https://github.com/Tributary-ai-services/aether#readme",
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.532.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
