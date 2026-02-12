@@ -737,6 +737,62 @@ class AetherApiService {
     }),
   };
 
+  // Workflows API - Automated workflow management
+  workflows = {
+    // List workflows with pagination
+    getAll: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      const query = params.toString();
+      return this.request(`/workflows${query ? '?' + query : ''}`);
+    },
+
+    // Get a workflow by ID
+    getById: (id) => this.request(`/workflows/${id}`),
+
+    // Create a new workflow
+    create: (data) => this.request('/workflows', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    // Update an existing workflow
+    update: (id, data) => this.request(`/workflows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+    // Delete a workflow
+    delete: (id) => this.request(`/workflows/${id}`, {
+      method: 'DELETE',
+    }),
+
+    // Execute a workflow
+    execute: (id, data = {}) => this.request(`/workflows/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    // Update workflow status (active/paused/disabled)
+    updateStatus: (id, status) => this.request(`/workflows/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+    // Get workflow executions
+    getExecutions: (id, options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      const query = params.toString();
+      return this.request(`/workflows/${id}/executions${query ? '?' + query : ''}`);
+    },
+
+    // Get workflow analytics
+    getAnalytics: (period = 'monthly') => this.request(`/workflows/analytics?period=${period}`),
+  };
+
   // Chat API - Notebook conversations using the Notebook Chat Assistant agent
   chat = {
     // Send a chat message for a notebook using the internal Notebook Chat Assistant

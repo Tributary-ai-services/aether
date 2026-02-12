@@ -1,9 +1,8 @@
 // Mock API service to simulate real API calls
-import { 
-  notebooks, 
-  workflows, 
-  mlModels, 
-  analyticsData, 
+import {
+  notebooks,
+  mlModels,
+  analyticsData,
   experiments,
   communityItems,
   liveEvents,
@@ -727,26 +726,17 @@ export const api = {
     }
   },
 
-  // Workflows endpoints
+  // Workflows endpoints - Real backend integration via aetherApi
   workflows: {
-    getAll: async () => {
-      await delay(400);
-      return { data: workflows, success: true };
-    },
-    getById: async (id) => {
-      await delay(300);
-      const workflow = workflows.find(w => w.id === id);
-      if (!workflow) {
-        throw new Error('Workflow not found');
-      }
-      return { data: workflow, success: true };
-    },
-    toggleStatus: async (id) => {
-      await delay(500);
-      const workflow = workflows.find(w => w.id === id);
-      const newStatus = workflow.status === 'active' ? 'paused' : 'active';
-      return { data: { id, status: newStatus }, success: true };
-    }
+    getAll: (options) => aetherApi.workflows.getAll(options),
+    getById: (id) => aetherApi.workflows.getById(id),
+    create: (data) => aetherApi.workflows.create(data),
+    update: (id, data) => aetherApi.workflows.update(id, data),
+    delete: (id) => aetherApi.workflows.delete(id),
+    execute: (id, data) => aetherApi.workflows.execute(id, data),
+    updateStatus: (id, status) => aetherApi.workflows.updateStatus(id, status),
+    getExecutions: (id, options) => aetherApi.workflows.getExecutions(id, options),
+    getAnalytics: (period) => aetherApi.workflows.getAnalytics(period),
   },
 
   // ML Models endpoints

@@ -12,6 +12,7 @@ import complianceReducer from './slices/complianceSlice.js';
 import savedQueriesReducer from './slices/savedQueriesSlice.js';
 import aiPlaygroundReducer from './slices/aiPlaygroundSlice.js';
 import producersReducer from './slices/producersSlice.js';
+import workflowsReducer from './slices/workflowsSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -29,6 +30,7 @@ const store = configureStore({
     savedQueries: savedQueriesReducer,
     aiPlayground: aiPlaygroundReducer,
     producers: producersReducer,
+    workflows: workflowsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
