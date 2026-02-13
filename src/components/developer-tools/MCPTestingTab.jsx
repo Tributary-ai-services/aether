@@ -54,40 +54,24 @@ const MCPTestingTab = () => {
       setServers(response.data?.servers || []);
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
-      // Mock servers for demo
+      // Mock servers for demo/fallback
       setServers([
-        {
-          id: 'mcp-postgres',
-          name: 'PostgreSQL MCP',
-          description: 'PostgreSQL database tools',
-          status: 'connected',
-          type: 'database',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-filesystem',
-          name: 'Filesystem MCP',
-          description: 'File system operations',
-          status: 'connected',
-          type: 'filesystem',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-memory',
-          name: 'Memory MCP',
-          description: 'Knowledge graph storage',
-          status: 'connected',
-          type: 'memory',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-napkin',
-          name: 'Napkin AI MCP',
-          description: 'Visual generation from text using Napkin AI with MinIO storage',
-          status: 'connected',
-          type: 'visual-generation',
-          version: '1.0.0'
-        }
+        { id: 'mcp-postgres', name: 'PostgreSQL MCP', description: 'PostgreSQL database tools', status: 'connected', type: 'database', version: '1.0.0' },
+        { id: 'mcp-filesystem', name: 'Filesystem MCP', description: 'File system operations', status: 'connected', type: 'filesystem', version: '1.0.0' },
+        { id: 'mcp-memory', name: 'Memory MCP', description: 'Knowledge graph storage', status: 'connected', type: 'memory', version: '1.0.0' },
+        { id: 'mcp-napkin', name: 'Napkin AI MCP', description: 'Visual generation from text using Napkin AI', status: 'connected', type: 'visual-generation', version: '1.0.0' },
+        { id: 'mcp-neo4j', name: 'Neo4j MCP', description: 'Neo4j graph database Cypher queries', status: 'connected', type: 'database', version: '1.0.0', tags: ['neo4j', 'graph-database'] },
+        { id: 'mcp-minio', name: 'MinIO MCP', description: 'MinIO S3-compatible object storage', status: 'connected', type: 'storage', version: '1.0.0', tags: ['minio', 's3'] },
+        { id: 'mcp-kafka', name: 'Kafka MCP', description: 'Apache Kafka message broker', status: 'connected', type: 'messaging', version: '1.0.0', tags: ['kafka', 'streaming'] },
+        { id: 'mcp-grafana', name: 'Grafana MCP', description: 'Grafana dashboards and observability', status: 'connected', type: 'observability', version: '1.0.0', tags: ['grafana', 'dashboards'] },
+        { id: 'mcp-brave-search', name: 'Brave Search MCP', description: 'Privacy-focused web search via Brave', status: 'connected', type: 'search', version: '1.0.0', tags: ['search', 'brave'] },
+        { id: 'mcp-firecrawl', name: 'Firecrawl MCP', description: 'Web scraping and crawling', status: 'connected', type: 'web-scraping', version: '1.0.0', tags: ['web-scraping', 'firecrawl'] },
+        { id: 'mcp-atlassian', name: 'Atlassian MCP', description: 'Jira and Confluence integration', status: 'connected', type: 'productivity', version: '1.0.0', tags: ['atlassian', 'jira'] },
+        { id: 'mcp-context7', name: 'Context7 MCP', description: 'Library documentation and code examples', status: 'connected', type: 'documentation', version: '1.0.0', tags: ['documentation', 'context7'] },
+        { id: 'mcp-sequential-thinking', name: 'Sequential Thinking MCP', description: 'Structured problem-solving and analysis', status: 'connected', type: 'reasoning', version: '1.0.0', tags: ['reasoning', 'thinking'] },
+        { id: 'mcp-perplexity', name: 'Perplexity MCP', description: 'AI-powered research and search', status: 'connected', type: 'search', version: '1.0.0', tags: ['search', 'perplexity'] },
+        { id: 'mcp-slack', name: 'Slack MCP', description: 'Slack workspace communication', status: 'connected', type: 'communication', version: '1.0.0', tags: ['slack', 'messaging'] },
+        { id: 'mcp-paper-search', name: 'Paper Search MCP', description: 'Academic paper search and retrieval', status: 'connected', type: 'research', version: '1.0.0', tags: ['research', 'papers'] }
       ]);
     } finally {
       setIsLoadingServers(false);
