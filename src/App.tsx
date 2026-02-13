@@ -242,6 +242,8 @@ const App = () => {
       dispatch(openModal('createNotebook'));
     } else if (path === '/agent-builder') {
       dispatch(openModal('createAgent'));
+    } else if (path === '/workflows') {
+      dispatch(openModal('createWorkflow'));
     } else if (path === '/teams') {
       // Navigate to teams page if not already there, the teams page has its own create button
       navigate('/teams');

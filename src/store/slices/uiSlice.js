@@ -71,7 +71,9 @@ const initialState = {
     notebookManager: false,
     exportData: false,
     contentsView: false,
-    onboarding: false
+    onboarding: false,
+    createWorkflow: false,
+    createAgent: false
   },
   onboarding: {
     hasCompletedOnboarding: false,
