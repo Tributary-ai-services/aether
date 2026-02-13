@@ -6,6 +6,7 @@ import { selectModals, closeModal } from '../store/slices/uiSlice.js';
 import WorkflowBuilder from '../components/workflow/WorkflowBuilder.jsx';
 import WorkflowCreateModal from '../components/modals/WorkflowCreateModal.jsx';
 import WorkflowCardSkeleton from '../components/skeletons/WorkflowCardSkeleton.jsx';
+import WorkflowAnalyticsSummary from '../components/workflow/WorkflowAnalyticsSummary.jsx';
 import {
   Workflow,
   Play,
@@ -191,6 +192,13 @@ const WorkflowsPage = () => {
           Create Workflow
         </button>
       </div>
+
+      {/* Analytics Summary */}
+      {workflows.length > 0 && (
+        <div className="mb-4">
+          <WorkflowAnalyticsSummary compact />
+        </div>
+      )}
 
       {/* Filters */}
       {(workflows.length > 0 || searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
