@@ -7,13 +7,15 @@ import {
   Server,
   Sparkles,
   Code2,
-  HardDrive
+  HardDrive,
+  Workflow
 } from 'lucide-react';
 import SQLQueriesTab from '../components/developer-tools/SQLQueriesTab.jsx';
 import VectorTestingTab from '../components/developer-tools/VectorTestingTab.jsx';
 import MCPTestingTab from '../components/developer-tools/MCPTestingTab.jsx';
 import AIPlaygroundTab from '../components/developer-tools/AIPlaygroundTab.jsx';
 import DataSourcesTab from '../components/developer-tools/DataSourcesTab.jsx';
+import WorkflowTestingTab from '../components/developer-tools/WorkflowTestingTab.jsx';
 
 const DeveloperToolsPage = () => {
   const { tab } = useParams();
@@ -55,6 +57,11 @@ const DeveloperToolsPage = () => {
       id: 'data-sources',
       label: 'Data Sources',
       icon: HardDrive
+    },
+    {
+      id: 'workflows',
+      label: 'Workflow Testing',
+      icon: Workflow
     }
   ];
 
@@ -74,6 +81,8 @@ const DeveloperToolsPage = () => {
         return <AIPlaygroundTab />;
       case 'data-sources':
         return <DataSourcesTab />;
+      case 'workflows':
+        return <WorkflowTestingTab />;
       default:
         return <SQLQueriesTab />;
     }
