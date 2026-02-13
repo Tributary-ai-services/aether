@@ -737,6 +737,9 @@ export const api = {
     updateStatus: (id, status) => aetherApi.workflows.updateStatus(id, status),
     getExecutions: (id, options) => aetherApi.workflows.getExecutions(id, options),
     getAnalytics: (period) => aetherApi.workflows.getAnalytics(period),
+    getPublic: (options) => aetherApi.workflows.getPublic(options),
+    publish: (id, metadata) => aetherApi.workflows.publish(id, metadata),
+    importFromCommunity: (id) => aetherApi.workflows.importFromCommunity(id),
   },
 
   // ML Models endpoints

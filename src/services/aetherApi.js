@@ -791,6 +791,27 @@ class AetherApiService {
 
     // Get workflow analytics
     getAnalytics: (period = 'monthly') => this.request(`/workflows/analytics?period=${period}`),
+
+    // Get public/community workflows
+    getPublic: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      if (options.type) params.append('type', options.type);
+      const query = params.toString();
+      return this.request(`/workflows/public${query ? '?' + query : ''}`);
+    },
+
+    // Publish a workflow to community
+    publish: (id, metadata = {}) => this.request(`/workflows/${id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify(metadata),
+    }),
+
+    // Import a community workflow
+    importFromCommunity: (id) => this.request(`/workflows/community/${id}/import`, {
+      method: 'POST',
+    }),
   };
 
   // Chat API - Notebook conversations using the Notebook Chat Assistant agent

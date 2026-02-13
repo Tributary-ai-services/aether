@@ -3,10 +3,11 @@ import { communityItems, mockSkills } from '../data/mockData.js';
 import CommunityCard from '../components/cards/CommunityCard.jsx';
 import CommunityTabs from '../components/community/CommunityTabs.jsx';
 import SkillCard from '../components/community/SkillCard.jsx';
+import WorkflowBuilderWrapper from '../components/workflow/WorkflowBuilder.jsx';
 import { useAgentBuilder } from '../hooks/useAgentBuilder.js';
 import { api } from '../services/api.js';
 import { useFilters } from '../context/FilterContext.jsx';
-import { Sparkles, Wrench, Server, Code } from 'lucide-react';
+import { Sparkles, Wrench, Server, Code, Workflow } from 'lucide-react';
 
 const CommunityPage = () => {
   const [activeTab, setActiveTab] = useState('skills');
@@ -14,7 +15,13 @@ const CommunityPage = () => {
   const [loadingSkills, setLoadingSkills] = useState(true);
   const [mcpServers, setMcpServers] = useState([]);
   const [loadingMcpServers, setLoadingMcpServers] = useState(true);
+  const [publicWorkflows, setPublicWorkflows] = useState([]);
+  const [loadingWorkflows, setLoadingWorkflows] = useState(true);
   const { sectionFilters, filterCommunityItems } = useFilters();
+
+  // Workflow import state
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderInitialData, setBuilderInitialData] = useState(null);
 
   const communityFilters = sectionFilters['community'] || {};
   const showSystemTools = communityFilters.showInternal ?? false;
@@ -58,6 +65,25 @@ const CommunityPage = () => {
     fetchMcpServers();
   }, []);
 
+  // Fetch public/community workflows
+  useEffect(() => {
+    const fetchPublicWorkflows = async () => {
+      try {
+        setLoadingWorkflows(true);
+        const response = await api.workflows.getPublic({ limit: 50 });
+        const workflows = response?.data?.workflows || response?.workflows || [];
+        setPublicWorkflows(Array.isArray(workflows) ? workflows : []);
+      } catch (error) {
+        console.error('[Community] Failed to fetch public workflows:', error);
+        // Fall back to workflow-type community items from mock data
+        setPublicWorkflows([]);
+      } finally {
+        setLoadingWorkflows(false);
+      }
+    };
+    fetchPublicWorkflows();
+  }, []);
+
   // Extract internal agents and convert to community card format
   const systemTools = useMemo(() => {
     const internalAgents = (allFetchedAgents || []).filter(a => a.is_internal);
@@ -98,6 +124,42 @@ const CommunityPage = () => {
     );
   }, [mcpServers, searchText]);
 
+  // Workflow items for the community tab (from mock data)
+  const workflowCommunityItems = useMemo(() => {
+    return communityItems.filter(item => item.type === 'workflow');
+  }, []);
+
+  // Combined workflow items: public API + mock fallback
+  const allWorkflowItems = useMemo(() => {
+    if (publicWorkflows.length > 0) {
+      return publicWorkflows.map(wf => ({
+        id: wf.id,
+        name: wf.name,
+        description: wf.description,
+        type: 'workflow',
+        author: wf.created_by || 'Community',
+        downloads: wf.execution_count || 0,
+        rating: wf.success_rate ? Math.min(5, (wf.success_rate / 20).toFixed(1)) : 4.5,
+        step_count: wf.steps?.length || 0,
+        trigger_types: (wf.triggers || []).map(t => t.type),
+        workflow_type: wf.type,
+        // Keep full workflow data for import
+        _workflowData: wf,
+      }));
+    }
+    return workflowCommunityItems;
+  }, [publicWorkflows, workflowCommunityItems]);
+
+  // Filter workflows by search
+  const filteredWorkflowItems = useMemo(() => {
+    if (!searchText) return allWorkflowItems;
+    const term = searchText.toLowerCase();
+    return allWorkflowItems.filter(w =>
+      (w.name || '').toLowerCase().includes(term) ||
+      (w.description || '').toLowerCase().includes(term)
+    );
+  }, [allWorkflowItems, searchText]);
+
   // Community items with filters
   const allCommunityItems = useMemo(() => {
     const regularItems = communityItems.map(item => ({
@@ -114,9 +176,44 @@ const CommunityPage = () => {
   const filteredSystemTools = filteredCommunityItems.filter(item => item.isSystemTool);
   const filteredRegularItems = filteredCommunityItems.filter(item => !item.isSystemTool);
 
+  // Handle "Use Workflow" from community card
+  const handleUseWorkflow = (item) => {
+    if (item._workflowData) {
+      // Full workflow from API - open in builder as edit/import
+      setBuilderInitialData({
+        name: `${item._workflowData.name} (Copy)`,
+        description: item._workflowData.description,
+        type: item._workflowData.type,
+        steps: item._workflowData.steps || [],
+        triggers: item._workflowData.triggers || [],
+      });
+    } else {
+      // Mock community item - open blank with name/type
+      setBuilderInitialData({
+        name: `${item.name} (Copy)`,
+        description: item.description || '',
+        type: item.workflow_type || 'custom',
+        triggerType: item.trigger_types?.[0] || 'manual',
+        steps: [],
+        triggers: (item.trigger_types || ['manual']).map(t => ({
+          type: t,
+          name: `${t.charAt(0).toUpperCase() + t.slice(1)} Trigger`,
+          configuration: {},
+        })),
+      });
+    }
+    setBuilderOpen(true);
+  };
+
+  const handleBuilderClose = () => {
+    setBuilderOpen(false);
+    setBuilderInitialData(null);
+  };
+
   // Tab counts
   const tabCounts = {
     skills: skills.length,
+    workflows: allWorkflowItems.length,
     'mcp-servers': mcpServers.length,
     functions: 0,
     community: communityItems.length + (showSystemTools ? systemTools.length : 0),
@@ -151,6 +248,44 @@ const CommunityPage = () => {
           {searchText && (
             <p className="text-gray-400 text-sm mt-1">Try adjusting your search in the filter panel</p>
           )}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderWorkflowsTab = () => (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-lg font-medium text-gray-900">Community Workflows</h3>
+        <span className="text-sm text-gray-500">{filteredWorkflowItems.length} workflows</span>
+      </div>
+      {loadingWorkflows ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          ))}
+        </div>
+      ) : filteredWorkflowItems.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredWorkflowItems.map((item, index) => (
+            <CommunityCard
+              key={item.id || index}
+              item={item}
+              onUseWorkflow={handleUseWorkflow}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Workflow size={32} className="text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500">No community workflows found</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Publish your workflows to share them with the community
+          </p>
         </div>
       )}
     </div>
@@ -264,7 +399,11 @@ const CommunityPage = () => {
         {filteredRegularItems.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRegularItems.map((item, index) => (
-              <CommunityCard key={item.id || index} item={item} />
+              <CommunityCard
+                key={item.id || index}
+                item={item}
+                onUseWorkflow={item.type === 'workflow' ? handleUseWorkflow : undefined}
+              />
             ))}
           </div>
         ) : (
@@ -294,9 +433,17 @@ const CommunityPage = () => {
       </div>
 
       {activeTab === 'skills' && renderSkillsTab()}
+      {activeTab === 'workflows' && renderWorkflowsTab()}
       {activeTab === 'mcp-servers' && renderMcpServersTab()}
       {activeTab === 'functions' && renderFunctionsTab()}
       {activeTab === 'community' && renderCommunityTab()}
+
+      {/* Workflow Builder for importing community workflows */}
+      <WorkflowBuilderWrapper
+        isOpen={builderOpen}
+        onClose={handleBuilderClose}
+        initialData={builderInitialData}
+      />
     </div>
   );
 };

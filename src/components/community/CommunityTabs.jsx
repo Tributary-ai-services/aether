@@ -1,8 +1,9 @@
 import React from 'react';
-import { Wrench, Server, Code, Users } from 'lucide-react';
+import { Wrench, Server, Code, Users, Workflow } from 'lucide-react';
 
 const tabs = [
   { id: 'skills', label: 'Skills', icon: Wrench },
+  { id: 'workflows', label: 'Workflows', icon: Workflow },
   { id: 'mcp-servers', label: 'MCP Servers', icon: Server },
   { id: 'functions', label: 'Functions', icon: Code },
   { id: 'community', label: 'Community', icon: Users },
