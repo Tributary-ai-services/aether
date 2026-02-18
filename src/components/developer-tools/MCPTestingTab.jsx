@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Server,
   Play,
@@ -19,12 +20,16 @@ import {
   Unlink,
   Image,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Database
 } from 'lucide-react';
 import { aetherApi } from '../../services/aetherApi';
 import QueryAssistDialog from './QueryAssistDialog';
+import { fetchDatabaseConnections, selectConnections } from '../../store/slices/databaseConnectionsSlice';
 
 const MCPTestingTab = () => {
+  const dispatch = useDispatch();
+  const allConnections = useSelector(selectConnections);
   const [servers, setServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState(null);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -37,11 +42,16 @@ const MCPTestingTab = () => {
   const [invokeHistory, setInvokeHistory] = useState([]);
   const [expandedServers, setExpandedServers] = useState({});
   const [showQueryAssist, setShowQueryAssist] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState('');
+
+  // Filter to neo4j connections
+  const neo4jConnections = allConnections.filter(c => c.type === 'neo4j' || c.databaseType === 'neo4j');
 
   // Load MCP servers on mount
   useEffect(() => {
     loadServers();
-  }, []);
+    dispatch(fetchDatabaseConnections());
+  }, [dispatch]);
 
   // Load tools when server is selected
   useEffect(() => {
@@ -547,6 +557,37 @@ const MCPTestingTab = () => {
             </div>
 
             <div className="flex-1 overflow-auto p-4">
+              {/* Neo4j Connection Selector */}
+              {selectedServer?.id === 'mcp-neo4j' && neo4jConnections.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <label className="flex items-center text-sm font-medium text-blue-800 mb-2">
+                    <Database size={14} className="mr-1.5" />
+                    Neo4j Connection
+                  </label>
+                  <select
+                    value={selectedConnectionId}
+                    onChange={(e) => setSelectedConnectionId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  >
+                    <option value="">-- Use default server connection --</option>
+                    {neo4jConnections.map(conn => (
+                      <option key={conn.id} value={conn.id}>
+                        {conn.name} ({conn.host}:{conn.port}) {conn.status === 'Connected' ? '' : `[${conn.status}]`}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedConnectionId && (() => {
+                    const conn = neo4jConnections.find(c => c.id === selectedConnectionId);
+                    return conn ? (
+                      <div className="mt-2 text-xs text-blue-600 space-y-0.5">
+                        <div>Host: {conn.host}:{conn.port} | DB: {conn.database || 'neo4j'}</div>
+                        <div>Protocol: {conn.protocol || 'bolt'} | User: {conn.username || 'N/A'}</div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
               <h4 className="text-sm font-medium text-gray-700 mb-3">Parameters</h4>
               {selectedTool.inputSchema?.properties &&
                Object.keys(selectedTool.inputSchema.properties).length > 0 ? (
