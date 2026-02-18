@@ -18,9 +18,11 @@ import {
   Link,
   Unlink,
   Image,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import { aetherApi } from '../../services/aetherApi';
+import QueryAssistDialog from './QueryAssistDialog';
 
 const MCPTestingTab = () => {
   const [servers, setServers] = useState([]);
@@ -34,6 +36,7 @@ const MCPTestingTab = () => {
   const [invokeResult, setInvokeResult] = useState(null);
   const [invokeHistory, setInvokeHistory] = useState([]);
   const [expandedServers, setExpandedServers] = useState({});
+  const [showQueryAssist, setShowQueryAssist] = useState(false);
 
   // Load MCP servers on mount
   useEffect(() => {
@@ -304,9 +307,9 @@ const MCPTestingTab = () => {
     return (
       <div className="group relative inline-flex ml-1">
         <HelpCircle size={14} className="text-gray-400 hover:text-gray-600 cursor-help" />
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-normal max-w-xs z-50">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-normal max-w-xs z-50">
           {description}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900" />
         </div>
       </div>
     );
@@ -427,6 +430,19 @@ const MCPTestingTab = () => {
 
   return (
     <div className="flex h-full gap-4">
+      {/* Neo4j Query Assistant Dialog */}
+      <QueryAssistDialog
+        isOpen={showQueryAssist}
+        onClose={() => setShowQueryAssist(false)}
+        onApply={(query) => {
+          const cleaned = query.replace(/\\r\\n|\\n|\\r/g, ' ').replace(/\r\n|\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+          setToolParams(p => ({ ...p, query: cleaned }));
+          setShowQueryAssist(false);
+        }}
+        databaseType="neo4j"
+        currentQuery={toolParams.query || ''}
+      />
+
       {/* Left Panel - Servers & Tools */}
       <div className="w-80 bg-white rounded-lg border border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
@@ -543,6 +559,16 @@ const MCPTestingTab = () => {
                           <span className="text-red-500 ml-1">*</span>
                         )}
                         {schema.description && !schema.enum && schema.type !== 'boolean' && renderTooltip(schema.description)}
+                        {selectedServer?.id === 'mcp-neo4j' && name === 'query' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowQueryAssist(true)}
+                            className="ml-2 p-0.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                            title="Neo4j Query Assistant"
+                          >
+                            <Sparkles size={14} />
+                          </button>
+                        )}
                       </label>
                       {renderParamInput(name, schema)}
                     </div>

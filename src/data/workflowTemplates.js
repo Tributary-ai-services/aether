@@ -8,10 +8,72 @@ export const workflowTemplateCategories = [
   { id: 'document_processing', label: 'Document Processing' },
   { id: 'compliance_check', label: 'Compliance' },
   { id: 'approval_chain', label: 'Approvals' },
+  { id: 'data_pipeline', label: 'Data Pipelines' },
   { id: 'custom', label: 'General' },
 ];
 
 export const workflowTemplates = [
+  {
+    id: 'tpl-hello-world',
+    name: 'Hello in 25 Languages',
+    description: 'A fun starter workflow that asks an LLM to say hello in 25 different languages. Uses a real AI call via the TAS LLM Router and Argo Workflows — great for verifying your pipeline works end-to-end. Customize the prompt at runtime or use the default.',
+    category: 'custom',
+    type: 'custom',
+    tags: ['starter', 'hello', 'languages', 'llm', 'example'],
+    steps: [
+      {
+        name: 'Say Hello Worldwide',
+        type: 'aiTask',
+        template_type: 'container',
+        order: 1,
+        configuration: {
+          aiTaskType: 'llm',
+          model: 'gpt-4o-mini',
+          prompt: '{{prompt}}',
+          maxTokens: 2000,
+          temperature: 0.7,
+        },
+        on_success: 'next',
+        on_failure: 'abort',
+        timeout: 120,
+        retry_count: 1,
+      },
+      {
+        name: 'Deliver Result',
+        type: 'sync',
+        template_type: 'http',
+        order: 2,
+        configuration: {
+          targets: [
+            { type: 'in_app', url: '', include_result: true, message_template: '' },
+          ],
+          on_exit: true,
+        },
+        on_success: 'complete',
+        on_failure: 'abort',
+        timeout: 30,
+        retry_count: 1,
+      },
+    ],
+    triggers: [
+      {
+        type: 'manual',
+        name: 'Run Manually',
+        configuration: {
+          input_parameters: [
+            {
+              name: 'prompt',
+              label: 'LLM Prompt',
+              type: 'text',
+              description: 'What should the AI do? Edit to customize.',
+              required: true,
+              default: 'Say "hello" in 25 different languages. For each language, provide the greeting, the language name, and the script/alphabet used. Format as a numbered list. Include a mix of common and uncommon languages. End with a fun fact about greetings around the world.',
+            },
+          ],
+        },
+      },
+    ],
+  },
   {
     id: 'tpl-doc-extract',
     name: 'Document Extraction Pipeline',
@@ -24,7 +86,7 @@ export const workflowTemplates = [
         name: 'Upload Trigger',
         type: 'process_document',
         order: 1,
-        configuration: { source: 'file_upload', accepted_types: ['pdf', 'docx', 'png', 'jpg'] },
+        configuration: { source: 'file_upload', accepted_extensions: ['pdf', 'docx', 'png', 'jpg'] },
         on_success: 'next',
         on_failure: 'abort',
         timeout: 300,
@@ -52,7 +114,15 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'upload', name: 'File Upload', configuration: { accepted_types: ['pdf', 'docx', 'png', 'jpg'] } },
+      {
+        type: 'upload',
+        name: 'File Upload',
+        configuration: {
+          accepted_extensions: ['pdf', 'docx', 'png', 'jpg'],
+          source_filter: 'any',
+          output_mode: 'same_notebook',
+        },
+      },
     ],
   },
   {
@@ -105,8 +175,34 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'api', name: 'API Trigger', configuration: {} },
-      { type: 'schedule', name: 'Daily Scan', configuration: { cron: '0 2 * * *' } },
+      {
+        type: 'api',
+        name: 'API Trigger',
+        configuration: {
+          api_endpoint: '/api/v1/workflows/{id}/execute',
+        },
+      },
+      {
+        type: 'schedule',
+        name: 'Daily Scan',
+        configuration: {
+          cron: '0 2 * * *',
+          timezone: 'UTC',
+          schedule: {
+            frequency: 'daily',
+            interval: 1,
+            daysOfWeek: [1, 2, 3, 4, 5],
+            dayOfMonth: 1,
+            lastDay: false,
+            time: '02:00',
+            timezone: 'UTC',
+            starts: '',
+            endsType: 'never',
+            endsDate: '',
+            endsCount: 10,
+          },
+        },
+      },
     ],
   },
   {
@@ -161,7 +257,30 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'manual', name: 'Manual Submission', configuration: {} },
+      {
+        type: 'manual',
+        name: 'Manual Submission',
+        configuration: {
+          input_parameters: [
+            {
+              name: 'document_id',
+              label: 'Document ID',
+              type: 'string',
+              description: 'The ID of the document to submit for approval',
+              required: true,
+            },
+            {
+              name: 'priority',
+              label: 'Priority',
+              type: 'select',
+              description: 'Approval priority level',
+              required: false,
+              default: 'normal',
+              options: ['low', 'normal', 'high', 'urgent'],
+            },
+          ],
+        },
+      },
     ],
   },
   {
@@ -204,8 +323,25 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'upload', name: 'File Upload', configuration: {} },
-      { type: 'webhook', name: 'Webhook', configuration: {} },
+      {
+        type: 'upload',
+        name: 'File Upload',
+        configuration: {
+          accepted_extensions: ['pdf', 'docx', 'txt', 'md'],
+          source_filter: 'any',
+          output_mode: 'same_notebook',
+        },
+      },
+      {
+        type: 'webhook',
+        name: 'Webhook',
+        configuration: {
+          argo_event_source: 'webhook',
+          argo_event_name: 'workflow-trigger',
+          http_method: 'POST',
+          webhook_url: 'http://webhook-eventsource-svc.argo-events:12000/workflow-trigger',
+        },
+      },
     ],
   },
   {
@@ -248,7 +384,27 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'schedule', name: 'Weekly Schedule', configuration: { cron: '0 8 * * 1' } },
+      {
+        type: 'schedule',
+        name: 'Weekly Schedule',
+        configuration: {
+          cron: '0 8 * * 1',
+          timezone: 'UTC',
+          schedule: {
+            frequency: 'weekly',
+            interval: 1,
+            daysOfWeek: [1],
+            dayOfMonth: 1,
+            lastDay: false,
+            time: '08:00',
+            timezone: 'UTC',
+            starts: '',
+            endsType: 'never',
+            endsDate: '',
+            endsCount: 10,
+          },
+        },
+      },
     ],
   },
   {
@@ -291,7 +447,427 @@ export const workflowTemplates = [
       },
     ],
     triggers: [
-      { type: 'webhook', name: 'External Webhook', configuration: { method: 'POST' } },
+      {
+        type: 'webhook',
+        name: 'External Webhook',
+        configuration: {
+          argo_event_source: 'webhook',
+          argo_event_name: 'workflow-trigger',
+          http_method: 'POST',
+          webhook_url: 'http://webhook-eventsource-svc.argo-events:12000/workflow-trigger',
+        },
+      },
+    ],
+  },
+  {
+    id: 'tpl-doc-event-assembly',
+    name: 'Document Processing with Assembly',
+    description: 'Trigger on document processing completion, run entity extraction, and assemble a final report as a production artifact.',
+    category: 'document_processing',
+    type: 'document_processing',
+    tags: ['document_event', 'assembly', 'report'],
+    steps: [
+      {
+        name: 'Extract Entities',
+        type: 'ai_analysis',
+        order: 1,
+        configuration: { model: 'gpt-4o-mini', task: 'entity_extraction' },
+        on_success: 'next',
+        on_failure: 'abort',
+        timeout: 600,
+        retry_count: 2,
+      },
+      {
+        name: 'Compliance Check',
+        type: 'compliance_check',
+        order: 2,
+        configuration: { checks: ['pii', 'phi'] },
+        on_success: 'next',
+        on_failure: 'abort',
+        timeout: 300,
+        retry_count: 1,
+      },
+      {
+        name: 'Assemble Report',
+        type: 'assemble_output',
+        order: 3,
+        configuration: {
+          output_format: 'pdf',
+          assembly_mode: 'ai',
+          instructions: 'Create a comprehensive entity extraction report with compliance findings',
+          document_name: '{{workflow.name}} — {{date}}',
+          include_all_steps: true,
+        },
+        on_success: 'complete',
+        on_failure: 'abort',
+        timeout: 600,
+        retry_count: 1,
+      },
+    ],
+    triggers: [
+      {
+        type: 'document_event',
+        name: 'Processing Complete',
+        configuration: {
+          event_type: 'processing.completed',
+          notebook_ids: [],
+          mime_filter: [],
+          output_mode: 'same_notebook',
+        },
+      },
+    ],
+  },
+
+  /* ===== New Argo-Native Templates ===== */
+
+  {
+    id: 'tpl-batch-scoring',
+    name: 'Batch AI Scoring Pipeline',
+    description: 'Score a dataset using AI, filter results above a threshold, and export the top items. Uses container, script, AI task, and transform nodes.',
+    category: 'data_pipeline',
+    type: 'data_pipeline',
+    tags: ['batch', 'scoring', 'ai', 'container', 'transform'],
+    steps: [
+      {
+        name: 'Fetch Dataset',
+        type: 'container',
+        template_type: 'container',
+        dependencies: [],
+        configuration: {
+          image: 'curlimages/curl:8.8.0',
+          command: ['sh', '-c'],
+          args: ['curl -s $DATA_URL -o /tmp/data.json && cat /tmp/data.json'],
+          env: [{ name: 'DATA_URL', value: '{{workflow.parameters.data_url}}' }],
+        },
+        timeout: '2m',
+      },
+      {
+        name: 'Score Items',
+        type: 'aiTask',
+        template_type: 'container',
+        dependencies: ['fetch-dataset'],
+        configuration: {
+          aiTaskType: 'llm',
+          model: 'gpt-4o-mini',
+          prompt: 'Score each item from 0-100 based on relevance. Return JSON array with {id, score}.',
+          maxTokens: 4000,
+          temperature: 0.3,
+        },
+        timeout: '10m',
+      },
+      {
+        name: 'Filter Top Results',
+        type: 'transform',
+        template_type: 'data',
+        dependencies: ['score-items'],
+        configuration: {
+          transformType: 'expression',
+          expression: "{{=toJson(filter(fromJson(tasks['score-items'].outputs.result), {asFloat(#.score) >= 80}))}}",
+          outputParam: 'result',
+        },
+      },
+      {
+        name: 'Export Results',
+        type: 'script',
+        template_type: 'script',
+        dependencies: ['filter-top-results'],
+        configuration: {
+          language: 'python',
+          source: 'import json, sys\ndata = json.loads(sys.argv[1]) if len(sys.argv) > 1 else []\nprint(f"Top {len(data)} items exported")\nwith open("/tmp/results.json", "w") as f:\n    json.dump(data, f, indent=2)',
+          image: 'python:3.11-slim',
+        },
+        timeout: '2m',
+      },
+    ],
+    triggers: [
+      {
+        type: 'manual',
+        name: 'Run Manually',
+        configuration: {
+          input_parameters: [
+            {
+              name: 'data_url',
+              label: 'Dataset URL',
+              type: 'string',
+              description: 'URL of the JSON dataset to score',
+              required: true,
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'tpl-medical-review',
+    name: 'Medical Document Review',
+    description: 'Process medical documents through compliance scan, AI analysis, and human approval. Demonstrates AI task, condition, and suspend nodes.',
+    category: 'compliance_check',
+    type: 'compliance_check',
+    tags: ['medical', 'hipaa', 'approval', 'ai', 'condition'],
+    steps: [
+      {
+        name: 'Compliance Scan',
+        type: 'aiTask',
+        template_type: 'container',
+        dependencies: [],
+        configuration: {
+          aiTaskType: 'compliance',
+          scan_profile: 'hipaa',
+        },
+        timeout: '5m',
+      },
+      {
+        name: 'Check Compliance',
+        type: 'condition',
+        template_type: 'condition',
+        dependencies: ['compliance-scan'],
+        configuration: {
+          conditionType: 'expression',
+          expression: "{{tasks['compliance-scan'].outputs.result}} == 'pass'",
+        },
+      },
+      {
+        name: 'AI Medical Summary',
+        type: 'aiTask',
+        template_type: 'container',
+        dependencies: ['check-compliance'],
+        configuration: {
+          aiTaskType: 'llm',
+          model: 'gpt-4o',
+          prompt: 'Summarize the medical document findings. Highlight key diagnoses, treatments, and follow-up items.',
+          systemPrompt: 'You are a medical document analyst. Be thorough and accurate.',
+          maxTokens: 3000,
+          temperature: 0.2,
+        },
+        when: "{{tasks['check-compliance'].outputs.result}} == 'true'",
+        timeout: '10m',
+      },
+      {
+        name: 'Doctor Approval',
+        type: 'suspend',
+        template_type: 'suspend',
+        dependencies: ['ai-medical-summary'],
+        configuration: {
+          duration: '72h',
+          message: 'Please review the AI-generated medical summary and approve or reject.',
+          approverRole: 'physician',
+        },
+      },
+      {
+        name: 'Notify Patient',
+        type: 'http',
+        template_type: 'http',
+        dependencies: ['doctor-approval'],
+        configuration: {
+          url: 'http://aether-backend.aether-be.svc.cluster.local:8080/api/v1/notifications/email',
+          method: 'POST',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          body: '{"recipients": ["{{workflow.parameters.patient_email}}"], "subject": "Your medical review is complete"}',
+        },
+        timeout: '30s',
+      },
+    ],
+    triggers: [
+      {
+        type: 'manual',
+        name: 'Submit Document',
+        configuration: {
+          input_parameters: [
+            {
+              name: 'document_id',
+              label: 'Document ID',
+              type: 'string',
+              description: 'Medical document to review',
+              required: true,
+            },
+            {
+              name: 'patient_email',
+              label: 'Patient Email',
+              type: 'string',
+              description: 'Email for notification',
+              required: true,
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'tpl-data-augmentation',
+    name: 'Data Augmentation Pipeline',
+    description: 'Fetch data, enrich it with an AI agent, transform the output, and store results. Demonstrates the full container-first workflow.',
+    category: 'data_pipeline',
+    type: 'data_pipeline',
+    tags: ['data', 'enrichment', 'agent', 'transform', 'container'],
+    steps: [
+      {
+        name: 'Fetch Source Data',
+        type: 'http',
+        template_type: 'http',
+        dependencies: [],
+        configuration: {
+          url: '{{workflow.parameters.source_api}}',
+          method: 'GET',
+          headers: [{ name: 'Authorization', value: 'Bearer {{workflow.parameters.api_key}}' }],
+          successCondition: 'response.statusCode == 200',
+        },
+        timeout: '30s',
+      },
+      {
+        name: 'Enrich with Agent',
+        type: 'aiTask',
+        template_type: 'container',
+        dependencies: ['fetch-source-data'],
+        configuration: {
+          aiTaskType: 'agent',
+          agentType: 'analysis',
+          agentName: 'data-enrichment-agent',
+          instructions: 'Analyze each record and add: sentiment score, category classification, and key entity extraction.',
+          mcpEnabled: true,
+        },
+        timeout: '15m',
+      },
+      {
+        name: 'Extract Enriched Fields',
+        type: 'transform',
+        template_type: 'data',
+        dependencies: ['enrich-with-agent'],
+        configuration: {
+          transformType: 'jsonpath',
+          sourceStep: 'enrich-with-agent',
+          sourceParam: 'result',
+          jsonpathQuery: '$.records[*].{id, original_text, sentiment, category, entities}',
+          outputParam: 'result',
+        },
+      },
+      {
+        name: 'Store Results',
+        type: 'container',
+        template_type: 'container',
+        dependencies: ['extract-enriched-fields'],
+        configuration: {
+          image: 'python:3.11-slim',
+          command: ['python', '-c'],
+          args: ['import json, sys; print(f"Stored {len(json.loads(sys.stdin.read()))} enriched records")'],
+          env: [],
+        },
+        timeout: '2m',
+      },
+    ],
+    triggers: [
+      {
+        type: 'manual',
+        name: 'Run Pipeline',
+        configuration: {
+          input_parameters: [
+            {
+              name: 'source_api',
+              label: 'Source API URL',
+              type: 'string',
+              description: 'API endpoint to fetch source data from',
+              required: true,
+            },
+            {
+              name: 'api_key',
+              label: 'API Key',
+              type: 'string',
+              description: 'Authentication key for source API',
+              required: true,
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'tpl-compliance-approval',
+    name: 'Compliance Check with Approval Gate',
+    description: 'Run a compliance scan, evaluate the score, and require human approval if the score is below threshold. Uses condition and suspend nodes.',
+    category: 'compliance_check',
+    type: 'compliance_check',
+    tags: ['compliance', 'approval', 'condition', 'gate'],
+    steps: [
+      {
+        name: 'Run Compliance Scan',
+        type: 'script',
+        template_type: 'script',
+        dependencies: [],
+        configuration: {
+          language: 'python',
+          source: 'import json\nresult = {"score": 75, "violations": 3, "findings": ["PII detected", "Missing encryption", "Audit log gap"]}\nprint(json.dumps(result))',
+          image: 'python:3.11-slim',
+        },
+        timeout: '5m',
+      },
+      {
+        name: 'Evaluate Score',
+        type: 'transform',
+        template_type: 'data',
+        dependencies: ['run-compliance-scan'],
+        configuration: {
+          transformType: 'expression',
+          expression: "{{=asInt(jsonpath(tasks['run-compliance-scan'].outputs.result, '$.score'))}}",
+          outputParam: 'result',
+        },
+      },
+      {
+        name: 'Score Check',
+        type: 'condition',
+        template_type: 'condition',
+        dependencies: ['evaluate-score'],
+        configuration: {
+          conditionType: 'expression',
+          expression: "{{tasks['evaluate-score'].outputs.parameters.result}} < 80",
+        },
+      },
+      {
+        name: 'Manual Review',
+        type: 'suspend',
+        template_type: 'suspend',
+        dependencies: ['score-check'],
+        configuration: {
+          duration: '48h',
+          message: 'Compliance score is below 80. Please review findings and approve or reject.',
+          approverRole: 'compliance-officer',
+        },
+        when: "{{tasks['score-check'].outputs.result}} == 'true'",
+      },
+      {
+        name: 'Send Report',
+        type: 'http',
+        template_type: 'http',
+        dependencies: ['manual-review'],
+        configuration: {
+          url: 'http://aether-backend.aether-be.svc.cluster.local:8080/api/v1/notifications/email',
+          method: 'POST',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          body: '{"recipients": ["compliance@company.com"], "subject": "Compliance Report", "body": "Scan complete. Score: {{tasks.evaluate-score.outputs.parameters.result}}"}',
+        },
+        timeout: '30s',
+      },
+    ],
+    triggers: [
+      {
+        type: 'schedule',
+        name: 'Daily Scan',
+        configuration: {
+          cron: '0 6 * * *',
+          timezone: 'UTC',
+          schedule: {
+            frequency: 'daily',
+            interval: 1,
+            daysOfWeek: [1, 2, 3, 4, 5],
+            dayOfMonth: 1,
+            lastDay: false,
+            time: '06:00',
+            timezone: 'UTC',
+            starts: '',
+            endsType: 'never',
+            endsDate: '',
+            endsCount: 10,
+          },
+        },
+      },
     ],
   },
 ];

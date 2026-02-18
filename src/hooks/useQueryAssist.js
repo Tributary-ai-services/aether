@@ -249,15 +249,55 @@ export const useQueryAssist = (databaseType) => {
       return trimmed.startsWith('{') || trimmed.startsWith('[');
     };
 
+    // Helper to check if text looks like a raw query (not natural language explanation)
+    const looksLikeQuery = (text) => {
+      if (!text || typeof text !== 'string') return false;
+      const trimmed = text.trim();
+      // Starts with a SQL/Cypher keyword
+      return /^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|MATCH|MERGE|WITH|CALL|UNWIND|OPTIONAL|LOAD|FOREACH)\b/i.test(trimmed);
+    };
+
+    // Helper to extract a query from within text that may contain code blocks
+    const extractQueryFromText = (text) => {
+      if (!text || typeof text !== 'string') return null;
+      // Check for cypher/sql code blocks within the text
+      const codeBlockMatch = text.match(/```(?:cypher|sql|postgresql|mysql|pgsql)?\s*\n?([\s\S]+?)\n?```/i);
+      if (codeBlockMatch) {
+        const block = codeBlockMatch[1].trim();
+        if (block.length >= 10 && !looksLikeJSON(block)) return block;
+      }
+      return null;
+    };
+
     // Helper to try parsing JSON from content
     const tryParseJSON = (text) => {
       try {
         const parsed = JSON.parse(text);
-        if (parsed && parsed.recommendation) {
+        if (!parsed) return null;
+
+        const reasoning = parsed.reasoning || null;
+        const comments = parsed.comments || null;
+
+        // Prefer explicit query/sql/cypher fields over recommendation
+        const queryField = parsed.query || parsed.sql || parsed.cypher;
+        if (queryField && typeof queryField === 'string' && queryField.trim().length > 0) {
+          return createResult(queryField.trim(), reasoning, comments);
+        }
+
+        if (parsed.recommendation) {
           const rec = parsed.recommendation;
-          // If recommendation is a string that looks like SQL, use it
           if (typeof rec === 'string') {
-            return createResult(rec, parsed.reasoning || null, parsed.comments || null);
+            // If recommendation looks like a raw query, use it directly
+            if (looksLikeQuery(rec)) {
+              return createResult(rec, reasoning, comments);
+            }
+            // If recommendation contains embedded code blocks, extract the query
+            const embeddedQuery = extractQueryFromText(rec);
+            if (embeddedQuery) {
+              return createResult(embeddedQuery, reasoning, comments);
+            }
+            // Fallback: use recommendation as-is
+            return createResult(rec, reasoning, comments);
           }
         }
       } catch {

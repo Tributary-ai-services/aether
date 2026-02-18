@@ -48,8 +48,10 @@ import OrganizationsPage from './pages/OrganizationsPage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
 import QueryConsolePage from './pages/QueryConsolePage.jsx';
 import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
+import Neo4jExplorerPage from './pages/Neo4jExplorerPage.jsx';
 import DeveloperToolsPage from './pages/DeveloperToolsPage.jsx';
 import ProductionsManagementPage from './pages/ProductionsManagementPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -484,8 +486,11 @@ const App = () => {
             <Route path="/query-console/:connectionId" element={<QueryConsolePage />} />
             <Route path="/schema-browser" element={<SchemaBrowserPage />} />
             <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
+            <Route path="/neo4j-explorer" element={<Neo4jExplorerPage />} />
+            <Route path="/neo4j-explorer/:connectionId" element={<Neo4jExplorerPage />} />
             <Route path="/developer-tools" element={<DeveloperToolsPage />} />
             <Route path="/developer-tools/:tab" element={<DeveloperToolsPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notebooks/:notebookId/productions" element={<ProductionsManagementPage />} />
           </Routes>
         </main>

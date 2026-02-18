@@ -72,16 +72,27 @@ const ConnectionCard = ({
   const status = getConnectionStatus();
   const StatusIcon = status.icon;
 
-  // Handle navigation to schema browser
+  // Check if this is a Neo4j connection
+  const isNeo4j = (connection.databaseType || connection.type || '').toLowerCase() === 'neo4j';
+
+  // Handle navigation to schema browser (or Neo4j Explorer for neo4j)
   const handleSchemaClick = () => {
     if (onCloseSettings) onCloseSettings();
-    navigate(`/schema-browser?connectionId=${connection.id}`);
+    if (isNeo4j) {
+      navigate(`/neo4j-explorer?connectionId=${connection.id}`);
+    } else {
+      navigate(`/schema-browser?connectionId=${connection.id}`);
+    }
   };
 
-  // Handle navigation to query console
+  // Handle navigation to query console (or Neo4j Explorer for neo4j)
   const handleQueryClick = () => {
     if (onCloseSettings) onCloseSettings();
-    navigate(`/query-console?connectionId=${connection.id}`);
+    if (isNeo4j) {
+      navigate(`/neo4j-explorer?connectionId=${connection.id}`);
+    } else {
+      navigate(`/query-console?connectionId=${connection.id}`);
+    }
   };
 
   // Handle test connection

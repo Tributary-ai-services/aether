@@ -4,6 +4,7 @@ import { useSpace } from '../hooks/useSpaces.js';
 import { useAppSelector, useAppDispatch } from '../store/hooks.js';
 import { selectModals, closeModal } from '../store/slices/uiSlice.js';
 import WorkflowBuilder from '../components/workflow/WorkflowBuilder.jsx';
+import ManualRunDialog from '../components/workflow/ManualRunDialog.jsx';
 import WorkflowCreateModal from '../components/modals/WorkflowCreateModal.jsx';
 import WorkflowCardSkeleton from '../components/skeletons/WorkflowCardSkeleton.jsx';
 import WorkflowAnalyticsSummary from '../components/workflow/WorkflowAnalyticsSummary.jsx';
@@ -22,6 +23,8 @@ import {
   XCircle,
   AlertCircle,
   BarChart3,
+  Loader2,
+  PlayCircle,
 } from 'lucide-react';
 
 const statusConfig = {
@@ -50,7 +53,8 @@ const WorkflowsPage = () => {
     create,
     remove,
     toggleStatus,
-  } = useWorkflows();
+    execute,
+  } = useWorkflows({ autoFetch: false });
 
   const [builderOpen, setBuilderOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -61,12 +65,21 @@ const WorkflowsPage = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [actionMenuId, setActionMenuId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [runningId, setRunningId] = useState(null);
+  const [runDialogWorkflow, setRunDialogWorkflow] = useState(null);
 
   useEffect(() => {
     if (!initialized) {
       loadAvailableSpaces();
     }
   }, [initialized, loadAvailableSpaces]);
+
+  // Fetch workflows only after space context is ready
+  useEffect(() => {
+    if (initialized && currentSpace) {
+      refetch();
+    }
+  }, [initialized, currentSpace, refetch]);
 
   // Listen for global "Create New" button via Redux modals
   useEffect(() => {
@@ -120,6 +133,48 @@ const WorkflowsPage = () => {
       await toggleStatus(workflow.id, workflow.status);
     } catch (err) {
       console.error('Failed to toggle workflow status:', err);
+    }
+  };
+
+  const handleRun = async (workflow) => {
+    setActionMenuId(null);
+
+    // Check if any trigger has input_parameters
+    const trigger = (workflow.triggers || []).find(t =>
+      t.configuration?.input_parameters?.length > 0
+    );
+    if (trigger) {
+      setRunDialogWorkflow(workflow);
+      return;
+    }
+
+    setRunningId(workflow.id);
+    try {
+      if (workflow.status !== 'active') {
+        await toggleStatus(workflow.id, workflow.status);
+      }
+      await execute(workflow.id, {});
+      setTimeout(() => setRunningId(null), 2000);
+    } catch (err) {
+      console.error('Failed to run workflow:', err);
+      setRunningId(null);
+    }
+  };
+
+  const handleManualRunSubmit = async (paramValues) => {
+    if (!runDialogWorkflow) return;
+    const wf = runDialogWorkflow;
+    setRunDialogWorkflow(null);
+    setRunningId(wf.id);
+    try {
+      if (wf.status !== 'active') {
+        await toggleStatus(wf.id, wf.status);
+      }
+      await execute(wf.id, { parameters: paramValues });
+      setTimeout(() => setRunningId(null), 2000);
+    } catch (err) {
+      console.error('Failed to run workflow:', err);
+      setRunningId(null);
     }
   };
 
@@ -291,6 +346,11 @@ const WorkflowsPage = () => {
                           <StatusIcon size={12} />
                           {status.label}
                         </span>
+                        {runningId === workflow.id && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <Loader2 size={12} className="animate-spin" /> Running
+                          </span>
+                        )}
                       </div>
                       {workflow.description && (
                         <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{workflow.description}</p>
@@ -339,6 +399,17 @@ const WorkflowsPage = () => {
                             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             <Edit3 size={14} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleRun(workflow)}
+                            disabled={runningId === workflow.id}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50"
+                          >
+                            {runningId === workflow.id ? (
+                              <><Loader2 size={14} className="animate-spin" /> Running...</>
+                            ) : (
+                              <><PlayCircle size={14} /> Run</>
+                            )}
                           </button>
                           <button
                             onClick={() => handleToggleStatus(workflow)}
@@ -402,6 +473,18 @@ const WorkflowsPage = () => {
         onClose={handleBuilderClose}
         workflow={selectedWorkflow}
         initialData={builderInitial}
+      />
+
+      {/* Manual Run Dialog (for workflows with input parameters) */}
+      <ManualRunDialog
+        isOpen={!!runDialogWorkflow}
+        onClose={() => setRunDialogWorkflow(null)}
+        onSubmit={handleManualRunSubmit}
+        parameters={
+          runDialogWorkflow?.triggers
+            ?.find(t => t.configuration?.input_parameters?.length > 0)
+            ?.configuration?.input_parameters || []
+        }
       />
     </div>
   );

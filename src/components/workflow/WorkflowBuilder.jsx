@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -14,10 +14,19 @@ import EventSourceNode from './nodes/EventSourceNode.jsx';
 import ActionNode from './nodes/ActionNode.jsx';
 import ConditionNode from './nodes/ConditionNode.jsx';
 import AgentNode from './nodes/AgentNode.jsx';
+import ContainerNode from './nodes/ContainerNode.jsx';
+import ScriptNode from './nodes/ScriptNode.jsx';
+import HttpNode from './nodes/HttpNode.jsx';
+import AITaskNode from './nodes/AITaskNode.jsx';
+import SuspendNode from './nodes/SuspendNode.jsx';
+import TransformNode from './nodes/TransformNode.jsx';
+import AssemblerNode from './nodes/AssemblerNode.jsx';
 import SyncNode from './nodes/SyncNode.jsx';
 import NodeConfigPanel from './NodeConfigPanel.jsx';
+import ManualRunDialog from './ManualRunDialog.jsx';
 import Modal from '../ui/Modal.jsx';
 import { useWorkflows } from '../../hooks/useWorkflows.js';
+import { aetherApi } from '../../services/aetherApi.js';
 import {
   generateNodeId,
   getDefaultNodeData,
@@ -29,6 +38,7 @@ import {
 
 import {
   Play,
+  Pause,
   Save,
   Download,
   Upload,
@@ -36,18 +46,34 @@ import {
   Settings,
   GitBranch,
   Bot,
-  Merge,
   Plus,
   AlertCircle,
   CheckCircle,
   Loader2,
+  Box,
+  Code,
+  Globe,
+  Brain,
+  UserCheck,
+  Wand2,
+  Layers,
+  Send,
 } from 'lucide-react';
 
 const nodeTypes = {
+  // Legacy types (backward compat)
   eventSource: EventSourceNode,
   action: ActionNode,
-  condition: ConditionNode,
   agent: AgentNode,
+  // New Argo-aligned types
+  container: ContainerNode,
+  script: ScriptNode,
+  http: HttpNode,
+  aiTask: AITaskNode,
+  condition: ConditionNode,
+  suspend: SuspendNode,
+  transform: TransformNode,
+  assembler: AssemblerNode,
   sync: SyncNode,
 };
 
@@ -59,23 +85,48 @@ const paletteGroups = [
     ],
   },
   {
-    label: 'Steps',
+    label: 'Execution',
     items: [
-      { type: 'action', label: 'Action', desc: 'Process data', icon: Settings, color: 'blue' },
-      { type: 'agent', label: 'Agent', desc: 'AI agent task', icon: Bot, color: 'purple' },
-      { type: 'condition', label: 'Condition', desc: 'Branch logic', icon: GitBranch, color: 'yellow' },
+      { type: 'container', label: 'Container', desc: 'Run any image', icon: Box, color: 'blue' },
+      { type: 'script', label: 'Script', desc: 'Inline code', icon: Code, color: 'indigo' },
+      { type: 'http', label: 'HTTP Request', desc: 'Call an API', icon: Globe, color: 'cyan' },
+    ],
+  },
+  {
+    label: 'AI & Agents',
+    items: [
+      { type: 'aiTask', label: 'AI Task', desc: 'LLM / Agent', icon: Brain, color: 'purple' },
+    ],
+  },
+  {
+    label: 'Data',
+    items: [
+      { type: 'transform', label: 'Transform', desc: 'Reshape data', icon: Wand2, color: 'emerald' },
+    ],
+  },
+  {
+    label: 'Assembly',
+    items: [
+      { type: 'assembler', label: 'Assembler', desc: 'Combine outputs', icon: Layers, color: 'teal' },
     ],
   },
   {
     label: 'Flow Control',
     items: [
-      { type: 'sync', label: 'Sync', desc: 'Merge paths', icon: Merge, color: 'emerald' },
+      { type: 'condition', label: 'Condition', desc: 'Branch logic', icon: GitBranch, color: 'yellow' },
+      { type: 'suspend', label: 'Approval', desc: 'Wait for approval', icon: UserCheck, color: 'orange' },
+    ],
+  },
+  {
+    label: 'Delivery',
+    items: [
+      { type: 'sync', label: 'Sync', desc: 'Deliver results', icon: Send, color: 'violet' },
     ],
   },
 ];
 
 const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null }) => {
-  const { create, update, execute } = useWorkflows({ autoFetch: false });
+  const { create, update, execute, toggleStatus } = useWorkflows({ autoFetch: false });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -86,8 +137,12 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [workflowStatus, setWorkflowStatus] = useState('paused');
   const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
   const [validationErrors, setValidationErrors] = useState([]);
+  const [showRunDialog, setShowRunDialog] = useState(false);
+  const fileInputRef = useRef(null);
+  const pendingParamsRef = useRef(null);
 
   // Initialize from workflow (edit) or initialData (create from blank/template)
   useEffect(() => {
@@ -99,6 +154,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
       setWorkflowDesc(workflow.description || '');
       setWorkflowType(workflow.type || 'custom');
       setWorkflowId(workflow.id);
+      setWorkflowStatus(workflow.status || 'paused');
       const { nodes: wfNodes, edges: wfEdges } = backendToNodes(workflow);
       setNodes(wfNodes);
       setEdges(wfEdges);
@@ -108,6 +164,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
       setWorkflowDesc(initialData.description || '');
       setWorkflowType(initialData.type || 'custom');
       setWorkflowId(null);
+      setWorkflowStatus('paused');
       const { nodes: initNodes, edges: initEdges } = initialDataToNodes(initialData);
       setNodes(initNodes);
       setEdges(initEdges);
@@ -117,6 +174,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
       setWorkflowDesc('');
       setWorkflowType('custom');
       setWorkflowId(null);
+      setWorkflowStatus('paused');
       setNodes([{
         id: generateNodeId(),
         type: 'eventSource',
@@ -216,20 +274,128 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
     }
   };
 
-  const handleRun = async () => {
-    if (!workflowId) {
-      setValidationErrors(['Save the workflow before running.']);
-      return;
+  // Find the trigger node and its config
+  const triggerNode = useMemo(
+    () => nodes.find((n) => n.type === 'eventSource') || null,
+    [nodes]
+  );
+  const triggerType = triggerNode?.data?.triggerType || 'manual';
+  const triggerConfig = triggerNode?.data?.config || {};
+  const inputParameters = triggerConfig.input_parameters || [];
+
+  const isUploadTrigger = triggerType === 'upload' || triggerType === 'file_upload';
+
+  // Ensure workflow is saved and return the ID (auto-saves if needed)
+  const ensureSaved = async () => {
+    if (workflowId) return workflowId;
+
+    const { valid, errors } = validateWorkflow(nodes);
+    if (!valid) {
+      setValidationErrors(errors);
+      return null;
     }
-    setIsRunning(true);
+    setIsSaving(true);
+    try {
+      const backendData = nodesToBackendFormat(nodes, edges, {
+        name: workflowName,
+        description: workflowDesc,
+        type: workflowType,
+      });
+      const created = await create(backendData);
+      if (created?.id) {
+        setWorkflowId(created.id);
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus(null), 3000);
+        setIsSaving(false);
+        return created.id;
+      }
+      setValidationErrors(['Failed to save workflow — no ID returned.']);
+    } catch (err) {
+      setValidationErrors([err.message || 'Failed to auto-save workflow before running.']);
+    }
+    setIsSaving(false);
+    return null;
+  };
+
+  const handleToggleStatus = async () => {
+    if (!workflowId) return;
+    try {
+      await toggleStatus(workflowId, workflowStatus);
+      setWorkflowStatus(workflowStatus === 'active' ? 'paused' : 'active');
+    } catch (err) {
+      console.error('Failed to toggle workflow status:', err);
+      setValidationErrors([err.message || 'Failed to change workflow status']);
+    }
+  };
+
+  const handleRun = async () => {
+    const id = await ensureSaved();
+    if (!id) return;
     setValidationErrors([]);
 
+    // If trigger has input parameters, show params dialog first
+    if (inputParameters.length > 0) {
+      setShowRunDialog(true);
+      return;
+    }
+
+    // Upload trigger without params: open file picker directly
+    if (isUploadTrigger && fileInputRef.current) {
+      fileInputRef.current.click();
+      return;
+    }
+
+    // Default: execute immediately (manual no params, schedule, webhook, api, document_event)
+    await executeWorkflow(id, {});
+  };
+
+  const executeWorkflow = async (id, data) => {
+    setIsRunning(true);
+    setValidationErrors([]);
     try {
-      await execute(workflowId, {});
+      await execute(id || workflowId, data);
       setTimeout(() => setIsRunning(false), 2000);
     } catch (err) {
       console.error('Failed to execute workflow:', err);
       setValidationErrors([err.message || 'Execution failed']);
+      setIsRunning(false);
+    }
+  };
+
+  const handleManualRunSubmit = (paramValues) => {
+    if (isUploadTrigger && fileInputRef.current) {
+      // For upload triggers with params: store params, then open file picker
+      pendingParamsRef.current = paramValues;
+      fileInputRef.current.click();
+    } else {
+      executeWorkflow(workflowId, { parameters: paramValues });
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !workflowId) return;
+    event.target.value = '';
+
+    setIsRunning(true);
+    setValidationErrors([]);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      // Include any pending parameters from the dialog
+      if (pendingParamsRef.current) {
+        formData.append('parameters', JSON.stringify(pendingParamsRef.current));
+        pendingParamsRef.current = null;
+      }
+      await aetherApi.request(`/workflows/${workflowId}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {}, // Let browser set content-type with boundary
+      });
+      setTimeout(() => setIsRunning(false), 2000);
+    } catch (err) {
+      console.error('Failed to upload file:', err);
+      setValidationErrors([err.message || 'File upload failed']);
       setIsRunning(false);
     }
   };
@@ -311,10 +477,23 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={handleToggleStatus}
+              disabled={!workflowId}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 text-sm ${
+                workflowStatus === 'active'
+                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+              }`}
+              title={!workflowId ? 'Save first' : workflowStatus === 'active' ? 'Pause workflow' : 'Activate workflow'}
+            >
+              {workflowStatus === 'active' ? <Pause size={14} /> : <Play size={14} />}
+              {workflowStatus === 'active' ? 'Pause' : 'Activate'}
+            </button>
+            <button
               onClick={handleRun}
-              disabled={isRunning || !workflowId}
+              disabled={isRunning}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
-              title={!workflowId ? 'Save before running' : 'Test run'}
+              title="Test run"
             >
               {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
               {isRunning ? 'Running...' : 'Run'}
@@ -454,6 +633,25 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
             />
           )}
         </div>
+
+        {/* Hidden file input for upload-triggered workflows */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept={triggerConfig.accepted_extensions
+            ? triggerConfig.accepted_extensions.map((e) => `.${e}`).join(',')
+            : undefined}
+          className="hidden"
+        />
+
+        {/* Manual run dialog with typed parameters */}
+        <ManualRunDialog
+          isOpen={showRunDialog}
+          onClose={() => setShowRunDialog(false)}
+          onSubmit={handleManualRunSubmit}
+          parameters={inputParameters}
+        />
       </div>
     </Modal>
   );

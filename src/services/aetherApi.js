@@ -1861,6 +1861,28 @@ class AetherApiService {
       method: 'DELETE',
     }),
   };
+
+  // Notifications API
+  notifications = {
+    getAll: ({ limit = 20, offset = 0, unreadOnly = false } = {}) => {
+      const params = new URLSearchParams();
+      if (limit) params.append('limit', limit);
+      if (offset) params.append('offset', offset);
+      if (unreadOnly) params.append('unread_only', 'true');
+      const query = params.toString();
+      return this.request(`/notifications${query ? '?' + query : ''}`);
+    },
+    getUnreadCount: () => this.request('/notifications/unread-count'),
+    markAsRead: (id) => this.request(`/notifications/${id}/read`, {
+      method: 'PUT',
+    }),
+    markAllAsRead: () => this.request('/notifications/read-all', {
+      method: 'PUT',
+    }),
+    delete: (id) => this.request(`/notifications/${id}`, {
+      method: 'DELETE',
+    }),
+  };
 }
 
 // Create singleton instance
