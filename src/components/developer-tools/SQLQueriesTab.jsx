@@ -59,6 +59,7 @@ import {
   selectQueryExecution,
   resetQueryExecution
 } from '../../store/slices/databaseConnectionsSlice';
+import { getDatabaseTypeById, DATABASE_CATEGORIES } from '../../config/databaseTypes';
 import {
   fetchSavedQueries,
   createSavedQuery,
@@ -608,8 +609,20 @@ const SQLQueriesTab = () => {
     }
   };
 
-  // Generate SELECT statement for a table
+  // Check if selected connection is a graph database
+  const selectedDbType = getDatabaseTypeById(selectedDatabaseType);
+  const isGraphDb = selectedDbType?.category === DATABASE_CATEGORIES.GRAPH;
+
+  // Generate query statement for a table/label
   const generateSelectStatement = (tableName, tableSchema = null, columns = []) => {
+    // For Neo4j/graph databases, generate Cypher
+    if (isGraphDb) {
+      if (tableSchema === 'relationships') {
+        return `MATCH ()-[r:\`${tableName}\`]->() RETURN r LIMIT 25`;
+      }
+      return `MATCH (n:\`${tableName}\`) RETURN n LIMIT 25`;
+    }
+    // For SQL databases
     const fullTableName = tableSchema ? `${tableSchema}.${tableName}` : tableName;
     if (columns && columns.length > 0) {
       const columnNames = columns.map(col =>
@@ -729,6 +742,12 @@ const SQLQueriesTab = () => {
   const existingFolders = [...new Set(savedQueries.map(q => q.folder).filter(Boolean))].sort();
 
   const handleSaveQuery = async () => {
+    console.log('[Save] handleSaveQuery called', {
+      activeTabId,
+      savedQueryId: activeTab.savedQueryId,
+      queryLength: activeTab.query?.length,
+      tabTitle: activeTab.title,
+    });
     // Pre-populate from saved query if editing
     if (activeTab.savedQueryId) {
       const existingQuery = savedQueries.find(q => q.id === activeTab.savedQueryId);
@@ -782,16 +801,28 @@ const SQLQueriesTab = () => {
         folder: folderToUse || null  // null means top level / uncategorized
       };
 
+      console.log('[Save] handleConfirmSave', {
+        savedQueryId: activeTab.savedQueryId,
+        isUpdate: !!activeTab.savedQueryId,
+        queryText: JSON.stringify(activeTab.query),
+        queryDataQuery: JSON.stringify(queryData.query),
+        activeTabId,
+      });
+
       if (activeTab.savedQueryId) {
         // Update existing query
-        await dispatch(updateSavedQuery({
+        console.log('[Save] Dispatching updateSavedQuery', { id: activeTab.savedQueryId });
+        const result = await dispatch(updateSavedQuery({
           id: activeTab.savedQueryId,
           updates: queryData
         })).unwrap();
+        console.log('[Save] Update succeeded', result);
         updateTabTitle(activeTabId, queryName.trim());
       } else {
         // Create new query
+        console.log('[Save] Dispatching createSavedQuery');
         const result = await dispatch(createSavedQuery(queryData)).unwrap();
+        console.log('[Save] Create succeeded', result);
         // Update tab with saved query ID
         updateTabSavedQueryId(activeTabId, result.id, queryName.trim());
       }
@@ -802,7 +833,8 @@ const SQLQueriesTab = () => {
       setSelectedFolder('');
       setNewFolderName('');
     } catch (error) {
-      setSaveError(error.message || 'Failed to save query');
+      console.error('[Save] Save failed', error);
+      setSaveError(typeof error === 'string' ? error : (error.message || 'Failed to save query'));
     } finally {
       setIsSaving(false);
     }
@@ -817,18 +849,7 @@ const SQLQueriesTab = () => {
       return;
     }
 
-    // Ensure query text is valid - fix missing SELECT if needed
     let queryText = query.query || '';
-    const trimmedQuery = queryText.trim().toUpperCase();
-    if (trimmedQuery && !trimmedQuery.startsWith('SELECT') && !trimmedQuery.startsWith('INSERT') &&
-        !trimmedQuery.startsWith('UPDATE') && !trimmedQuery.startsWith('DELETE') &&
-        !trimmedQuery.startsWith('CREATE') && !trimmedQuery.startsWith('DROP') &&
-        !trimmedQuery.startsWith('ALTER') && !trimmedQuery.startsWith('WITH')) {
-      // Query is missing a SQL keyword, likely missing SELECT
-      if (trimmedQuery.startsWith('*') || trimmedQuery.match(/^[A-Z_]/)) {
-        queryText = 'SELECT ' + queryText;
-      }
-    }
 
     // Open in new tab
     const newId = `tab-${Date.now()}`;
@@ -1454,10 +1475,53 @@ const SQLQueriesTab = () => {
                     <option value={totalColumns}>All cols</option>
                   </select>
                   <div className="flex items-center gap-1 border-l border-gray-300 pl-3">
-                    <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded" title="Download CSV">
+                    <button
+                      className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                      title="Download CSV"
+                      onClick={() => {
+                        const res = activeTab.results;
+                        if (!res) return;
+                        const csvContent = [
+                          res.columns.join(','),
+                          ...res.rows.map(row =>
+                            row.map(val => {
+                              if (val == null) return '';
+                              const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                                return `"${str.replace(/"/g, '""')}"`;
+                              }
+                              return str;
+                            }).join(',')
+                          )
+                        ].join('\n');
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `query_results_${new Date().toISOString().slice(0, 10)}.csv`;
+                        link.click();
+                      }}
+                    >
                       <Download size={14} />
                     </button>
-                    <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded" title="Copy Results">
+                    <button
+                      className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                      title="Copy Results"
+                      onClick={async () => {
+                        const res = activeTab.results;
+                        if (!res) return;
+                        const text = [
+                          res.columns.join('\t'),
+                          ...res.rows.map(row =>
+                            row.map(val => val == null ? '' : (typeof val === 'object' ? JSON.stringify(val) : String(val))).join('\t')
+                          )
+                        ].join('\n');
+                        try {
+                          await navigator.clipboard.writeText(text);
+                        } catch (err) {
+                          console.error('Failed to copy:', err);
+                        }
+                      }}
+                    >
                       <Copy size={14} />
                     </button>
                   </div>
@@ -1514,15 +1578,22 @@ const SQLQueriesTab = () => {
                             const actualIndex = visibleColumnStart + j;
                             const cell = rowValues[actualIndex];
                             const width = columnWidths[actualIndex] || 150;
+                            const isObj = cell !== null && typeof cell === 'object';
                             return (
                               <td
                                 key={actualIndex}
                                 className="px-3 py-2 text-gray-600 border-b border-r border-gray-100 align-top"
-                                style={{ width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }}
-                                title={cell?.toString() || ''}
+                                style={isObj ? { minWidth: `${width}px` } : { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }}
+                                title={isObj ? undefined : (cell?.toString() || '')}
                               >
-                                <div className="truncate">
-                                  {cell !== null && cell !== undefined ? cell.toString() : <span className="text-gray-300 italic">null</span>}
+                                <div className={cell !== null && typeof cell === 'object' ? '' : 'truncate'}>
+                                  {cell === null || cell === undefined ? (
+                                    <span className="text-gray-300 italic">null</span>
+                                  ) : typeof cell === 'object' ? (
+                                    <pre className="font-mono text-xs whitespace-pre-wrap">{JSON.stringify(cell, null, 2)}</pre>
+                                  ) : (
+                                    cell.toString()
+                                  )}
                                 </div>
                               </td>
                             );

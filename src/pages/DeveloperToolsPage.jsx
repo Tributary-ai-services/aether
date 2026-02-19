@@ -35,7 +35,7 @@ const DeveloperToolsPage = () => {
   const tabs = [
     {
       id: 'queries',
-      label: 'SQL Queries',
+      label: 'Queries',
       icon: Database
     },
     {

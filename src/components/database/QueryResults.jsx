@@ -139,8 +139,16 @@ const QueryResults = ({
     }
   };
 
+  // State for expanded cells
+  const [expandedCells, setExpandedCells] = useState({});
+
+  const toggleCellExpand = (rowIdx, column) => {
+    const key = `${rowIdx}-${column}`;
+    setExpandedCells(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   // Format cell value for display
-  const formatCellValue = (value) => {
+  const formatCellValue = (value, rowIdx, column) => {
     if (value === null || value === undefined) {
       return <span className="text-gray-400 italic">NULL</span>;
     }
@@ -148,7 +156,46 @@ const QueryResults = ({
       return value ? 'true' : 'false';
     }
     if (typeof value === 'object') {
-      return <span className="font-mono text-xs">{JSON.stringify(value)}</span>;
+      const cellKey = `${rowIdx}-${column}`;
+      const isExpanded = expandedCells[cellKey];
+      const jsonStr = JSON.stringify(value, null, 2);
+
+      // Neo4j Node (has _labels array) — output clean JSON
+      if (Array.isArray(value._labels)) {
+        return (
+          <pre
+            className={`font-mono text-xs whitespace-pre-wrap cursor-pointer ${isExpanded ? '' : 'max-h-32 overflow-hidden'}`}
+            onClick={() => toggleCellExpand(rowIdx, column)}
+            title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+          >
+            {jsonStr}
+          </pre>
+        );
+      }
+
+      // Neo4j Relationship (has _type string) — output clean JSON
+      if (typeof value._type === 'string') {
+        return (
+          <pre
+            className={`font-mono text-xs whitespace-pre-wrap cursor-pointer ${isExpanded ? '' : 'max-h-32 overflow-hidden'}`}
+            onClick={() => toggleCellExpand(rowIdx, column)}
+            title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+          >
+            {jsonStr}
+          </pre>
+        );
+      }
+
+      // Other objects/arrays - prettified JSON
+      return (
+        <pre
+          className={`font-mono text-xs whitespace-pre-wrap bg-gray-50 rounded p-1.5 cursor-pointer ${isExpanded ? '' : 'max-h-20 overflow-hidden'}`}
+          onClick={() => toggleCellExpand(rowIdx, column)}
+          title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+        >
+          {jsonStr}
+        </pre>
+      );
     }
     return String(value);
   };
@@ -268,15 +315,19 @@ const QueryResults = ({
                   <td className="px-3 py-2 text-xs text-gray-400 font-mono">
                     {(currentPage - 1) * pageSize + idx + 1}
                   </td>
-                  {columns.map(column => (
-                    <td
-                      key={column}
-                      className="px-3 py-2 text-gray-700 max-w-xs truncate"
-                      title={String(row[column] ?? '')}
-                    >
-                      {formatCellValue(row[column])}
-                    </td>
-                  ))}
+                  {columns.map(column => {
+                    const val = row[column];
+                    const isObject = val !== null && typeof val === 'object';
+                    return (
+                      <td
+                        key={column}
+                        className={`px-3 py-2 text-gray-700 ${isObject ? '' : 'max-w-xs truncate'}`}
+                        title={isObject ? undefined : String(val ?? '')}
+                      >
+                        {formatCellValue(val, (currentPage - 1) * pageSize + idx, column)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

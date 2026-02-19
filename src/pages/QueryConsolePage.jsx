@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Database, ArrowLeft, Plus } from 'lucide-react';
 import QueryConsole from '../components/database/QueryConsole.jsx';
 import { loadQueryHistory } from '../store/slices/databaseConnectionsSlice.js';
@@ -8,7 +8,9 @@ import { loadQueryHistory } from '../store/slices/databaseConnectionsSlice.js';
 const QueryConsolePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { connectionId } = useParams();
+  const { connectionId: paramConnectionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const connectionId = paramConnectionId || searchParams.get('connectionId');
 
   // Load query history on mount
   useEffect(() => {
@@ -36,7 +38,7 @@ const QueryConsolePage = () => {
                 </div>
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900">Query Console</h1>
-                  <p className="text-xs text-gray-500">Execute SQL queries on your databases</p>
+                  <p className="text-xs text-gray-500">Execute queries on your databases</p>
                 </div>
               </div>
             </div>
@@ -83,7 +85,7 @@ const QueryConsolePage = () => {
               </div>
               <div>
                 <p className="font-medium text-gray-700">Quick Select</p>
-                <p className="text-gray-500">Click a table to generate SELECT query</p>
+                <p className="text-gray-500">Click a table or label to generate a query</p>
               </div>
             </div>
 
@@ -92,8 +94,8 @@ const QueryConsolePage = () => {
                 <span className="text-purple-600 font-mono text-xs">History</span>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Query History</p>
-                <p className="text-gray-500">Access your previous queries</p>
+                <p className="font-medium text-gray-700">AI Query Assistant</p>
+                <p className="text-gray-500">Get AI help writing queries</p>
               </div>
             </div>
           </div>

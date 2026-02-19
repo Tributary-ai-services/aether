@@ -85,14 +85,10 @@ const ConnectionCard = ({
     }
   };
 
-  // Handle navigation to query console (or Neo4j Explorer for neo4j)
+  // Handle navigation to query console (unified for all DB types)
   const handleQueryClick = () => {
     if (onCloseSettings) onCloseSettings();
-    if (isNeo4j) {
-      navigate(`/neo4j-explorer?connectionId=${connection.id}`);
-    } else {
-      navigate(`/query-console?connectionId=${connection.id}`);
-    }
+    navigate(`/query-console?connectionId=${connection.id}`);
   };
 
   // Handle test connection
