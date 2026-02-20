@@ -165,6 +165,44 @@ export const fetchWorkflowExecutions = createAsyncThunk(
 );
 
 /**
+ * Fetch live execution status (per-node from Argo)
+ */
+export const fetchExecutionStatus = createAsyncThunk(
+  'workflows/fetchExecutionStatus',
+  async ({ workflowId, executionId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.workflows.getExecutionStatus(workflowId, executionId);
+      if (response.success) {
+        return { workflowId, executionId, ...response.data };
+      } else {
+        return rejectWithValue(response.error || 'Failed to fetch execution status');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch execution status');
+    }
+  }
+);
+
+/**
+ * Fetch workflow versions
+ */
+export const fetchWorkflowVersions = createAsyncThunk(
+  'workflows/fetchWorkflowVersions',
+  async (workflowId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.workflows.getWorkflowVersions(workflowId);
+      if (response.success) {
+        return { workflowId, versions: response.data?.versions || [] };
+      } else {
+        return rejectWithValue(response.error || 'Failed to fetch versions');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch versions');
+    }
+  }
+);
+
+/**
  * Fetch workflow analytics
  */
 export const fetchWorkflowAnalytics = createAsyncThunk(
@@ -215,6 +253,22 @@ const initialState = {
     error: null,
   },
 
+  // Live execution status (per-node from Argo)
+  liveStatus: {
+    phase: null,
+    nodeStatuses: {}, // taskName → { phase, startedAt, finishedAt, message }
+    loading: false,
+    error: null,
+    executionId: null,
+  },
+
+  // Versions
+  versions: {
+    items: [],
+    loading: false,
+    error: null,
+  },
+
   // Analytics
   analytics: {
     data: null,
@@ -261,6 +315,16 @@ const workflowsSlice = createSlice({
 
     setSelectedWorkflow: (state, action) => {
       state.selectedWorkflow = action.payload;
+    },
+
+    clearLiveStatus: (state) => {
+      state.liveStatus = {
+        phase: null,
+        nodeStatuses: {},
+        loading: false,
+        error: null,
+        executionId: null,
+      };
     },
   },
 
@@ -467,6 +531,45 @@ const workflowsSlice = createSlice({
       });
 
     // =====================
+    // Fetch Execution Status
+    // =====================
+    builder
+      .addCase(fetchExecutionStatus.pending, (state) => {
+        state.liveStatus.loading = true;
+        state.liveStatus.error = null;
+      })
+      .addCase(fetchExecutionStatus.fulfilled, (state, action) => {
+        state.liveStatus = {
+          phase: action.payload.phase,
+          nodeStatuses: action.payload.nodeStatuses || {},
+          loading: false,
+          error: null,
+          executionId: action.payload.executionId,
+        };
+      })
+      .addCase(fetchExecutionStatus.rejected, (state, action) => {
+        state.liveStatus.loading = false;
+        state.liveStatus.error = action.payload || 'Failed to fetch execution status';
+      });
+
+    // =====================
+    // Fetch Workflow Versions
+    // =====================
+    builder
+      .addCase(fetchWorkflowVersions.pending, (state) => {
+        state.versions.loading = true;
+        state.versions.error = null;
+      })
+      .addCase(fetchWorkflowVersions.fulfilled, (state, action) => {
+        state.versions.loading = false;
+        state.versions.items = action.payload.versions;
+      })
+      .addCase(fetchWorkflowVersions.rejected, (state, action) => {
+        state.versions.loading = false;
+        state.versions.error = action.payload || 'Failed to fetch versions';
+      });
+
+    // =====================
     // Fetch Workflow Analytics
     // =====================
     builder
@@ -496,6 +599,7 @@ export const {
   clearExecutions,
   clearExecutionState,
   setSelectedWorkflow,
+  clearLiveStatus,
 } = workflowsSlice.actions;
 
 // =====================
@@ -567,6 +671,21 @@ export const selectWorkflowAnalytics = createSelector(
 export const selectWorkflowAnalyticsLoading = createSelector(
   [selectWorkflowsState],
   (state) => state.analytics.loading
+);
+
+export const selectLiveStatus = createSelector(
+  [selectWorkflowsState],
+  (state) => state.liveStatus
+);
+
+export const selectLiveNodeStatuses = createSelector(
+  [selectWorkflowsState],
+  (state) => state.liveStatus.nodeStatuses
+);
+
+export const selectWorkflowVersions = createSelector(
+  [selectWorkflowsState],
+  (state) => state.versions
 );
 
 // Derived selectors

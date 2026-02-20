@@ -22,6 +22,9 @@ import {
   Wand2,
   Layers,
   Send,
+  GitMerge,
+  Repeat,
+  ShieldAlert,
 } from 'lucide-react';
 import { selectNotebooks, fetchNotebooks } from '../../store/slices/notebooksSlice.js';
 import { getDefaultTriggerConfig } from './workflowSerializer.js';
@@ -123,6 +126,19 @@ const transformTypes = [
   { value: 'sprig', label: 'Sprig Function' },
 ];
 
+const mergeModes = [
+  { value: 'append', label: 'Append (Concatenate All)' },
+  { value: 'combine-by-position', label: 'Combine by Position (Zip)' },
+  { value: 'combine-by-field', label: 'Combine by Field (Join)' },
+  { value: 'choose-branch', label: 'Choose Branch' },
+];
+
+const errorHandlerActions = [
+  { value: 'log', label: 'Log Error' },
+  { value: 'notify', label: 'Send Notification' },
+  { value: 'retry', label: 'Retry Workflow' },
+];
+
 const retryPolicies = [
   { value: 'Always', label: 'Always' },
   { value: 'OnFailure', label: 'On Failure' },
@@ -143,6 +159,10 @@ const nodeTypeInfo = {
   transform: { label: 'Transform', icon: Wand2, color: 'emerald' },
   assembler: { label: 'Assembler', icon: Layers, color: 'teal' },
   sync: { label: 'Sync', icon: Send, color: 'violet' },
+  merge: { label: 'Merge', icon: GitMerge, color: 'rose' },
+  loop: { label: 'Loop', icon: Repeat, color: 'lime' },
+  subworkflow: { label: 'Sub-Workflow', icon: GitBranch, color: 'sky' },
+  errorHandler: { label: 'Error Handler', icon: ShieldAlert, color: 'red' },
 };
 
 const inputCls = 'w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
@@ -192,7 +212,7 @@ const NotebookChips = ({ ids = [], notebooks, onRemove, onOpenSelector, label, m
   );
 };
 
-const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
+const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose, liveNodeStatuses = {} }) => {
   const dispatch = useDispatch();
   const notebooks = useSelector(selectNotebooks);
 
@@ -202,6 +222,7 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
   const [selectorMulti, setSelectorMulti] = useState(true);
   const [apiCurlExpanded, setApiCurlExpanded] = useState(false);
   const [paramsModalOpen, setParamsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('config'); // 'config' | 'lastRun'
 
   if (!node) return null;
 
@@ -707,6 +728,20 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
       {(node.data.aiTaskType === 'llm' || !node.data.aiTaskType) && (
         <>
           <div>
+            <label className={labelCls}>Chain Type</label>
+            <select
+              value={node.data.chainType || 'completion'}
+              onChange={(e) => updateData('chainType', e.target.value)}
+              className={inputCls}
+            >
+              <option value="completion">Completion (Raw)</option>
+              <option value="summarization">Summarization</option>
+              <option value="qa">Q&A</option>
+              <option value="classification">Classification</option>
+              <option value="extraction">Extraction</option>
+            </select>
+          </div>
+          <div>
             <label className={labelCls}>Model</label>
             <select
               value={node.data.model || 'gpt-4o-mini'}
@@ -762,6 +797,51 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
               />
             </div>
           </div>
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="mcp-enabled-toggle"
+              checked={!!node.data.mcpEnabled}
+              onChange={(e) => updateData('mcpEnabled', e.target.checked)}
+              className="rounded border-gray-300 text-purple-500 focus:ring-purple-500"
+            />
+            <label htmlFor="mcp-enabled-toggle" className="text-xs text-gray-600">Enable MCP Tools</label>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="rag-enabled-toggle"
+              checked={!!node.data.ragEnabled}
+              onChange={(e) => updateData('ragEnabled', e.target.checked)}
+              className="rounded border-gray-300 text-purple-500 focus:ring-purple-500"
+            />
+            <label htmlFor="rag-enabled-toggle" className="text-xs text-gray-600">Enable RAG (DeepLake)</label>
+          </div>
+          {node.data.ragEnabled && (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <label className={labelCls}>Dataset</label>
+                <input
+                  type="text"
+                  value={node.data.ragDataset || 'default'}
+                  onChange={(e) => updateData('ragDataset', e.target.value)}
+                  placeholder="default"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Top K</label>
+                <input
+                  type="number"
+                  value={node.data.ragTopK ?? 5}
+                  onChange={(e) => updateData('ragTopK', parseInt(e.target.value) || 5)}
+                  min={1}
+                  max={20}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -1883,6 +1963,234 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
     </div>
   );
 
+  const renderMergeConfig = () => (
+    <div className="space-y-3">
+      <div>
+        <label className={labelCls}>Merge Mode *</label>
+        <select
+          value={node.data.config?.merge_mode || 'append'}
+          onChange={(e) => updateConfig('merge_mode', e.target.value)}
+          className={inputCls}
+        >
+          {mergeModes.map((m) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {node.data.config?.merge_mode === 'append' && 'Concatenates all inputs into a single array.'}
+          {node.data.config?.merge_mode === 'combine-by-position' && 'Zips inputs by array position.'}
+          {node.data.config?.merge_mode === 'combine-by-field' && 'Joins inputs by a shared field key.'}
+          {node.data.config?.merge_mode === 'choose-branch' && 'Picks the first non-empty branch.'}
+        </p>
+      </div>
+
+      {node.data.config?.merge_mode === 'combine-by-field' && (
+        <div>
+          <label className={labelCls}>Join Field</label>
+          <input
+            type="text"
+            value={node.data.config?.join_field || ''}
+            onChange={(e) => updateConfig('join_field', e.target.value)}
+            placeholder="e.g., id, document_id"
+            className={inputCls}
+          />
+        </div>
+      )}
+
+      {node.data.config?.merge_mode === 'choose-branch' && (
+        <div>
+          <label className={labelCls}>Preferred Branch Index</label>
+          <input
+            type="number"
+            value={node.data.config?.preferred_branch ?? 0}
+            onChange={(e) => updateConfig('preferred_branch', parseInt(e.target.value) || 0)}
+            min={0}
+            className={inputCls}
+          />
+          <p className="text-[10px] text-gray-400 mt-0.5">0-based index of the preferred input branch</p>
+        </div>
+      )}
+
+      <div>
+        <label className={labelCls}>Timeout (seconds)</label>
+        <input
+          type="number"
+          value={node.data.timeout || 300}
+          onChange={(e) => updateData('timeout', parseInt(e.target.value) || 300)}
+          min={1}
+          className={inputCls}
+        />
+      </div>
+    </div>
+  );
+
+  const renderLoopConfig = () => (
+    <div className="space-y-3">
+      <div>
+        <label className={labelCls}>Input Array Source</label>
+        <input
+          type="text"
+          value={node.data.config?.input_source || ''}
+          onChange={(e) => updateConfig('input_source', e.target.value)}
+          placeholder="{{tasks.upstream.outputs.result}}"
+          className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+        />
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          Argo expression referencing an upstream JSON array output.
+        </p>
+      </div>
+
+      <div>
+        <label className={labelCls}>Batch Size</label>
+        <input
+          type="number"
+          value={node.data.config?.batch_size || 1}
+          onChange={(e) => updateConfig('batch_size', Math.max(1, parseInt(e.target.value) || 1))}
+          min={1}
+          className={inputCls}
+        />
+        <p className="text-[10px] text-gray-400 mt-0.5">Items per batch (1 = process individually)</p>
+      </div>
+
+      <div>
+        <label className={labelCls}>Max Parallelism</label>
+        <input
+          type="number"
+          value={node.data.config?.max_parallelism || 0}
+          onChange={(e) => updateConfig('max_parallelism', parseInt(e.target.value) || 0)}
+          min={0}
+          className={inputCls}
+        />
+        <p className="text-[10px] text-gray-400 mt-0.5">0 = unlimited parallel iterations</p>
+      </div>
+
+      <div>
+        <label className={labelCls}>Timeout (seconds)</label>
+        <input
+          type="number"
+          value={node.data.timeout || 300}
+          onChange={(e) => updateData('timeout', parseInt(e.target.value) || 300)}
+          min={1}
+          className={inputCls}
+        />
+      </div>
+    </div>
+  );
+
+  const renderSubWorkflowConfig = () => (
+    <div className="space-y-3">
+      <div>
+        <label className={labelCls}>Workflow Reference *</label>
+        <input
+          type="text"
+          value={node.data.config?.workflow_ref || ''}
+          onChange={(e) => updateConfig('workflow_ref', e.target.value)}
+          placeholder="Workflow ID or WorkflowTemplate name"
+          className={inputCls}
+        />
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          The Argo WorkflowTemplate to invoke as a sub-workflow.
+        </p>
+      </div>
+
+      <div>
+        <label className={labelCls}>Parameters (JSON)</label>
+        <textarea
+          value={node.data.config?.parameters ? JSON.stringify(node.data.config.parameters, null, 2) : '{}'}
+          onChange={(e) => {
+            try {
+              updateConfig('parameters', JSON.parse(e.target.value));
+            } catch { /* ignore parse errors while typing */ }
+          }}
+          placeholder='{"key": "value"}'
+          rows={4}
+          className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-y"
+        />
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          Parameters passed to the sub-workflow. Use Argo template refs.
+        </p>
+      </div>
+
+      <div>
+        <label className={labelCls}>Timeout (seconds)</label>
+        <input
+          type="number"
+          value={node.data.timeout || 600}
+          onChange={(e) => updateData('timeout', parseInt(e.target.value) || 600)}
+          min={1}
+          className={inputCls}
+        />
+      </div>
+    </div>
+  );
+
+  const renderErrorHandlerConfig = () => (
+    <div className="space-y-3">
+      <div>
+        <label className={labelCls}>Error Action *</label>
+        <select
+          value={node.data.config?.error_action || 'log'}
+          onChange={(e) => updateConfig('error_action', e.target.value)}
+          className={inputCls}
+        >
+          {errorHandlerActions.map((a) => (
+            <option key={a.value} value={a.value}>{a.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {node.data.config?.error_action === 'notify' && (
+        <div>
+          <label className={labelCls}>Notification URL</label>
+          <input
+            type="text"
+            value={node.data.config?.notify_url || ''}
+            onChange={(e) => updateConfig('notify_url', e.target.value)}
+            placeholder="https://hooks.slack.com/..."
+            className={inputCls}
+          />
+        </div>
+      )}
+
+      {node.data.config?.error_action === 'retry' && (
+        <>
+          <div>
+            <label className={labelCls}>Max Retries</label>
+            <input
+              type="number"
+              value={node.data.config?.max_retries || 3}
+              onChange={(e) => updateConfig('max_retries', Math.min(10, Math.max(1, parseInt(e.target.value) || 3)))}
+              min={1}
+              max={10}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Retry Delay (seconds)</label>
+            <input
+              type="number"
+              value={node.data.config?.retry_delay || 60}
+              onChange={(e) => updateConfig('retry_delay', parseInt(e.target.value) || 60)}
+              min={1}
+              className={inputCls}
+            />
+          </div>
+        </>
+      )}
+
+      <div>
+        <label className={labelCls}>Error Message Template</label>
+        <textarea
+          value={node.data.config?.error_message || ''}
+          onChange={(e) => updateConfig('error_message', e.target.value)}
+          placeholder="Workflow {{workflow.name}} failed: {{error}}"
+          rows={2}
+          className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+        />
+      </div>
+    </div>
+  );
+
   const renderConfig = () => {
     switch (node.type) {
       case 'eventSource': return renderEventSourceConfig();
@@ -1897,6 +2205,10 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
       case 'transform': return renderTransformConfig();
       case 'assembler': return renderAssemblerConfig();
       case 'sync': return renderSyncConfig();
+      case 'merge': return renderMergeConfig();
+      case 'loop': return renderLoopConfig();
+      case 'subworkflow': return renderSubWorkflowConfig();
+      case 'errorHandler': return renderErrorHandlerConfig();
       default: return <p className="text-sm text-gray-500">No configuration available.</p>;
     }
   };
@@ -1926,8 +2238,95 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
         </button>
       </div>
 
+      {/* Tabs */}
+      {node.type !== 'eventSource' && (
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`flex-1 text-xs font-medium py-2 border-b-2 transition-colors ${
+              activeTab === 'config'
+                ? 'border-blue-500 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Config
+          </button>
+          <button
+            onClick={() => setActiveTab('lastRun')}
+            className={`flex-1 text-xs font-medium py-2 border-b-2 transition-colors ${
+              activeTab === 'lastRun'
+                ? 'border-blue-500 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Last Run
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Last Run Tab */}
+        {activeTab === 'lastRun' && node.type !== 'eventSource' && (() => {
+          const taskName = (node.data.label || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 60) || 'step';
+          const status = liveNodeStatuses[taskName];
+
+          if (!status) {
+            return (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-400">No execution data available.</p>
+                <p className="text-xs text-gray-400 mt-1">Run the workflow to see step results here.</p>
+              </div>
+            );
+          }
+
+          const phaseColors = {
+            Succeeded: 'green',
+            Running: 'blue',
+            Failed: 'red',
+            Error: 'red',
+            Pending: 'gray',
+            Skipped: 'gray',
+          };
+          const color = phaseColors[status.phase] || 'gray';
+
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full bg-${color}-500`} />
+                <span className={`text-sm font-medium text-${color}-700`}>{status.phase}</span>
+              </div>
+
+              {status.startedAt && (
+                <div>
+                  <label className={labelCls}>Started</label>
+                  <p className="text-xs text-gray-600">{new Date(status.startedAt).toLocaleString()}</p>
+                </div>
+              )}
+
+              {status.finishedAt && (
+                <div>
+                  <label className={labelCls}>Finished</label>
+                  <p className="text-xs text-gray-600">{new Date(status.finishedAt).toLocaleString()}</p>
+                </div>
+              )}
+
+              {status.message && (
+                <div>
+                  <label className={labelCls}>Message</label>
+                  <p className="text-xs text-gray-600 bg-gray-50 rounded p-2 font-mono break-all">{status.message}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Config Tab (or always for eventSource) */}
+        {(activeTab === 'config' || node.type === 'eventSource') && <>
         {/* Node Label */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Label</label>
@@ -1942,6 +2341,41 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose }) => {
         <div className="border-t border-gray-100 pt-3">
           {renderConfig()}
         </div>
+
+        {/* Data Pinning — available for all non-trigger nodes */}
+        {node.type !== 'eventSource' && (
+          <div className="border-t border-gray-100 pt-3">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="pin-data-toggle"
+                checked={!!node.data.pinnedData}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    updateData('pinnedData', node.data.pinnedData || '{"result": "pinned test data"}');
+                  } else {
+                    updateData('pinnedData', null);
+                  }
+                }}
+                className="rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+              />
+              <label htmlFor="pin-data-toggle" className="text-xs font-medium text-gray-600">
+                Pin Output Data
+              </label>
+              <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Test</span>
+            </div>
+            {node.data.pinnedData && (
+              <textarea
+                value={typeof node.data.pinnedData === 'string' ? node.data.pinnedData : JSON.stringify(node.data.pinnedData, null, 2)}
+                onChange={(e) => updateData('pinnedData', e.target.value)}
+                placeholder='{"result": "test value"}'
+                rows={4}
+                className="w-full px-2.5 py-1.5 border border-amber-300 bg-amber-50 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-y"
+              />
+            )}
+          </div>
+        )}
+        </>}
       </div>
 
       {/* Footer */}

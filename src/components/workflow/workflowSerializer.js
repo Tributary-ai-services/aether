@@ -177,6 +177,9 @@ export const getDefaultNodeData = (type) => {
         agentName: '',
         instructions: '',
         mcpEnabled: false,
+        ragEnabled: false,
+        ragDataset: 'default',
+        ragTopK: 5,
         image: '',
         inputs: { parameters: [] },
         outputs: { parameters: [] },
@@ -235,6 +238,35 @@ export const getDefaultNodeData = (type) => {
         when: '',
       };
 
+    // --- n8n-inspired flow control types ---
+    case 'merge':
+      return {
+        label: 'Merge',
+        mergeMode: 'append', // append, combine-by-position, combine-by-field, choose-branch
+        combineField: '',
+        chooseBranch: 0,
+      };
+    case 'loop':
+      return {
+        label: 'Loop',
+        batchSize: 0, // 0 = no batching
+        inputSource: '',
+      };
+    case 'subworkflow':
+      return {
+        label: 'Sub-Workflow',
+        workflowRef: '',
+        workflowName: '',
+        parameterMapping: {},
+      };
+    case 'errorHandler':
+      return {
+        label: 'Error Handler',
+        actionType: 'log', // log, notify, retry
+        notifyUrl: '',
+        errorWorkflowId: '',
+      };
+
     // --- Legacy types (backward compat) ---
     case 'action':
       return {
@@ -275,6 +307,11 @@ const nodeToTemplateType = (node) => {
     case 'condition': return 'condition';
     case 'assembler': return 'script';
     case 'sync':      return 'http';
+    // n8n-inspired types
+    case 'merge':       return 'script';
+    case 'loop':        return 'script';
+    case 'subworkflow': return 'container';
+    case 'errorHandler': return 'script';
     // Legacy types
     case 'action':    return 'container';
     case 'agent':     return 'container';
@@ -296,6 +333,10 @@ const nodeToStepType = (node) => {
     case 'condition': return 'condition';
     case 'assembler': return 'assembler';
     case 'sync':      return 'sync';
+    case 'merge':       return 'merge';
+    case 'loop':        return 'loop';
+    case 'subworkflow': return 'subworkflow';
+    case 'errorHandler': return 'errorHandler';
     // Legacy
     case 'action':    return node.data.actionType || 'custom';
     case 'agent':     return 'ai_analysis';
@@ -335,6 +376,7 @@ const buildStepConfiguration = (node) => {
     case 'aiTask':
       return {
         aiTaskType: d.aiTaskType || 'llm',
+        chainType: d.chainType || 'completion',
         model: d.model || 'gpt-4o-mini',
         prompt: d.prompt || '',
         systemPrompt: d.systemPrompt || '',
@@ -344,6 +386,9 @@ const buildStepConfiguration = (node) => {
         agentName: d.agentName || '',
         instructions: d.instructions || '',
         mcpEnabled: d.mcpEnabled || false,
+        ragEnabled: d.ragEnabled || false,
+        ragDataset: d.ragDataset || 'default',
+        ragTopK: d.ragTopK || 5,
         image: d.image || AI_TASK_IMAGES[d.aiTaskType] || AI_TASK_IMAGES.llm,
       };
     case 'suspend':
@@ -386,6 +431,29 @@ const buildStepConfiguration = (node) => {
         })),
         on_exit: d.onExit || false,
       };
+    case 'merge':
+      return {
+        merge_mode: d.mergeMode || 'append',
+        combine_field: d.combineField || '',
+        choose_branch: d.chooseBranch || 0,
+      };
+    case 'loop':
+      return {
+        batch_size: d.batchSize || 0,
+        input_source: d.inputSource || '',
+      };
+    case 'subworkflow':
+      return {
+        workflow_ref: d.workflowRef || '',
+        workflow_name: d.workflowName || '',
+        parameter_mapping: d.parameterMapping || {},
+      };
+    case 'errorHandler':
+      return {
+        action: d.actionType || 'log',
+        notify_url: d.notifyUrl || '',
+        error_workflow_id: d.errorWorkflowId || '',
+      };
     // Legacy
     case 'agent':
       return {
@@ -422,11 +490,22 @@ export const nodesToBackendFormat = (nodes, edges, metadata = {}) => {
   const dependencyMap = {};
   stepNodes.forEach(n => { dependencyMap[n.id] = []; });
 
+  // Track condition-handle edges for `when` generation
+  const conditionEdges = {}; // targetNodeId → { sourceNodeId, handle: 'true'|'false' }
+
   edges.forEach((edge) => {
     const sourceNode = nodes.find(n => n.id === edge.source);
     const targetNode = stepNodes.find(n => n.id === edge.target);
     if (targetNode && sourceNode && sourceNode.type !== 'eventSource') {
       dependencyMap[targetNode.id].push(sourceNode.id);
+
+      // Track condition node handle info for downstream `when` generation
+      if (sourceNode.type === 'condition' && (edge.sourceHandle === 'true' || edge.sourceHandle === 'false')) {
+        conditionEdges[targetNode.id] = {
+          sourceNodeId: sourceNode.id,
+          handle: edge.sourceHandle,
+        };
+      }
     }
   });
 
@@ -484,9 +563,27 @@ export const nodesToBackendFormat = (nodes, edges, metadata = {}) => {
       on_failure: 'abort',
     };
 
+    // Auto-set `when` for steps downstream of a condition's true/false handle
+    const condEdge = conditionEdges[node.id];
+    if (condEdge) {
+      const condTaskName = nodeIdToName[condEdge.sourceNodeId];
+      if (condEdge.handle === 'true') {
+        step.when = `{{tasks.${condTaskName}.outputs.result}} == true`;
+      } else {
+        step.when = `{{tasks.${condTaskName}.outputs.result}} == false`;
+      }
+    }
+
     // Retry strategy (new format)
     if (node.data.retryStrategy && node.data.retryStrategy.limit > 0) {
       step.retry_strategy = node.data.retryStrategy;
+    }
+
+    // Data pinning: include pinned data in configuration so backend can use it
+    if (node.data.pinnedData) {
+      step.configuration.pinned_data = typeof node.data.pinnedData === 'string'
+        ? node.data.pinnedData
+        : JSON.stringify(node.data.pinnedData);
     }
 
     // Inputs / outputs
@@ -683,6 +780,10 @@ const stepToNodeType = (step) => {
     case 'condition':  return 'condition';
     case 'assembler':  return 'assembler';
     case 'sync':       return 'sync';
+    case 'merge':      return 'merge';
+    case 'loop':       return 'loop';
+    case 'subworkflow': return 'subworkflow';
+    case 'errorHandler': return 'errorHandler';
   }
 
   // Legacy heuristics
@@ -742,6 +843,7 @@ const stepToNodeData = (step, nodeType) => {
       return {
         ...baseData,
         aiTaskType: cfg.aiTaskType || 'llm',
+        chainType: cfg.chainType || 'completion',
         model: cfg.model || 'gpt-4o-mini',
         prompt: cfg.prompt || '',
         systemPrompt: cfg.systemPrompt || '',
@@ -751,6 +853,9 @@ const stepToNodeData = (step, nodeType) => {
         agentName: cfg.agentName || '',
         instructions: cfg.instructions || '',
         mcpEnabled: cfg.mcpEnabled || false,
+        ragEnabled: cfg.ragEnabled || false,
+        ragDataset: cfg.ragDataset || 'default',
+        ragTopK: cfg.ragTopK || 5,
         image: cfg.image || '',
         inputs: step.inputs || { parameters: [] },
         outputs: step.outputs || { parameters: [] },
@@ -809,6 +914,34 @@ const stepToNodeData = (step, nodeType) => {
           messageTemplate: t.message_template || '',
         })),
         onExit: cfg.on_exit || false,
+      };
+    // n8n-inspired flow control types
+    case 'merge':
+      return {
+        ...baseData,
+        mergeMode: cfg.merge_mode || 'append',
+        combineField: cfg.combine_field || '',
+        chooseBranch: cfg.choose_branch || 0,
+      };
+    case 'loop':
+      return {
+        ...baseData,
+        batchSize: cfg.batch_size || 0,
+        inputSource: cfg.input_source || '',
+      };
+    case 'subworkflow':
+      return {
+        ...baseData,
+        workflowRef: cfg.workflow_ref || '',
+        workflowName: cfg.workflow_name || '',
+        parameterMapping: cfg.parameter_mapping || {},
+      };
+    case 'errorHandler':
+      return {
+        ...baseData,
+        actionType: cfg.action || 'log',
+        notifyUrl: cfg.notify_url || '',
+        errorWorkflowId: cfg.error_workflow_id || '',
       };
     // Legacy types
     case 'agent':
@@ -870,44 +1003,145 @@ export const initialDataToNodes = (initialData) => {
     });
   });
 
-  // Create step nodes from template steps
+  // Create step nodes from template steps, respecting DAG dependencies
   const steps = initialData.steps || [];
   const sortedSteps = [...steps].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  sortedSteps.forEach((step, index) => {
-    const nodeId = generateNodeId();
-    const nodeType = stepToNodeType(step);
+  // Check if any step has a `dependencies` array — if so, use DAG layout
+  const hasDagDeps = sortedSteps.some(s => Array.isArray(s.dependencies));
 
-    nodes.push({
-      id: nodeId,
-      type: nodeType,
-      position: { x: xStart + (index + 1) * xGap, y: yStart },
-      data: stepToNodeData(step, nodeType),
+  // Map step name (sanitized) → nodeId for dependency wiring
+  const stepNameToNodeId = {};
+  const stepNodeIds = [];
+
+  if (hasDagDeps) {
+    // --- DAG-aware layout ---
+    // Compute depth (column) for each step based on dependencies
+    const toSanitized = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const stepDepths = {};
+    const computeDepth = (step) => {
+      const key = toSanitized(step.name);
+      if (stepDepths[key] !== undefined) return stepDepths[key];
+      const deps = step.dependencies || [];
+      if (deps.length === 0) {
+        stepDepths[key] = 0;
+        return 0;
+      }
+      let maxParent = 0;
+      deps.forEach((depName) => {
+        const parentStep = sortedSteps.find(s => toSanitized(s.name) === depName);
+        if (parentStep) maxParent = Math.max(maxParent, computeDepth(parentStep) + 1);
+      });
+      stepDepths[key] = maxParent;
+      return maxParent;
+    };
+    sortedSteps.forEach(s => computeDepth(s));
+
+    // Group steps by depth for vertical stacking
+    const depthGroups = {};
+    sortedSteps.forEach((step) => {
+      const d = stepDepths[toSanitized(step.name)] || 0;
+      if (!depthGroups[d]) depthGroups[d] = [];
+      depthGroups[d].push(step);
     });
 
-    if (index === 0) {
-      nodes.filter(n => n.type === 'eventSource').forEach((triggerNode) => {
-        edgesOut.push({
-          id: `e-${triggerNode.id}-${nodeId}`,
-          source: triggerNode.id,
-          target: nodeId,
-          sourceHandle: 'output',
-          targetHandle: 'input',
-        });
+    // Create nodes with DAG-aware positioning
+    sortedSteps.forEach((step) => {
+      const nodeId = generateNodeId();
+      const nodeType = stepToNodeType(step);
+      const key = toSanitized(step.name);
+      const depth = stepDepths[key] || 0;
+      const group = depthGroups[depth];
+      const indexInGroup = group.indexOf(step);
+      const groupSize = group.length;
+
+      // Spread parallel nodes vertically, center them
+      const yOffset = groupSize > 1
+        ? (indexInGroup - (groupSize - 1) / 2) * yGap
+        : 0;
+
+      nodes.push({
+        id: nodeId,
+        type: nodeType,
+        position: { x: xStart + (depth + 1) * xGap, y: yStart + yOffset },
+        data: stepToNodeData(step, nodeType),
       });
-    } else {
-      const prevNodeId = nodes[nodes.length - 2]?.id;
-      if (prevNodeId) {
-        edgesOut.push({
-          id: `e-${prevNodeId}-${nodeId}`,
-          source: prevNodeId,
-          target: nodeId,
-          sourceHandle: 'output',
-          targetHandle: 'input',
+
+      stepNameToNodeId[key] = nodeId;
+      stepNodeIds.push(nodeId);
+    });
+
+    // Create edges from dependencies
+    sortedSteps.forEach((step) => {
+      const key = toSanitized(step.name);
+      const nodeId = stepNameToNodeId[key];
+      const deps = step.dependencies || [];
+
+      if (deps.length === 0) {
+        // No dependencies → connect from trigger(s)
+        nodes.filter(n => n.type === 'eventSource').forEach((triggerNode) => {
+          edgesOut.push({
+            id: `e-${triggerNode.id}-${nodeId}`,
+            source: triggerNode.id,
+            target: nodeId,
+            sourceHandle: 'output',
+            targetHandle: 'input',
+          });
+        });
+      } else {
+        deps.forEach((depName) => {
+          const sourceId = stepNameToNodeId[depName];
+          if (sourceId) {
+            edgesOut.push({
+              id: `e-${sourceId}-${nodeId}`,
+              source: sourceId,
+              target: nodeId,
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            });
+          }
         });
       }
-    }
-  });
+    });
+  } else {
+    // --- Legacy sequential layout (no dependencies arrays) ---
+    sortedSteps.forEach((step, index) => {
+      const nodeId = generateNodeId();
+      const nodeType = stepToNodeType(step);
+
+      nodes.push({
+        id: nodeId,
+        type: nodeType,
+        position: { x: xStart + (index + 1) * xGap, y: yStart },
+        data: stepToNodeData(step, nodeType),
+      });
+
+      stepNodeIds.push(nodeId);
+
+      if (index === 0) {
+        nodes.filter(n => n.type === 'eventSource').forEach((triggerNode) => {
+          edgesOut.push({
+            id: `e-${triggerNode.id}-${nodeId}`,
+            source: triggerNode.id,
+            target: nodeId,
+            sourceHandle: 'output',
+            targetHandle: 'input',
+          });
+        });
+      } else {
+        const prevNodeId = nodes[nodes.length - 2]?.id;
+        if (prevNodeId) {
+          edgesOut.push({
+            id: `e-${prevNodeId}-${nodeId}`,
+            source: prevNodeId,
+            target: nodeId,
+            sourceHandle: 'output',
+            targetHandle: 'input',
+          });
+        }
+      }
+    });
+  }
 
   if (nodes.length === 0) {
     nodes.push({

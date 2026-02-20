@@ -9,7 +9,7 @@ export const DATA_SOURCE_TYPES = {
   TEXT_INPUT: 'text_input',
   WEB_SCRAPING: 'web_scraping',
   DATABASE: 'database',
-  GOOGLE_DRIVE: 'google_drive',
+  CLOUD_DRIVES: 'cloud_drives',
   API_INTEGRATION: 'api_integration',
   CLOUD_STORAGE: 'cloud_storage',
 };
@@ -258,9 +258,11 @@ export const testCredential = createAsyncThunk(
 // Initiate OAuth flow
 export const initiateOAuthFlow = createAsyncThunk(
   'dataSources/initiateOAuthFlow',
-  async (provider, { rejectWithValue }) => {
+  async ({ provider, loginHint } = {}, { rejectWithValue }) => {
+    // Support both string (provider only) and object ({ provider, loginHint }) args
+    const providerName = typeof provider === 'string' ? provider : provider;
     try {
-      const response = await aetherApi.oauth.initiateFlow(provider);
+      const response = await aetherApi.oauth.initiateFlow(providerName, loginHint);
       if (response.success) {
         return { provider, ...response.data };
       } else {
@@ -285,6 +287,82 @@ export const handleOAuthCallback = createAsyncThunk(
       }
     } catch (error) {
       return rejectWithValue(error.message || 'OAuth callback failed');
+    }
+  }
+);
+
+// ============================================================================
+// Cloud Drive Thunks
+// ============================================================================
+
+// List files in a cloud drive
+export const listCloudDriveFiles = createAsyncThunk(
+  'dataSources/listCloudDriveFiles',
+  async ({ provider, credentialId, path = '', siteId, libraryId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.cloudDrives.listFiles(provider, credentialId, path, { siteId, libraryId });
+      if (response.success) {
+        return response.data;
+      } else {
+        return rejectWithValue(response.error || 'Failed to list files');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to list files');
+    }
+  }
+);
+
+// Search files in a cloud drive
+export const searchCloudDriveFiles = createAsyncThunk(
+  'dataSources/searchCloudDriveFiles',
+  async ({ provider, credentialId, query }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.cloudDrives.searchFiles(provider, credentialId, query);
+      if (response.success) {
+        return response.data;
+      } else {
+        return rejectWithValue(response.error || 'Failed to search files');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to search files');
+    }
+  }
+);
+
+// Import files from a cloud drive into a notebook
+export const importCloudDriveFiles = createAsyncThunk(
+  'dataSources/importCloudDriveFiles',
+  async ({ provider, credentialId, fileIds, notebookId, siteId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.cloudDrives.importFiles(provider, credentialId, {
+        fileIds,
+        notebookId,
+        siteId,
+      });
+      if (response.success) {
+        return response.data;
+      } else {
+        return rejectWithValue(response.error || 'Failed to import files');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to import files');
+    }
+  }
+);
+
+// List SharePoint sites
+export const listCloudDriveSites = createAsyncThunk(
+  'dataSources/listCloudDriveSites',
+  async ({ provider, credentialId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.cloudDrives.listSites(credentialId);
+      if (response.success) {
+        return response.data;
+      } else {
+        return rejectWithValue(response.error || 'Failed to list sites');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to list sites');
     }
   }
 );
@@ -340,6 +418,24 @@ const initialState = {
     url: null,
     result: null,
     error: null,
+  },
+
+  // Cloud drive state
+  cloudDrive: {
+    provider: null,
+    connected: false,
+    credentialId: null,
+    browsing: {
+      path: '',
+      items: [],
+      breadcrumbs: [{ name: 'Root', path: '' }],
+    },
+    selectedFiles: [],
+    importing: {
+      status: 'idle',      // 'idle' | 'importing' | 'complete' | 'failed'
+      progress: 0,
+      error: null,
+    },
   },
 
   // Metadata
@@ -434,6 +530,23 @@ const dataSourcesSlice = createSlice({
     clearSyncJob: (state, action) => {
       const dataSourceId = action.payload;
       delete state.syncJobs[dataSourceId];
+    },
+
+    // Reset cloud drive state
+    resetCloudDrive: (state) => {
+      state.cloudDrive = {
+        provider: null,
+        connected: false,
+        credentialId: null,
+        browsing: { path: '', items: [], breadcrumbs: [{ name: 'Root', path: '' }] },
+        selectedFiles: [],
+        importing: { status: 'idle', progress: 0, error: null },
+      };
+    },
+
+    // Set cloud drive provider
+    setCloudDriveProvider: (state, action) => {
+      state.cloudDrive.provider = action.payload;
     },
   },
 
@@ -629,7 +742,9 @@ const dataSourcesSlice = createSlice({
       })
       .addCase(fetchCredentials.fulfilled, (state, action) => {
         state.credentialsLoading = false;
-        state.credentials = action.payload || [];
+        // Backend returns { credentials: [...] }, unwrap it
+        const payload = action.payload;
+        state.credentials = payload?.credentials || payload || [];
       })
       .addCase(fetchCredentials.rejected, (state, action) => {
         state.credentialsLoading = false;
@@ -676,7 +791,7 @@ const dataSourcesSlice = createSlice({
       // ======== OAuth ========
       .addCase(initiateOAuthFlow.pending, (state, action) => {
         state.oauthPending = true;
-        state.oauthProvider = action.meta.arg;
+        state.oauthProvider = action.meta.arg?.provider || action.meta.arg;
         state.oauthError = null;
       })
       .addCase(initiateOAuthFlow.fulfilled, (state, action) => {
@@ -705,6 +820,21 @@ const dataSourcesSlice = createSlice({
       .addCase(handleOAuthCallback.rejected, (state, action) => {
         state.oauthPending = false;
         state.oauthError = action.payload || 'OAuth callback failed';
+      })
+
+      // ======== Cloud Drive: Import Files ========
+      .addCase(importCloudDriveFiles.pending, (state) => {
+        state.cloudDrive.importing = { status: 'importing', progress: 0, error: null };
+      })
+      .addCase(importCloudDriveFiles.fulfilled, (state) => {
+        state.cloudDrive.importing = { status: 'complete', progress: 100, error: null };
+      })
+      .addCase(importCloudDriveFiles.rejected, (state, action) => {
+        state.cloudDrive.importing = {
+          status: 'failed',
+          progress: 0,
+          error: action.payload || 'Import failed',
+        };
       });
   },
 });
@@ -727,6 +857,8 @@ export const {
   resetScraping,
   updateSyncJobStatus,
   clearSyncJob,
+  resetCloudDrive,
+  setCloudDriveProvider,
 } = dataSourcesSlice.actions;
 
 // ============================================================================
@@ -782,6 +914,10 @@ export const selectUrlProbeResult = (state) => state.dataSources.urlProbe.result
 export const selectScraping = (state) => state.dataSources.scraping;
 export const selectScrapingStatus = (state) => state.dataSources.scraping.status;
 export const selectScrapingResult = (state) => state.dataSources.scraping.result;
+
+// Cloud drive selectors
+export const selectCloudDrive = (state) => state.dataSources.cloudDrive;
+export const selectCloudDriveImporting = (state) => state.dataSources.cloudDrive.importing;
 
 // Metadata selectors
 export const selectDataSourcesMetadata = (state) => state.dataSources.metadata;

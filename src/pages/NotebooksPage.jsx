@@ -449,6 +449,9 @@ const NotebooksPage = () => {
   const [dataSourceNotebook, setDataSourceNotebook] = useState(null);
   const [pendingRefreshAfterUpload, setPendingRefreshAfterUpload] = useState(false);
 
+  // Cloud drive files for DocumentUploadModal
+  const [cloudDriveFilesForUpload, setCloudDriveFilesForUpload] = useState(null);
+
   // Producer execution modal state
   const [producerModalOpen, setProducerModalOpen] = useState(false);
   const [selectedProducer, setSelectedProducer] = useState(null);
@@ -1011,6 +1014,22 @@ const NotebooksPage = () => {
     // The API returns { success: true, data: {...document...} }
     const document = responseData?.data || responseData;
     console.log('Extracted document:', document);
+
+    // Check if this is cloud drive files ready for upload (from CloudDrivesSource)
+    if (document?.cloudDriveFiles && document.cloudDriveFiles.length > 0) {
+      console.log('Cloud drive files selected — opening upload modal', document.cloudDriveFiles);
+
+      // Close the data source modal
+      const targetNotebook = dataSourceNotebook || selectedNotebook;
+      setDataSourceModalOpen(false);
+      setDataSourceNotebook(null);
+
+      // Open DocumentUploadModal with cloud drive files
+      setUploadNotebook(targetNotebook);
+      setCloudDriveFilesForUpload(document.cloudDriveFiles);
+      dispatch(openModal('uploadDocument'));
+      return;
+    }
 
     // Refresh document counts
     await fetchNotebookDocumentCounts();
@@ -1915,7 +1934,8 @@ const NotebooksPage = () => {
           dispatch(closeModal('uploadDocument'));
           setUploadNotebook(null);
           setUploadFiles(null);
-          
+          setCloudDriveFilesForUpload(null);
+
           // Refresh document counts when upload modal closes
           if (notebooks.length > 0) {
             fetchNotebookDocumentCounts();
@@ -1924,12 +1944,13 @@ const NotebooksPage = () => {
               dispatch(fetchNotebookDocuments({ notebookId: selectedNotebook.id, forceRefresh: true }));
             }
           }
-          
+
           // Clear the pending refresh flag
           setPendingRefreshAfterUpload(false);
         }}
         notebook={uploadNotebook}
         preSelectedFiles={uploadFiles}
+        cloudDriveFiles={cloudDriveFilesForUpload}
       />
 
       <NotebookSettingsModal

@@ -26,7 +26,7 @@ import {
   Mail
 } from 'lucide-react';
 
-const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = null }) => {
+const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = null, cloudDriveFiles = null }) => {
   const dispatch = useAppDispatch();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -37,6 +37,8 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
   const fileInputRef = useRef(null);
   const pollIntervalsRef = useRef({});
   const pollStartTimesRef = useRef({});
+
+  const isCloudDriveMode = cloudDriveFiles && cloudDriveFiles.length > 0;
 
   const POLL_INTERVAL_MS = 3000;
   const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // 10 minutes
@@ -150,6 +152,28 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
       setUploadProgress({});
     }
   }, [isOpen, preSelectedFiles]);
+
+  // Handle cloud drive files when modal opens
+  React.useEffect(() => {
+    if (isOpen && cloudDriveFiles && cloudDriveFiles.length > 0) {
+      const entries = cloudDriveFiles.map(cf => ({
+        id: cf.id || (Date.now() + Math.random()),
+        name: cf.name,
+        size: cf.size || 0,
+        type: cf.mimeType || 'application/octet-stream',
+        status: 'pending',
+        errors: [],
+        progress: 0,
+        cloudDrive: {
+          provider: cf.provider,
+          credentialId: cf.credentialId,
+          fileId: cf.fileId,
+          siteId: cf.siteId,
+        },
+      }));
+      setFiles(entries);
+    }
+  }, [isOpen, cloudDriveFiles]);
 
   const supportedFormats = {
     documents: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.html', '.htm', '.xhtml'],
@@ -308,10 +332,104 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     });
   };
 
+  // Cloud drive upload: calls import API, then polls for processing status
+  const handleCloudDriveUpload = async () => {
+    const validFiles = files.filter(f => f.status === 'pending' && f.cloudDrive);
+
+    if (validFiles.length === 0) return;
+
+    setUploading(true);
+
+    // Update all to uploading status
+    setFiles(prev => prev.map(f =>
+      f.status === 'pending' ? { ...f, status: 'uploading', statusText: 'Downloading from cloud drive...' } : f
+    ));
+
+    try {
+      // Group files by provider+credential for batch import
+      const { provider, credentialId, siteId } = validFiles[0].cloudDrive;
+      const fileIds = validFiles.map(f => f.cloudDrive.fileId);
+
+      // Update progress
+      validFiles.forEach(f => {
+        setUploadProgress(prev => ({ ...prev, [f.id]: 10 }));
+      });
+
+      console.log('[CloudDrive] Calling importFiles API:', { provider, credentialId, fileIds, notebookId: notebook.id, siteId });
+
+      const response = await aetherApi.cloudDrives.importFiles(provider, credentialId, {
+        fileIds,
+        notebookId: notebook.id,
+        siteId,
+      });
+
+      console.log('[CloudDrive] Import API response:', JSON.stringify(response));
+
+      const result = response.data || response;
+      const documentIds = result.document_ids || [];
+      const backendErrors = result.errors || [];
+
+      console.log('[CloudDrive] Parsed result:', { imported: result.imported, failed: result.failed, documentIds, backendErrors });
+
+      // Map document IDs back to files and start polling
+      const uploadResults = [];
+      validFiles.forEach((fileData, idx) => {
+        const documentId = documentIds[idx];
+        const backendError = backendErrors[idx];
+        if (documentId) {
+          setUploadProgress(prev => ({ ...prev, [fileData.id]: 30 }));
+          setFiles(prev => prev.map(f =>
+            f.id === fileData.id
+              ? { ...f, status: 'uploading', statusText: 'Processing document...', documentId }
+              : f
+          ));
+          startStatusPolling(fileData.id, documentId);
+          uploadResults.push({
+            status: 'fulfilled',
+            value: { id: documentId, name: fileData.name, original_name: fileData.name, status: 'processing' }
+          });
+        } else {
+          const errorMsg = backendError || 'No document ID returned from server';
+          setFiles(prev => prev.map(f =>
+            f.id === fileData.id
+              ? { ...f, status: 'error', errors: [errorMsg], statusText: 'Import failed' }
+              : f
+          ));
+          uploadResults.push({
+            status: 'rejected',
+            reason: new Error(errorMsg)
+          });
+        }
+      });
+
+      // Show summary modal after a delay
+      setTimeout(() => {
+        setUploadResults(uploadResults);
+        setShowSummaryModal(true);
+        setUploading(false);
+        dispatch(fetchNotebooks());
+      }, 1000);
+
+    } catch (error) {
+      console.error('Cloud drive import failed:', error);
+      setFiles(prev => prev.map(f =>
+        f.status === 'uploading'
+          ? { ...f, status: 'error', errors: [error.message || 'Import failed'], statusText: 'Import failed' }
+          : f
+      ));
+      setUploading(false);
+    }
+  };
+
   // NEW BASE64 UPLOAD FLOW: Frontend -> Aether-BE -> Storage
   const handleUpload = async () => {
+    // Route to cloud drive handler if applicable
+    if (isCloudDriveMode) {
+      return handleCloudDriveUpload();
+    }
+
     const validFiles = files.filter(f => f.status === 'pending');
-    
+
     if (validFiles.length === 0) {
       alert('No valid files to upload');
       return;
@@ -321,10 +439,10 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
 
     try {
       console.log(`Starting base64 upload of ${validFiles.length} files to notebook: ${notebook.name}`);
-      
+
       // Update all valid files to uploading status
-      setFiles(prev => prev.map(f => 
-        f.status === 'pending' 
+      setFiles(prev => prev.map(f =>
+        f.status === 'pending'
           ? { ...f, status: 'uploading' }
           : f
       ));
@@ -550,11 +668,12 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
     <>
     <Modal isOpen={isOpen} onClose={onClose} title={`Upload Documents to ${notebook?.name}`} size="large">
       <div className="p-6">
-        {/* Upload Area */}
+        {/* Upload Area - hidden in cloud drive mode */}
+        {!isCloudDriveMode && (
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragActive 
-              ? 'border-(--color-primary-500) bg-(--color-primary-50)' 
+            dragActive
+              ? 'border-(--color-primary-500) bg-(--color-primary-50)'
               : 'border-gray-300 hover:border-gray-400'
           }`}
           onDrop={handleDrop}
@@ -568,7 +687,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
           <p className="text-sm text-gray-500 mb-4">
             Support for documents, images, videos, audio, and data files
           </p>
-          
+
           <button
             onClick={() => fileInputRef.current?.click()}
             className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors"
@@ -577,7 +696,7 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             <Plus size={16} className="inline mr-2" />
             Select Files
           </button>
-          
+
           <input
             ref={fileInputRef}
             type="file"
@@ -587,6 +706,22 @@ const DocumentUploadModal = ({ isOpen, onClose, notebook, preSelectedFiles = nul
             disabled={uploading}
           />
         </div>
+        )}
+
+        {/* Cloud drive source indicator */}
+        {isCloudDriveMode && (
+          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <Folder size={20} className="text-blue-600" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Importing from {cloudDriveFiles[0]?.provider === 'google' ? 'Google Drive' : cloudDriveFiles[0]?.provider === 'onedrive' ? 'OneDrive' : 'SharePoint'}
+              </p>
+              <p className="text-xs text-blue-700">
+                Files will be downloaded from your cloud drive and processed
+              </p>
+            </div>
+          </div>
+        )}
 
 
         {/* File List */}

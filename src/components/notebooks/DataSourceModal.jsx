@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { X, Upload, Globe, Database, Folder, ExternalLink, FileText, AlertCircle, Cloud } from 'lucide-react';
-import { TextInputSource, WebScrapingSource, DatabaseSource } from './data-sources/index.js';
+import { TextInputSource, WebScrapingSource, DatabaseSource, CloudDrivesSource } from './data-sources/index.js';
 
 // Source type constants
 const SOURCE_TYPES = {
   FILE_UPLOAD: 'file-upload',
-  GOOGLE_DRIVE: 'google-drive',
+  CLOUD_DRIVES: 'cloud-drives',
   WEB_SCRAPING: 'web-scraping',
   DATABASE: 'database',
   API_INTEGRATION: 'api-integration',
@@ -18,7 +18,6 @@ const DataSourceModal = ({
   onClose,
   notebook,
   onSelectFileUpload,
-  onSelectGoogleDrive,
   onSelectWebScraping,
   onSelectDatabase,
   onDocumentAdded
@@ -89,16 +88,16 @@ const DataSourceModal = ({
       onClick: () => setActiveSource(SOURCE_TYPES.WEB_SCRAPING)
     },
     {
-      id: SOURCE_TYPES.GOOGLE_DRIVE,
-      name: 'Google Drive',
-      description: 'Import files from your Google Drive',
+      id: SOURCE_TYPES.CLOUD_DRIVES,
+      name: 'Cloud Drives',
+      description: 'Import files from Google Drive, OneDrive, or SharePoint',
       icon: Folder,
       iconColor: 'text-green-600',
       bgColor: 'bg-green-50',
       hoverColor: 'hover:bg-green-100',
       borderColor: 'border-green-200',
-      available: false, // Phase 2
-      onClick: onSelectGoogleDrive
+      available: true,
+      onClick: () => setActiveSource(SOURCE_TYPES.CLOUD_DRIVES)
     },
     {
       id: SOURCE_TYPES.DATABASE,
@@ -176,7 +175,16 @@ const DataSourceModal = ({
           />
         );
 
-      // Future phases will add more cases here
+      case SOURCE_TYPES.CLOUD_DRIVES:
+        return (
+          <CloudDrivesSource
+            notebook={notebook}
+            onBack={handleBack}
+            onSuccess={handleSuccess}
+            onClose={handleClose}
+          />
+        );
+
       default:
         return null;
     }
@@ -272,8 +280,8 @@ const DataSourceModal = ({
             <div>
               <h4 className="font-medium text-(--color-primary-900) text-sm">Data Source Options</h4>
               <p className="text-(--color-primary-700) text-sm mt-1">
-                <strong>File Upload</strong>, <strong>Text Input</strong>, <strong>Web Scraping</strong>, and <strong>Database</strong> connections are now available.
-                More integrations including Google Drive and cloud storage are coming soon.
+                <strong>File Upload</strong>, <strong>Text Input</strong>, <strong>Web Scraping</strong>, <strong>Database</strong>, and <strong>Cloud Drives</strong> (Google Drive, OneDrive, SharePoint) are now available.
+                More integrations including cloud storage (S3, Azure Blob) are coming soon.
               </p>
             </div>
           </div>

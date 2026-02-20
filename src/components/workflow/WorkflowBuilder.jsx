@@ -22,6 +22,10 @@ import SuspendNode from './nodes/SuspendNode.jsx';
 import TransformNode from './nodes/TransformNode.jsx';
 import AssemblerNode from './nodes/AssemblerNode.jsx';
 import SyncNode from './nodes/SyncNode.jsx';
+import MergeNode from './nodes/MergeNode.jsx';
+import LoopNode from './nodes/LoopNode.jsx';
+import SubWorkflowNode from './nodes/SubWorkflowNode.jsx';
+import ErrorHandlerNode from './nodes/ErrorHandlerNode.jsx';
 import NodeConfigPanel from './NodeConfigPanel.jsx';
 import ManualRunDialog from './ManualRunDialog.jsx';
 import Modal from '../ui/Modal.jsx';
@@ -45,6 +49,7 @@ import {
   Zap,
   Settings,
   GitBranch,
+  GitMerge,
   Bot,
   Plus,
   AlertCircle,
@@ -58,6 +63,10 @@ import {
   Wand2,
   Layers,
   Send,
+  Repeat,
+  ShieldAlert,
+  Pin,
+  History,
 } from 'lucide-react';
 
 const nodeTypes = {
@@ -75,6 +84,11 @@ const nodeTypes = {
   transform: TransformNode,
   assembler: AssemblerNode,
   sync: SyncNode,
+  // n8n-inspired flow control nodes
+  merge: MergeNode,
+  loop: LoopNode,
+  subworkflow: SubWorkflowNode,
+  errorHandler: ErrorHandlerNode,
 };
 
 const paletteGroups = [
@@ -114,7 +128,11 @@ const paletteGroups = [
     label: 'Flow Control',
     items: [
       { type: 'condition', label: 'Condition', desc: 'Branch logic', icon: GitBranch, color: 'yellow' },
+      { type: 'merge', label: 'Merge', desc: 'Combine branches', icon: GitMerge, color: 'rose' },
+      { type: 'loop', label: 'Loop', desc: 'Iterate items', icon: Repeat, color: 'lime' },
       { type: 'suspend', label: 'Approval', desc: 'Wait for approval', icon: UserCheck, color: 'orange' },
+      { type: 'subworkflow', label: 'Sub-Workflow', desc: 'Run workflow', icon: GitBranch, color: 'sky' },
+      { type: 'errorHandler', label: 'Error Handler', desc: 'Error recovery', icon: ShieldAlert, color: 'red' },
     ],
   },
   {
@@ -141,8 +159,13 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
   const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
   const [validationErrors, setValidationErrors] = useState([]);
   const [showRunDialog, setShowRunDialog] = useState(false);
+  const [executionId, setExecutionId] = useState(null);
+  const [liveNodeStatuses, setLiveNodeStatuses] = useState({}); // taskName → phase
+  const [versions, setVersions] = useState([]);
+  const [showVersions, setShowVersions] = useState(false);
   const fileInputRef = useRef(null);
   const pendingParamsRef = useRef(null);
+  const pollingRef = useRef(null);
 
   // Initialize from workflow (edit) or initialData (create from blank/template)
   useEffect(() => {
@@ -235,6 +258,25 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
     [nodes, selectedNodeId]
   );
 
+  const fetchVersions = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const resp = await aetherApi.workflows.getWorkflowVersions(id);
+      if (resp.success && resp.data?.versions) {
+        setVersions(resp.data.versions);
+      }
+    } catch {
+      // Versions are not critical - silently fail
+    }
+  }, []);
+
+  // Load versions when editing existing workflow
+  useEffect(() => {
+    if (workflowId) {
+      fetchVersions(workflowId);
+    }
+  }, [workflowId, fetchVersions]);
+
   const handleSave = async () => {
     // Validate
     const { valid, errors } = validateWorkflow(nodes);
@@ -265,6 +307,8 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
       }
       setSaveStatus('success');
       setTimeout(() => setSaveStatus(null), 3000);
+      // Refresh versions after save (update creates a new version)
+      if (workflowId) fetchVersions(workflowId);
     } catch (err) {
       console.error('Failed to save workflow:', err);
       setSaveStatus('error');
@@ -352,15 +396,102 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
   const executeWorkflow = async (id, data) => {
     setIsRunning(true);
     setValidationErrors([]);
+    setLiveNodeStatuses({});
     try {
-      await execute(id || workflowId, data);
-      setTimeout(() => setIsRunning(false), 2000);
+      const result = await execute(id || workflowId, data);
+      // Start polling for execution status if we got an execution ID
+      const execId = result?.execution?.id || result?.id;
+      if (execId) {
+        setExecutionId(execId);
+        startStatusPolling(id || workflowId, execId);
+      } else {
+        setTimeout(() => setIsRunning(false), 2000);
+      }
     } catch (err) {
       console.error('Failed to execute workflow:', err);
       setValidationErrors([err.message || 'Execution failed']);
       setIsRunning(false);
     }
   };
+
+  const startStatusPolling = (wfId, execId) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const response = await aetherApi.workflows.getExecutionStatus(wfId, execId);
+        if (response.success) {
+          setLiveNodeStatuses(response.data.nodeStatuses || {});
+          const phase = response.data.phase;
+          if (phase === 'Succeeded' || phase === 'Failed' || phase === 'Error') {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+            setTimeout(() => setIsRunning(false), 1000);
+          }
+        }
+      } catch {
+        // Silently continue polling on error
+      }
+    }, 3000);
+  };
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, []);
+
+  // Apply execution status overlay + pin indicator on nodes
+  const nodesWithStatus = useMemo(() => {
+    const hasLiveStatus = Object.keys(liveNodeStatuses).length > 0;
+    const hasPinnedNodes = nodes.some(n => n.data.pinnedData);
+
+    if (!hasLiveStatus && !hasPinnedNodes) return nodes;
+
+    return nodes.map((node) => {
+      let updated = node;
+
+      // Pin indicator — add isPinned flag for nodes that have pinned data
+      if (node.data.pinnedData) {
+        updated = {
+          ...updated,
+          className: `${updated.className || ''} ring-2 ring-amber-400 ring-offset-1`.trim(),
+        };
+      }
+
+      if (!hasLiveStatus) return updated;
+
+      // Match node label to Argo task name (lowercase, hyphens)
+      const taskName = (node.data.label || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 60) || 'step';
+
+      const status = liveNodeStatuses[taskName];
+      if (!status) return updated;
+
+      // Add execution status ring via className
+      let statusClass = '';
+      switch (status.phase) {
+        case 'Succeeded': statusClass = 'ring-2 ring-green-500 ring-offset-2'; break;
+        case 'Running':   statusClass = 'ring-2 ring-blue-500 ring-offset-2 animate-pulse'; break;
+        case 'Failed':
+        case 'Error':     statusClass = 'ring-2 ring-red-500 ring-offset-2'; break;
+        case 'Pending':   statusClass = 'ring-2 ring-gray-300 ring-offset-2'; break;
+        case 'Skipped':
+        case 'Omitted':   statusClass = 'ring-2 ring-gray-200 ring-offset-2 opacity-50'; break;
+        default: break;
+      }
+
+      return statusClass
+        ? { ...updated, className: `${updated.className || ''} ${statusClass}`.trim() }
+        : updated;
+    });
+  }, [nodes, liveNodeStatuses]);
 
   const handleManualRunSubmit = (paramValues) => {
     if (isUploadTrigger && fileInputRef.current) {
@@ -469,6 +600,34 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
             <span className="text-xs text-gray-400 shrink-0">
               {workflowId ? 'Editing' : 'New'} Workflow
             </span>
+            {workflowId && versions.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowVersions(!showVersions)}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded px-2 py-0.5 transition-colors"
+                  title="Version history"
+                >
+                  <History size={11} />
+                  v{versions[0]?.label || '1.0.0'}
+                </button>
+                {showVersions && (
+                  <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[180px] max-h-48 overflow-y-auto">
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 uppercase border-b">Versions</div>
+                    {versions.map((v) => (
+                      <div
+                        key={v.id}
+                        className="px-3 py-1.5 text-xs hover:bg-gray-50 flex justify-between items-center"
+                      >
+                        <span className="font-medium">v{v.label}</span>
+                        <span className="text-gray-400 text-[10px]">
+                          {v.created_at ? new Date(v.created_at).toLocaleDateString() : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {saveStatus === 'success' && (
               <span className="flex items-center gap-1 text-xs text-green-600">
                 <CheckCircle size={12} /> Saved
@@ -591,7 +750,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
           {/* Flow Canvas */}
           <div className="flex-1 relative">
             <ReactFlow
-              nodes={nodes}
+              nodes={nodesWithStatus}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
@@ -614,11 +773,19 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
               <Background variant="dots" gap={16} size={1} color="#d1d5db" />
             </ReactFlow>
 
-            {/* Running Indicator */}
+            {/* Running Indicator with per-node status summary */}
             {isRunning && (
               <div className="absolute top-3 right-3 bg-green-100 border border-green-300 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
                 <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                <span className="text-xs text-green-800 font-medium">Executing...</span>
+                <span className="text-xs text-green-800 font-medium">
+                  Executing...
+                  {Object.keys(liveNodeStatuses).length > 0 && (
+                    <span className="ml-1 text-green-600">
+                      ({Object.values(liveNodeStatuses).filter(s => s.phase === 'Succeeded').length}/
+                      {Object.keys(liveNodeStatuses).length} done)
+                    </span>
+                  )}
+                </span>
               </div>
             )}
           </div>
@@ -630,6 +797,7 @@ const WorkflowBuilder = ({ isOpen, onClose, workflow = null, initialData = null 
               onUpdate={handleNodeDataUpdate}
               onDelete={handleDeleteNode}
               onClose={() => setSelectedNodeId(null)}
+              liveNodeStatuses={liveNodeStatuses}
             />
           )}
         </div>

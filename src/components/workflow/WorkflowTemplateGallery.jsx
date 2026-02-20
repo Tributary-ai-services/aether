@@ -8,12 +8,16 @@ import {
   Workflow,
   Tag,
   ArrowRight,
+  Brain,
+  Database,
 } from 'lucide-react';
 
 const categoryIcons = {
   document_processing: FileText,
   compliance_check: Shield,
   approval_chain: CheckSquare,
+  data_pipeline: Database,
+  ai_research: Brain,
   custom: Workflow,
 };
 
