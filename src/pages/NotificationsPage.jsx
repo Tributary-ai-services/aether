@@ -114,12 +114,18 @@ const NotificationsPage = () => {
   }, []);
 
   const handleDownload = useCallback((notification) => {
-    const text = `Title: ${notification.title}\nType: ${notification.type}\nSource: ${notification.source || 'Unknown'}\nTime: ${formatTime(notification.created_at || notification.timestamp)}\nRead: ${notification.read ? 'Yes' : 'No'}\n\n--- Message ---\n\n${notification.message || 'No details.'}`;
-    const blob = new Blob([text], { type: 'text/plain' });
+    const message = notification.message || 'No details.';
+    const isMarkdown = /^#{1,3}\s|^\*\*|^-\s|^```|^\|.*\|/.test(message);
+    const ext = isMarkdown ? 'md' : 'txt';
+    const mimeType = isMarkdown ? 'text/markdown' : 'text/plain';
+    const text = isMarkdown
+      ? message
+      : `Title: ${notification.title}\nType: ${notification.type}\nSource: ${notification.source || 'Unknown'}\nTime: ${formatTime(notification.created_at || notification.timestamp)}\nRead: ${notification.read ? 'Yes' : 'No'}\n\n--- Message ---\n\n${message}`;
+    const blob = new Blob([text], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notification-${notification.id.slice(0, 8)}.txt`;
+    a.download = `notification-${notification.id.slice(0, 8)}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -130,15 +136,22 @@ const NotificationsPage = () => {
       : filteredNotifications;
     if (target.length === 0) return;
 
-    const text = target.map((n, i) => (
-      `${'='.repeat(60)}\n[${i + 1}] ${n.title}\nType: ${n.type} | Source: ${n.source || 'Unknown'} | Time: ${formatTime(n.created_at || n.timestamp)}\n${'='.repeat(60)}\n\n${n.message || 'No details.'}\n`
-    )).join('\n\n');
+    const hasMarkdown = target.some(n => /^#{1,3}\s|^\*\*|^-\s|^```|^\|.*\|/.test(n.message || ''));
+    const ext = hasMarkdown ? 'md' : 'txt';
+    const mimeType = hasMarkdown ? 'text/markdown' : 'text/plain';
+    const separator = hasMarkdown ? '\n---\n\n' : '\n\n';
 
-    const blob = new Blob([text], { type: 'text/plain' });
+    const text = target.map((n, i) => (
+      hasMarkdown
+        ? `## [${i + 1}] ${n.title}\n\n**Type:** ${n.type} | **Source:** ${n.source || 'Unknown'} | **Time:** ${formatTime(n.created_at || n.timestamp)}\n\n${n.message || 'No details.'}\n`
+        : `${'='.repeat(60)}\n[${i + 1}] ${n.title}\nType: ${n.type} | Source: ${n.source || 'Unknown'} | Time: ${formatTime(n.created_at || n.timestamp)}\n${'='.repeat(60)}\n\n${n.message || 'No details.'}\n`
+    )).join(separator);
+
+    const blob = new Blob([text], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notifications-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `notifications-${new Date().toISOString().slice(0, 10)}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }, [filteredNotifications, selectedIds]);
