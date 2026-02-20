@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   ChevronDown,
+  ChevronRight,
   Table,
   RefreshCw,
   Clock,
@@ -21,7 +22,11 @@ import {
   FolderOpen,
   Save,
   BookmarkPlus,
-  X
+  X,
+  Sparkles,
+  Tag,
+  ArrowRight,
+  Circle
 } from 'lucide-react';
 import {
   executeQuery,
@@ -42,9 +47,10 @@ import {
   selectFilteredQueries,
   selectQueriesLoading
 } from '../../store/slices/savedQueriesSlice.js';
-import { getDatabaseTypeById } from '../../config/databaseTypes.js';
+import { getDatabaseTypeById, DATABASE_CATEGORIES } from '../../config/databaseTypes.js';
 import QueryResults from './QueryResults.jsx';
 import QueryHistory from './QueryHistory.jsx';
+import QueryAssistDialog from '../developer-tools/QueryAssistDialog.jsx';
 
 const QueryConsole = ({
   initialConnectionId = null,
@@ -72,6 +78,8 @@ const QueryConsole = ({
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [queryStartTime, setQueryStartTime] = useState(null);
+  const [expandedSection, setExpandedSection] = useState('nodes');
+  const [showAssistDialog, setShowAssistDialog] = useState(false);
 
   // Refs
   const textareaRef = useRef(null);
@@ -80,6 +88,11 @@ const QueryConsole = ({
 
   // Get selected connection
   const selectedConnection = connections.find(c => c.id === selectedConnectionId);
+
+  // Derive database type info
+  const selectedDbType = getDatabaseTypeById(selectedConnection?.databaseType || selectedConnection?.type);
+  const isNeo4j = selectedDbType?.category === DATABASE_CATEGORIES.GRAPH;
+  const queryLanguage = isNeo4j ? 'Cypher' : 'SQL';
 
   // Get schema for selected connection
   const schema = useSelector(state =>
@@ -190,9 +203,18 @@ const QueryConsole = ({
     }
   }, [dispatch, selectedConnectionId, queryText, selectedConnection]);
 
-  // Handle table click in schema browser
+  // Handle table/label click in schema browser
   const handleTableClick = (tableName) => {
-    const newQuery = `SELECT * FROM ${tableName} LIMIT 100`;
+    const newQuery = isNeo4j
+      ? `MATCH (n:\`${tableName}\`) RETURN n LIMIT 25`
+      : `SELECT * FROM ${tableName} LIMIT 100`;
+    setQueryText(newQuery);
+    textareaRef.current?.focus();
+  };
+
+  // Handle relationship click in Neo4j schema browser
+  const handleRelationshipClick = (relType) => {
+    const newQuery = `MATCH ()-[r:\`${relType}\`]->() RETURN r LIMIT 25`;
     setQueryText(newQuery);
     textareaRef.current?.focus();
   };
@@ -296,6 +318,14 @@ const QueryConsole = ({
     </div>
   );
 
+  // Derive Neo4j schema sections
+  const nodeLabels = isNeo4j
+    ? (schema?.tables || []).filter(t => t.schema === 'nodes')
+    : [];
+  const relationshipTypes = isNeo4j
+    ? (schema?.tables || []).filter(t => t.schema === 'relationships')
+    : [];
+
   // Render schema browser sidebar
   const renderSchemaBrowser = () => (
     <div className={`${showSchema ? 'w-64' : 'w-0'} border-r border-gray-200 bg-gray-50 flex flex-col transition-all duration-200 overflow-hidden`}>
@@ -303,8 +333,8 @@ const QueryConsole = ({
         <>
           <div className="p-3 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-medium text-sm text-gray-700 flex items-center space-x-2">
-              <Table className="w-4 h-4" />
-              <span>Schema</span>
+              {isNeo4j ? <Database className="w-4 h-4" /> : <Table className="w-4 h-4" />}
+              <span>{isNeo4j ? 'Graph Schema' : 'Schema'}</span>
             </h3>
             <button
               onClick={() => dispatch(fetchDatabaseSchema(selectedConnectionId))}
@@ -325,7 +355,81 @@ const QueryConsole = ({
               <div className="text-sm text-gray-500 text-center py-4">
                 Select a connection
               </div>
+            ) : isNeo4j ? (
+              /* Neo4j Graph Schema Browser */
+              <div className="space-y-1">
+                {/* Node Labels Section */}
+                <button
+                  onClick={() => setExpandedSection(expandedSection === 'nodes' ? '' : 'nodes')}
+                  className="w-full flex items-center space-x-2 px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                >
+                  {expandedSection === 'nodes' ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  )}
+                  <Circle className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Node Labels</span>
+                  <span className="ml-auto text-xs text-gray-400">{nodeLabels.length}</span>
+                </button>
+
+                {expandedSection === 'nodes' && (
+                  <div className="ml-4 space-y-0.5">
+                    {nodeLabels.length > 0 ? (
+                      nodeLabels.map(label => (
+                        <button
+                          key={label.name}
+                          onClick={() => handleTableClick(label.name)}
+                          className="w-full px-2 py-1.5 text-left text-sm hover:bg-blue-50 hover:text-blue-700 rounded flex items-center space-x-2 group transition-colors"
+                          title={`MATCH (n:${label.name}) RETURN n LIMIT 25`}
+                        >
+                          <Tag className="w-3 h-3 text-blue-400 group-hover:text-blue-600" />
+                          <span className="flex-1 truncate">{label.name}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-xs text-gray-400">No labels found</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Relationship Types Section */}
+                <button
+                  onClick={() => setExpandedSection(expandedSection === 'relationships' ? '' : 'relationships')}
+                  className="w-full flex items-center space-x-2 px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                >
+                  {expandedSection === 'relationships' ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  )}
+                  <ArrowRight className="w-3.5 h-3.5 text-green-500" />
+                  <span>Relationships</span>
+                  <span className="ml-auto text-xs text-gray-400">{relationshipTypes.length}</span>
+                </button>
+
+                {expandedSection === 'relationships' && (
+                  <div className="ml-4 space-y-0.5">
+                    {relationshipTypes.length > 0 ? (
+                      relationshipTypes.map(rel => (
+                        <button
+                          key={rel.name}
+                          onClick={() => handleRelationshipClick(rel.name)}
+                          className="w-full px-2 py-1.5 text-left text-sm hover:bg-green-50 hover:text-green-700 rounded flex items-center space-x-2 group transition-colors"
+                          title={`MATCH ()-[r:${rel.name}]->() RETURN r LIMIT 25`}
+                        >
+                          <ArrowRight className="w-3 h-3 text-green-400 group-hover:text-green-600" />
+                          <span className="flex-1 truncate">{rel.name}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-xs text-gray-400">No relationship types found</div>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : schema?.tables?.length > 0 ? (
+              /* SQL Table Schema Browser */
               <div className="space-y-1">
                 {schema.tables.map(table => (
                   <button
@@ -466,6 +570,14 @@ const QueryConsole = ({
           </div>
 
           <button
+            onClick={() => setShowAssistDialog(true)}
+            className="p-2 hover:bg-purple-100 rounded-lg transition-colors text-purple-500"
+            title="AI Query Assistant"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={() => setShowHistory(!showHistory)}
             className={`p-2 rounded-lg transition-colors ${
               showHistory ? 'bg-(--color-primary-100) text-(--color-primary-600)' : 'hover:bg-gray-200 text-gray-500'
@@ -526,13 +638,16 @@ const QueryConsole = ({
           <div className="relative border-b border-gray-200">
             <div className="absolute top-2 left-3 flex items-center space-x-2 text-xs text-gray-400">
               <Code className="w-3 h-3" />
-              <span>SQL</span>
+              <span>{queryLanguage}</span>
             </div>
             <textarea
               ref={textareaRef}
               value={queryText}
               onChange={(e) => setQueryText(e.target.value)}
-              placeholder="Enter your SQL query here...&#10;&#10;Example: SELECT * FROM users LIMIT 10"
+              placeholder={isNeo4j
+                ? "Enter your Cypher query here...\n\nExample: MATCH (n) RETURN n LIMIT 25"
+                : "Enter your SQL query here...\n\nExample: SELECT * FROM users LIMIT 10"
+              }
               className="w-full h-40 px-4 pt-8 pb-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-(--color-primary-500) focus:ring-inset"
               spellCheck={false}
             />
@@ -598,6 +713,22 @@ const QueryConsole = ({
           />
         )}
       </div>
+
+      {/* AI Query Assist Dialog */}
+      <QueryAssistDialog
+        isOpen={showAssistDialog}
+        onClose={() => setShowAssistDialog(false)}
+        onApply={(generatedQuery) => {
+          setQueryText(generatedQuery);
+          setShowAssistDialog(false);
+          textareaRef.current?.focus();
+        }}
+        databaseType={selectedDbType?.id || 'postgresql'}
+        currentQuery={queryText}
+        tables={schema?.tables || []}
+        schemaInfo={schema}
+        connectionName={selectedConnection?.name || ''}
+      />
     </div>
   );
 };

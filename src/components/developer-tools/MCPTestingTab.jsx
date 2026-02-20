@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Server,
   Play,
@@ -18,11 +19,17 @@ import {
   Link,
   Unlink,
   Image,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  Database
 } from 'lucide-react';
 import { aetherApi } from '../../services/aetherApi';
+import QueryAssistDialog from './QueryAssistDialog';
+import { fetchDatabaseConnections, selectConnections } from '../../store/slices/databaseConnectionsSlice';
 
 const MCPTestingTab = () => {
+  const dispatch = useDispatch();
+  const allConnections = useSelector(selectConnections);
   const [servers, setServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState(null);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -34,11 +41,17 @@ const MCPTestingTab = () => {
   const [invokeResult, setInvokeResult] = useState(null);
   const [invokeHistory, setInvokeHistory] = useState([]);
   const [expandedServers, setExpandedServers] = useState({});
+  const [showQueryAssist, setShowQueryAssist] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState('');
+
+  // Filter to neo4j connections
+  const neo4jConnections = allConnections.filter(c => c.type === 'neo4j' || c.databaseType === 'neo4j');
 
   // Load MCP servers on mount
   useEffect(() => {
     loadServers();
-  }, []);
+    dispatch(fetchDatabaseConnections());
+  }, [dispatch]);
 
   // Load tools when server is selected
   useEffect(() => {
@@ -54,40 +67,24 @@ const MCPTestingTab = () => {
       setServers(response.data?.servers || []);
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
-      // Mock servers for demo
+      // Mock servers for demo/fallback
       setServers([
-        {
-          id: 'mcp-postgres',
-          name: 'PostgreSQL MCP',
-          description: 'PostgreSQL database tools',
-          status: 'connected',
-          type: 'database',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-filesystem',
-          name: 'Filesystem MCP',
-          description: 'File system operations',
-          status: 'connected',
-          type: 'filesystem',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-memory',
-          name: 'Memory MCP',
-          description: 'Knowledge graph storage',
-          status: 'connected',
-          type: 'memory',
-          version: '1.0.0'
-        },
-        {
-          id: 'mcp-napkin',
-          name: 'Napkin AI MCP',
-          description: 'Visual generation from text using Napkin AI with MinIO storage',
-          status: 'connected',
-          type: 'visual-generation',
-          version: '1.0.0'
-        }
+        { id: 'mcp-postgres', name: 'PostgreSQL MCP', description: 'PostgreSQL database tools', status: 'connected', type: 'database', version: '1.0.0' },
+        { id: 'mcp-filesystem', name: 'Filesystem MCP', description: 'File system operations', status: 'connected', type: 'filesystem', version: '1.0.0' },
+        { id: 'mcp-memory', name: 'Memory MCP', description: 'Knowledge graph storage', status: 'connected', type: 'memory', version: '1.0.0' },
+        { id: 'mcp-napkin', name: 'Napkin AI MCP', description: 'Visual generation from text using Napkin AI', status: 'connected', type: 'visual-generation', version: '1.0.0' },
+        { id: 'mcp-neo4j', name: 'Neo4j MCP', description: 'Neo4j graph database Cypher queries', status: 'connected', type: 'database', version: '1.0.0', tags: ['neo4j', 'graph-database'] },
+        { id: 'mcp-minio', name: 'MinIO MCP', description: 'MinIO S3-compatible object storage', status: 'connected', type: 'storage', version: '1.0.0', tags: ['minio', 's3'] },
+        { id: 'mcp-kafka', name: 'Kafka MCP', description: 'Apache Kafka message broker', status: 'connected', type: 'messaging', version: '1.0.0', tags: ['kafka', 'streaming'] },
+        { id: 'mcp-grafana', name: 'Grafana MCP', description: 'Grafana dashboards and observability', status: 'connected', type: 'observability', version: '1.0.0', tags: ['grafana', 'dashboards'] },
+        { id: 'mcp-brave-search', name: 'Brave Search MCP', description: 'Privacy-focused web search via Brave', status: 'connected', type: 'search', version: '1.0.0', tags: ['search', 'brave'] },
+        { id: 'mcp-firecrawl', name: 'Firecrawl MCP', description: 'Web scraping and crawling', status: 'connected', type: 'web-scraping', version: '1.0.0', tags: ['web-scraping', 'firecrawl'] },
+        { id: 'mcp-atlassian', name: 'Atlassian MCP', description: 'Jira and Confluence integration', status: 'connected', type: 'productivity', version: '1.0.0', tags: ['atlassian', 'jira'] },
+        { id: 'mcp-context7', name: 'Context7 MCP', description: 'Library documentation and code examples', status: 'connected', type: 'documentation', version: '1.0.0', tags: ['documentation', 'context7'] },
+        { id: 'mcp-sequential-thinking', name: 'Sequential Thinking MCP', description: 'Structured problem-solving and analysis', status: 'connected', type: 'reasoning', version: '1.0.0', tags: ['reasoning', 'thinking'] },
+        { id: 'mcp-perplexity', name: 'Perplexity MCP', description: 'AI-powered research and search', status: 'connected', type: 'search', version: '1.0.0', tags: ['search', 'perplexity'] },
+        { id: 'mcp-slack', name: 'Slack MCP', description: 'Slack workspace communication', status: 'connected', type: 'communication', version: '1.0.0', tags: ['slack', 'messaging'] },
+        { id: 'mcp-paper-search', name: 'Paper Search MCP', description: 'Academic paper search and retrieval', status: 'connected', type: 'research', version: '1.0.0', tags: ['research', 'papers'] }
       ]);
     } finally {
       setIsLoadingServers(false);
@@ -320,9 +317,9 @@ const MCPTestingTab = () => {
     return (
       <div className="group relative inline-flex ml-1">
         <HelpCircle size={14} className="text-gray-400 hover:text-gray-600 cursor-help" />
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-normal max-w-xs z-50">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-normal max-w-xs z-50">
           {description}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-gray-900" />
         </div>
       </div>
     );
@@ -443,6 +440,19 @@ const MCPTestingTab = () => {
 
   return (
     <div className="flex h-full gap-4">
+      {/* Neo4j Query Assistant Dialog */}
+      <QueryAssistDialog
+        isOpen={showQueryAssist}
+        onClose={() => setShowQueryAssist(false)}
+        onApply={(query) => {
+          const cleaned = query.replace(/\\r\\n|\\n|\\r/g, ' ').replace(/\r\n|\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+          setToolParams(p => ({ ...p, query: cleaned }));
+          setShowQueryAssist(false);
+        }}
+        databaseType="neo4j"
+        currentQuery={toolParams.query || ''}
+      />
+
       {/* Left Panel - Servers & Tools */}
       <div className="w-80 bg-white rounded-lg border border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
@@ -547,6 +557,37 @@ const MCPTestingTab = () => {
             </div>
 
             <div className="flex-1 overflow-auto p-4">
+              {/* Neo4j Connection Selector */}
+              {selectedServer?.id === 'mcp-neo4j' && neo4jConnections.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <label className="flex items-center text-sm font-medium text-blue-800 mb-2">
+                    <Database size={14} className="mr-1.5" />
+                    Neo4j Connection
+                  </label>
+                  <select
+                    value={selectedConnectionId}
+                    onChange={(e) => setSelectedConnectionId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  >
+                    <option value="">-- Use default server connection --</option>
+                    {neo4jConnections.map(conn => (
+                      <option key={conn.id} value={conn.id}>
+                        {conn.name} ({conn.host}:{conn.port}) {conn.status === 'Connected' ? '' : `[${conn.status}]`}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedConnectionId && (() => {
+                    const conn = neo4jConnections.find(c => c.id === selectedConnectionId);
+                    return conn ? (
+                      <div className="mt-2 text-xs text-blue-600 space-y-0.5">
+                        <div>Host: {conn.host}:{conn.port} | DB: {conn.database || 'neo4j'}</div>
+                        <div>Protocol: {conn.protocol || 'bolt'} | User: {conn.username || 'N/A'}</div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
               <h4 className="text-sm font-medium text-gray-700 mb-3">Parameters</h4>
               {selectedTool.inputSchema?.properties &&
                Object.keys(selectedTool.inputSchema.properties).length > 0 ? (
@@ -559,6 +600,16 @@ const MCPTestingTab = () => {
                           <span className="text-red-500 ml-1">*</span>
                         )}
                         {schema.description && !schema.enum && schema.type !== 'boolean' && renderTooltip(schema.description)}
+                        {selectedServer?.id === 'mcp-neo4j' && name === 'query' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowQueryAssist(true)}
+                            className="ml-2 p-0.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                            title="Neo4j Query Assistant"
+                          >
+                            <Sparkles size={14} />
+                          </button>
+                        )}
                       </label>
                       {renderParamInput(name, schema)}
                     </div>

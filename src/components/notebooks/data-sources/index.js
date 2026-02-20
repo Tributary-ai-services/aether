@@ -11,8 +11,8 @@ export { default as WebScrapingSource } from './WebScrapingSource.jsx';
 // Phase 1.5: Database sources
 export { default as DatabaseSource } from './DatabaseSource.jsx';
 
-// Phase 2: OAuth sources (coming soon)
-// export { default as GoogleDriveSource } from './GoogleDriveSource.jsx';
+// Phase 2: Cloud Drives (Google Drive, OneDrive, SharePoint)
+export { default as CloudDrivesSource } from './CloudDrivesSource.jsx';
 
 // Phase 4: API and cloud storage (coming soon)
 // export { default as ApiIntegrationSource } from './ApiIntegrationSource.jsx';

@@ -292,10 +292,10 @@ export const experiments = [
 
 export const communityItems = [
   { type: "agent", name: "Medical Records Processor", author: "Dr. Smith", downloads: 234, rating: 4.8 },
-  { type: "workflow", name: "GDPR Compliance Flow", author: "CompliancePro", downloads: 567, rating: 4.9 },
+  { type: "workflow", name: "GDPR Compliance Flow", author: "CompliancePro", downloads: 567, rating: 4.9, description: "Automated GDPR compliance scanning for uploaded documents with PII detection and reporting.", step_count: 4, trigger_types: ["api", "schedule"], workflow_type: "compliance_check" },
   { type: "notebook", name: "Financial Analysis Templates", author: "FinTech Labs", views: 1234, rating: 4.7 },
   { type: "agent", name: "Legal Contract Analyzer", author: "LawTech Inc", downloads: 456, rating: 4.6 },
-  { type: "workflow", name: "Document Classification Pipeline", author: "AI Solutions", downloads: 789, rating: 4.7 },
+  { type: "workflow", name: "Document Classification Pipeline", author: "AI Solutions", downloads: 789, rating: 4.7, description: "Classify documents by type using AI analysis, then route to appropriate processing pipelines.", step_count: 3, trigger_types: ["upload", "webhook"], workflow_type: "document_processing" },
   { type: "notebook", name: "HIPAA Compliance Checker", author: "HealthTech", views: 567, rating: 4.9 }
 ];
 

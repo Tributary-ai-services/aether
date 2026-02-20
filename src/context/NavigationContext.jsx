@@ -15,7 +15,7 @@ export const NavigationProvider = ({ children }) => {
   const defaultTabs = {
     notebooks: true,        // Default to true
     'agent-builder': true,  // Default to true (renamed from agents)
-    workflows: false,
+    workflows: true,
     analytics: false,
     community: true,        // Default to true
     streaming: false,

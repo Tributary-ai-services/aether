@@ -737,6 +737,91 @@ class AetherApiService {
     }),
   };
 
+  // Workflows API - Automated workflow management
+  workflows = {
+    // List workflows with pagination
+    getAll: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      const query = params.toString();
+      return this.request(`/workflows${query ? '?' + query : ''}`);
+    },
+
+    // Get a workflow by ID
+    getById: (id) => this.request(`/workflows/${id}`),
+
+    // Create a new workflow
+    create: (data) => this.request('/workflows', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    // Update an existing workflow
+    update: (id, data) => this.request(`/workflows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+    // Delete a workflow
+    delete: (id) => this.request(`/workflows/${id}`, {
+      method: 'DELETE',
+    }),
+
+    // Execute a workflow
+    execute: (id, data = {}) => this.request(`/workflows/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+    // Update workflow status (active/paused/disabled)
+    updateStatus: (id, status) => this.request(`/workflows/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+    // Get workflow executions
+    getExecutions: (id, options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      const query = params.toString();
+      return this.request(`/workflows/${id}/executions${query ? '?' + query : ''}`);
+    },
+
+    // Get live execution status (per-node from Argo)
+    getExecutionStatus: (workflowId, executionId) =>
+      this.request(`/workflows/${workflowId}/executions/${executionId}/status`),
+
+    // Get workflow versions
+    getWorkflowVersions: (workflowId) =>
+      this.request(`/workflows/${workflowId}/versions`),
+
+    // Get workflow analytics
+    getAnalytics: (period = 'monthly') => this.request(`/workflows/analytics?period=${period}`),
+
+    // Get public/community workflows
+    getPublic: (options = {}) => {
+      const params = new URLSearchParams();
+      if (options.limit) params.append('limit', options.limit);
+      if (options.offset) params.append('offset', options.offset);
+      if (options.type) params.append('type', options.type);
+      const query = params.toString();
+      return this.request(`/workflows/public${query ? '?' + query : ''}`);
+    },
+
+    // Publish a workflow to community
+    publish: (id, metadata = {}) => this.request(`/workflows/${id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify(metadata),
+    }),
+
+    // Import a community workflow
+    importFromCommunity: (id) => this.request(`/workflows/community/${id}/import`, {
+      method: 'POST',
+    }),
+  };
+
   // Chat API - Notebook conversations using the Notebook Chat Assistant agent
   chat = {
     // Send a chat message for a notebook using the internal Notebook Chat Assistant
@@ -1427,6 +1512,77 @@ class AetherApiService {
   };
 
   // ============================================================================
+  // Cloud Drives API
+  // ============================================================================
+  cloudDrives = {
+    /**
+     * List files in a cloud drive directory
+     * @param {string} provider - Provider ID (google, onedrive, sharepoint)
+     * @param {string} credentialId - Credential ID for authentication
+     * @param {string} path - Directory path or folder ID
+     * @param {Object} options - Additional options (siteId, libraryId for SharePoint)
+     * @returns {Promise} List of file/folder items
+     */
+    listFiles: (provider, credentialId, path = '', options = {}) => {
+      const params = new URLSearchParams({ credential_id: credentialId });
+      if (path) params.append('path', path);
+      if (options.siteId) params.append('site_id', options.siteId);
+      if (options.libraryId) params.append('library_id', options.libraryId);
+      return this.request(`/cloud-drives/${provider}/files?${params.toString()}`);
+    },
+
+    /**
+     * Search files in a cloud drive
+     * @param {string} provider - Provider ID
+     * @param {string} credentialId - Credential ID
+     * @param {string} query - Search query
+     * @returns {Promise} Search results
+     */
+    searchFiles: (provider, credentialId, query) => {
+      const params = new URLSearchParams({ credential_id: credentialId, q: query });
+      return this.request(`/cloud-drives/${provider}/search?${params.toString()}`);
+    },
+
+    /**
+     * Import files from a cloud drive into a notebook
+     * @param {string} provider - Provider ID
+     * @param {string} credentialId - Credential ID
+     * @param {Object} data - Import data (fileIds, notebookId, siteId)
+     * @returns {Promise} Import result
+     */
+    importFiles: (provider, credentialId, data) => this.request(`/cloud-drives/${provider}/import`, {
+      method: 'POST',
+      body: JSON.stringify({
+        credential_id: credentialId,
+        file_ids: data.fileIds,
+        notebook_id: data.notebookId,
+        site_id: data.siteId,
+      }),
+    }),
+
+    /**
+     * List SharePoint sites (for site selection step)
+     * @param {string} credentialId - Microsoft credential ID
+     * @returns {Promise} List of SharePoint sites
+     */
+    listSites: (credentialId) => {
+      const params = new URLSearchParams({ credential_id: credentialId });
+      return this.request(`/cloud-drives/sharepoint/sites?${params.toString()}`);
+    },
+
+    /**
+     * List document libraries for a SharePoint site
+     * @param {string} credentialId - Microsoft credential ID
+     * @param {string} siteId - SharePoint site ID
+     * @returns {Promise} List of document libraries
+     */
+    listLibraries: (credentialId, siteId) => {
+      const params = new URLSearchParams({ credential_id: credentialId });
+      return this.request(`/cloud-drives/sharepoint/sites/${siteId}/libraries?${params.toString()}`);
+    },
+  };
+
+  // ============================================================================
   // OAuth API
   // ============================================================================
   oauth = {
@@ -1435,8 +1591,9 @@ class AetherApiService {
      * @param {string} provider - OAuth provider (google, microsoft, dropbox, etc.)
      * @returns {Promise} OAuth authorization URL and state
      */
-    initiateFlow: (provider) => this.request(`/oauth/${provider}/authorize`, {
+    initiateFlow: (provider, loginHint) => this.request(`/oauth/${provider}/authorize`, {
       method: 'POST',
+      body: loginHint ? JSON.stringify({ login_hint: loginHint }) : undefined,
     }),
 
     /**
@@ -1781,6 +1938,28 @@ class AetherApiService {
      * @returns {Promise} Deletion result
      */
     deletePrompt: (id) => this.request(`/developer-tools/ai/prompts/${id}`, {
+      method: 'DELETE',
+    }),
+  };
+
+  // Notifications API
+  notifications = {
+    getAll: ({ limit = 20, offset = 0, unreadOnly = false } = {}) => {
+      const params = new URLSearchParams();
+      if (limit) params.append('limit', limit);
+      if (offset) params.append('offset', offset);
+      if (unreadOnly) params.append('unread_only', 'true');
+      const query = params.toString();
+      return this.request(`/notifications${query ? '?' + query : ''}`);
+    },
+    getUnreadCount: () => this.request('/notifications/unread-count'),
+    markAsRead: (id) => this.request(`/notifications/${id}/read`, {
+      method: 'PUT',
+    }),
+    markAllAsRead: () => this.request('/notifications/read-all', {
+      method: 'PUT',
+    }),
+    delete: (id) => this.request(`/notifications/${id}`, {
       method: 'DELETE',
     }),
   };

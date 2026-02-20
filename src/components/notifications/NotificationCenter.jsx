@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext.jsx';
-import { 
+import {
   Bell, 
   X, 
   CheckCircle, 
@@ -15,16 +16,18 @@ import {
 } from 'lucide-react';
 
 const NotificationCenter = () => {
-  const { 
-    notifications, 
-    removeNotification, 
-    clearAllNotifications, 
-    markAsRead, 
+  const {
+    notifications,
+    removeNotification,
+    clearAllNotifications,
+    markAsRead,
     getUnreadCount,
     notificationsPaused,
     togglePauseNotifications
   } = useNotifications();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -48,8 +51,11 @@ const NotificationCenter = () => {
   };
 
   const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
     const now = new Date();
-    const diff = now - new Date(timestamp);
+    const diff = now - date;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -88,9 +94,9 @@ const NotificationCenter = () => {
           />
           
           {/* Notification Panel */}
-          <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-96 overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-[28rem] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
               <h3 className="font-semibold text-gray-900">Notifications</h3>
               <div className="flex items-center gap-2">
                 {/* Pause/Resume Toggle */}
@@ -129,7 +135,7 @@ const NotificationCenter = () => {
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-80 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                   <Bell size={32} className="mx-auto mb-2 opacity-50" />
@@ -138,64 +144,82 @@ const NotificationCenter = () => {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {notifications.map(notification => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${
-                        !notification.read ? 'border-l-4 border-l-(--color-primary-500)' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-sm font-medium text-gray-900 truncate">
-                              {notification.title}
-                            </h4>
-                            <div className="flex items-center gap-1 ml-2">
-                              {!notification.read && (
-                                <button
-                                  onClick={() => markAsRead(notification.id)}
-                                  className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                                  title="Mark as read"
-                                >
-                                  <Check size={12} />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => removeNotification(notification.id)}
-                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                title="Remove"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
+                  {notifications.map(notification => {
+                    const isExpanded = expandedId === notification.id;
+                    return (
+                      <div
+                        key={notification.id}
+                        className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                          !notification.read ? 'border-l-4 border-l-blue-500' : ''
+                        }`}
+                        onClick={() => {
+                          setExpandedId(isExpanded ? null : notification.id);
+                          if (!notification.read) {
+                            markAsRead(notification.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getNotificationIcon(notification.type)}
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {notification.message}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>{notification.source}</span>
-                            <div className="flex items-center gap-1">
-                              <Clock size={10} />
-                              {formatTime(notification.timestamp)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className={`text-sm font-medium text-gray-900 ${isExpanded ? '' : 'truncate'}`}>
+                                {notification.title}
+                              </h4>
+                              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                                {!notification.read && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
+                                    className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                                    title="Mark as read"
+                                  >
+                                    <Check size={12} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); removeNotification(notification.id); }}
+                                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                  title="Remove"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded ? (
+                              <div className="text-sm text-gray-700 mb-2 whitespace-pre-wrap break-words">
+                                {notification.message || 'No additional details.'}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                {notification.message}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>{notification.source}</span>
+                              <div className="flex items-center gap-1">
+                                <Clock size={10} />
+                                {formatTime(notification.created_at || notification.timestamp)}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
 
             {/* Footer */}
             {notifications.length > 0 && (
-              <div className="p-3 border-t border-gray-200 bg-gray-50">
+              <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
                 <div className="text-center">
-                  <button className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700) font-medium">
+                  <button
+                    onClick={() => { setIsOpen(false); navigate('/notifications'); }}
+                    className="text-sm text-(--color-primary-600) hover:text-(--color-primary-700) font-medium"
+                  >
                     View all notifications
                   </button>
                 </div>

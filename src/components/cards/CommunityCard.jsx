@@ -1,7 +1,17 @@
 import React from 'react';
-import { Bot, Workflow, BookOpen, Star, Eye, Wrench, Sparkles } from 'lucide-react';
+import { Bot, Workflow, BookOpen, Star, Eye, Wrench, Sparkles, Zap, Clock, Globe, Webhook } from 'lucide-react';
 
-const CommunityCard = ({ item, isSystemTool = false }) => {
+const triggerIcons = {
+  manual: Zap,
+  upload: Zap,
+  schedule: Clock,
+  api: Globe,
+  webhook: Webhook,
+};
+
+const CommunityCard = ({ item, isSystemTool = false, onUseWorkflow }) => {
+  const isWorkflow = item.type === 'workflow';
+
   // Determine icon and colors based on type
   const getTypeIcon = () => {
     if (isSystemTool || item.type === 'system-tool') {
@@ -29,6 +39,12 @@ const CommunityCard = ({ item, isSystemTool = false }) => {
   const borderClass = isSystemTool
     ? 'border-purple-200 hover:border-purple-300'
     : 'border-gray-200';
+
+  const handleUseClick = () => {
+    if (isWorkflow && onUseWorkflow) {
+      onUseWorkflow(item);
+    }
+  };
 
   return (
     <div className={`bg-white rounded-xl shadow-sm border ${borderClass} p-6 hover:shadow-md transition-all`}>
@@ -61,6 +77,29 @@ const CommunityCard = ({ item, isSystemTool = false }) => {
       )}
       <p className="text-sm text-gray-600 mb-3">by {item.author}</p>
 
+      {/* Workflow-specific: step count and trigger badges */}
+      {isWorkflow && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {item.step_count > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+              {item.step_count} step{item.step_count !== 1 ? 's' : ''}
+            </span>
+          )}
+          {(item.trigger_types || []).map((tType) => {
+            const TrigIcon = triggerIcons[tType] || Zap;
+            return (
+              <span
+                key={tType}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full"
+              >
+                <TrigIcon size={10} />
+                {tType}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {/* Tags for system tools */}
       {isSystemTool && item.tags && item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
@@ -86,13 +125,14 @@ const CommunityCard = ({ item, isSystemTool = false }) => {
           <span className="text-xs text-gray-400">Available to all users</span>
         )}
         <button
+          onClick={handleUseClick}
           className={`font-medium ${
             isSystemTool
               ? 'text-purple-600 hover:text-purple-800'
               : 'text-blue-600 hover:text-blue-800'
           }`}
         >
-          {isSystemTool ? 'Use Tool' : 'Use Template'}
+          {isSystemTool ? 'Use Tool' : isWorkflow ? 'Use Workflow' : 'Use Template'}
         </button>
       </div>
     </div>
