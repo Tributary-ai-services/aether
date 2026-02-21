@@ -1630,11 +1630,17 @@ class AetherApiService {
      * @param {string} serverId - MCP server ID
      * @param {string} tool - Tool name
      * @param {Object} params - Tool parameters
+     * @param {string} [connectionId] - Optional saved connection ID for infrastructure servers
      * @returns {Promise} Tool result
      */
-    invokeTool: (serverId, tool, params) => this.request('/mcp/invoke', {
+    invokeTool: (serverId, tool, params, connectionId) => this.request('/mcp/invoke', {
       method: 'POST',
-      body: JSON.stringify({ server_id: serverId, tool, params }),
+      body: JSON.stringify({
+        server_id: serverId,
+        tool,
+        params,
+        ...(connectionId ? { connection_id: connectionId } : {}),
+      }),
     }),
 
     /**
