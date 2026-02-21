@@ -22,12 +22,17 @@ import {
   BookOpen,
   Wrench,
   Shield,
-  Tag
+  Tag,
+  Database
 } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchDatabaseConnections, selectConnections } from '../../store/slices/databaseConnectionsSlice';
 
 const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent }) => {
   const { currentSpace } = useSpace();
   const { createAgent } = useAgentBuilder();
+  const dispatch = useDispatch();
+  const allConnections = useSelector(selectConnections);
   const { providers, models, fetchModels, validateConfig } = useAgentProviders();
   
   // Handle both array and object with providers property
@@ -102,6 +107,8 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   const [availableSkills, setAvailableSkills] = useState([]);
   const [loadingSkills, setLoadingSkills] = useState(false);
   const [autoDetectSkills, setAutoDetectSkills] = useState(true);
+  // Per-skill connection overrides: { skillName: { connectionId, serverId } }
+  const [skillConnections, setSkillConnections] = useState({});
 
   // Fetch available skills
   useEffect(() => {
@@ -121,6 +128,13 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
     };
     fetchSkills();
   }, [isOpen]);
+
+  // Fetch connections for MCP skill connection selectors
+  useEffect(() => {
+    if (isOpen && (!allConnections || allConnections.length === 0)) {
+      dispatch(fetchDatabaseConnections());
+    }
+  }, [isOpen, allConnections, dispatch]);
 
   // Auto-detect skills from system prompt keywords
   const autoDetectedSkills = useMemo(() => {
@@ -498,6 +512,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
         ...formData,
         type: formData.type || 'qa', // Explicitly ensure type is included
         skills: effectiveSkills, // Include both explicit and auto-detected skills
+        skill_connections: Object.keys(skillConnections).length > 0 ? skillConnections : undefined,
         space_id: currentSpace.space_id
       };
       
@@ -945,15 +960,54 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                       const isExplicit = formData.skills.includes(skill.name);
                       const isAutoDetected = autoDetectedSkills.includes(skill.name);
                       const isSelected = isExplicit || isAutoDetected;
+                      const isMCP = skill.type === 'mcp';
+                      const skillConn = skillConnections[skill.name];
                       return (
-                        <SkillCard
-                          key={skill.id || skill.name}
-                          skill={skill}
-                          compact={true}
-                          selected={isSelected}
-                          autoDetected={isAutoDetected && !isExplicit}
-                          onSelect={() => handleToggleSkill(skill.name)}
-                        />
+                        <div key={skill.id || skill.name}>
+                          <SkillCard
+                            skill={skill}
+                            compact={true}
+                            selected={isSelected}
+                            autoDetected={isAutoDetected && !isExplicit}
+                            onSelect={() => handleToggleSkill(skill.name)}
+                          />
+                          {isSelected && isMCP && allConnections && allConnections.length > 0 && (
+                            <div className="ml-4 mt-1 mb-2 flex items-center gap-2">
+                              <Database size={12} className="text-gray-400 flex-shrink-0" />
+                              <select
+                                value={skillConn?.connectionId || ''}
+                                onChange={(e) => {
+                                  const connId = e.target.value;
+                                  if (!connId) {
+                                    setSkillConnections(prev => {
+                                      const next = { ...prev };
+                                      delete next[skill.name];
+                                      return next;
+                                    });
+                                  } else {
+                                    const conn = allConnections.find(c => c.id === connId);
+                                    const typeToServerId = { neo4j: 'mcp-neo4j', postgres: 'mcp-postgres', minio: 'mcp-minio', kafka: 'mcp-kafka', grafana: 'mcp-grafana' };
+                                    setSkillConnections(prev => ({
+                                      ...prev,
+                                      [skill.name]: {
+                                        connectionId: connId,
+                                        serverId: conn ? (typeToServerId[conn.type || conn.databaseType] || '') : '',
+                                      }
+                                    }));
+                                  }
+                                }}
+                                className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                              >
+                                <option value="">Default connection</option>
+                                {allConnections.map(conn => (
+                                  <option key={conn.id} value={conn.id}>
+                                    {conn.name} ({conn.type || conn.databaseType})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
