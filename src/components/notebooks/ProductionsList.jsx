@@ -10,6 +10,7 @@ import {
   List,
   Lightbulb,
   FileCode,
+  Headphones,
   Eye,
   Trash2,
   Loader2,
@@ -26,6 +27,7 @@ const TYPE_CONFIG = {
   outline: { icon: List, color: 'text-purple-600', bg: 'bg-purple-50' },
   insight: { icon: Lightbulb, color: 'text-amber-600', bg: 'bg-amber-50' },
   custom: { icon: FileCode, color: 'text-gray-600', bg: 'bg-gray-50' },
+  podcast: { icon: Headphones, color: 'text-rose-600', bg: 'bg-rose-50' },
   default: { icon: Sparkles, color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 

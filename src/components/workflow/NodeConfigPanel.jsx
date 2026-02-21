@@ -25,8 +25,10 @@ import {
   GitMerge,
   Repeat,
   ShieldAlert,
+  Database,
 } from 'lucide-react';
 import { selectNotebooks, fetchNotebooks } from '../../store/slices/notebooksSlice.js';
+import { fetchDatabaseConnections, selectConnections } from '../../store/slices/databaseConnectionsSlice';
 import { getDefaultTriggerConfig } from './workflowSerializer.js';
 import NotebookSelectorModal from './NotebookSelectorModal.jsx';
 import ParameterManagerModal from './ParameterManagerModal.jsx';
@@ -215,6 +217,7 @@ const NotebookChips = ({ ids = [], notebooks, onRemove, onOpenSelector, label, m
 const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose, liveNodeStatuses = {} }) => {
   const dispatch = useDispatch();
   const notebooks = useSelector(selectNotebooks);
+  const allConnections = useSelector(selectConnections);
 
   // Notebook selector state
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -223,6 +226,13 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose, liveNodeStatuses =
   const [apiCurlExpanded, setApiCurlExpanded] = useState(false);
   const [paramsModalOpen, setParamsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('config'); // 'config' | 'lastRun'
+
+  // Fetch connections when MCP is enabled on a workflow node
+  React.useEffect(() => {
+    if (node?.data?.mcpEnabled && (!allConnections || allConnections.length === 0)) {
+      dispatch(fetchDatabaseConnections());
+    }
+  }, [node?.data?.mcpEnabled, allConnections, dispatch]);
 
   if (!node) return null;
 
@@ -807,6 +817,36 @@ const NodeConfigPanel = ({ node, onUpdate, onDelete, onClose, liveNodeStatuses =
             />
             <label htmlFor="mcp-enabled-toggle" className="text-xs text-gray-600">Enable MCP Tools</label>
           </div>
+          {node.data.mcpEnabled && allConnections && allConnections.length > 0 && (
+            <div className="pt-1">
+              <label className={labelCls}>
+                <Database className="w-3 h-3 inline mr-1" />
+                MCP Connection (Optional)
+              </label>
+              <select
+                value={node.data.mcpConnectionId || ''}
+                onChange={(e) => {
+                  updateData('mcpConnectionId', e.target.value || null);
+                  // Also store the server ID for the selected connection type
+                  const conn = allConnections.find(c => c.id === e.target.value);
+                  if (conn) {
+                    const typeToServerId = { neo4j: 'mcp-neo4j', postgres: 'mcp-postgres', minio: 'mcp-minio', kafka: 'mcp-kafka', grafana: 'mcp-grafana' };
+                    updateData('mcpServerId', typeToServerId[conn.type || conn.databaseType] || '');
+                  } else {
+                    updateData('mcpServerId', null);
+                  }
+                }}
+                className={inputCls}
+              >
+                <option value="">Default (env var connection)</option>
+                {allConnections.map(conn => (
+                  <option key={conn.id} value={conn.id}>
+                    {conn.name} ({conn.type || conn.databaseType})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"

@@ -44,8 +44,20 @@ const MCPTestingTab = () => {
   const [showQueryAssist, setShowQueryAssist] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState('');
 
-  // Filter to neo4j connections
-  const neo4jConnections = allConnections.filter(c => c.type === 'neo4j' || c.databaseType === 'neo4j');
+  // Filter connections based on the selected server's connection type
+  const getFilteredConnections = () => {
+    if (!selectedServer) return [];
+    const connType = selectedServer.connection_type;
+    if (!connType) return [];
+    return allConnections.filter(c => c.type === connType || c.databaseType === connType);
+  };
+
+  const filteredConnections = getFilteredConnections();
+
+  // Reset connection selection when server changes
+  useEffect(() => {
+    setSelectedConnectionId('');
+  }, [selectedServer?.id]);
 
   // Load MCP servers on mount
   useEffect(() => {
@@ -69,14 +81,14 @@ const MCPTestingTab = () => {
       console.error('Failed to load MCP servers:', error);
       // Mock servers for demo/fallback
       setServers([
-        { id: 'mcp-postgres', name: 'PostgreSQL MCP', description: 'PostgreSQL database tools', status: 'connected', type: 'database', version: '1.0.0' },
+        { id: 'mcp-postgres', name: 'PostgreSQL MCP', description: 'PostgreSQL database tools', status: 'connected', type: 'database', version: '1.0.0', supports_connection: true, connection_type: 'postgres' },
         { id: 'mcp-filesystem', name: 'Filesystem MCP', description: 'File system operations', status: 'connected', type: 'filesystem', version: '1.0.0' },
         { id: 'mcp-memory', name: 'Memory MCP', description: 'Knowledge graph storage', status: 'connected', type: 'memory', version: '1.0.0' },
         { id: 'mcp-napkin', name: 'Napkin AI MCP', description: 'Visual generation from text using Napkin AI', status: 'connected', type: 'visual-generation', version: '1.0.0' },
-        { id: 'mcp-neo4j', name: 'Neo4j MCP', description: 'Neo4j graph database Cypher queries', status: 'connected', type: 'database', version: '1.0.0', tags: ['neo4j', 'graph-database'] },
-        { id: 'mcp-minio', name: 'MinIO MCP', description: 'MinIO S3-compatible object storage', status: 'connected', type: 'storage', version: '1.0.0', tags: ['minio', 's3'] },
-        { id: 'mcp-kafka', name: 'Kafka MCP', description: 'Apache Kafka message broker', status: 'connected', type: 'messaging', version: '1.0.0', tags: ['kafka', 'streaming'] },
-        { id: 'mcp-grafana', name: 'Grafana MCP', description: 'Grafana dashboards and observability', status: 'connected', type: 'observability', version: '1.0.0', tags: ['grafana', 'dashboards'] },
+        { id: 'mcp-neo4j', name: 'Neo4j MCP', description: 'Neo4j graph database Cypher queries', status: 'connected', type: 'database', version: '1.0.0', tags: ['neo4j', 'graph-database'], supports_connection: true, connection_type: 'neo4j' },
+        { id: 'mcp-minio', name: 'MinIO MCP', description: 'MinIO S3-compatible object storage', status: 'connected', type: 'storage', version: '1.0.0', tags: ['minio', 's3'], supports_connection: true, connection_type: 'minio' },
+        { id: 'mcp-kafka', name: 'Kafka MCP', description: 'Apache Kafka message broker', status: 'connected', type: 'messaging', version: '1.0.0', tags: ['kafka', 'streaming'], supports_connection: true, connection_type: 'kafka' },
+        { id: 'mcp-grafana', name: 'Grafana MCP', description: 'Grafana dashboards and observability', status: 'connected', type: 'observability', version: '1.0.0', tags: ['grafana', 'dashboards'], supports_connection: true, connection_type: 'grafana' },
         { id: 'mcp-brave-search', name: 'Brave Search MCP', description: 'Privacy-focused web search via Brave', status: 'connected', type: 'search', version: '1.0.0', tags: ['search', 'brave'] },
         { id: 'mcp-firecrawl', name: 'Firecrawl MCP', description: 'Web scraping and crawling', status: 'connected', type: 'web-scraping', version: '1.0.0', tags: ['web-scraping', 'firecrawl'] },
         { id: 'mcp-atlassian', name: 'Atlassian MCP', description: 'Jira and Confluence integration', status: 'connected', type: 'productivity', version: '1.0.0', tags: ['atlassian', 'jira'] },
@@ -281,7 +293,12 @@ const MCPTestingTab = () => {
     setIsInvoking(true);
     const startTime = Date.now();
     try {
-      const response = await aetherApi.mcp.invokeTool(selectedServer.id, selectedTool.name, toolParams);
+      const response = await aetherApi.mcp.invokeTool(
+        selectedServer.id,
+        selectedTool.name,
+        toolParams,
+        selectedConnectionId || undefined
+      );
       const duration = Date.now() - startTime;
       const result = {
         success: true,
@@ -291,7 +308,7 @@ const MCPTestingTab = () => {
       };
       setInvokeResult(result);
       setInvokeHistory(prev => [
-        { server: selectedServer.name, tool: selectedTool.name, params: { ...toolParams }, ...result },
+        { server: selectedServer.name, tool: selectedTool.name, params: { ...toolParams }, connectionId: selectedConnectionId || null, ...result },
         ...prev.slice(0, 19)
       ]);
     } catch (error) {
@@ -304,7 +321,7 @@ const MCPTestingTab = () => {
       };
       setInvokeResult(result);
       setInvokeHistory(prev => [
-        { server: selectedServer.name, tool: selectedTool.name, params: { ...toolParams }, ...result },
+        { server: selectedServer.name, tool: selectedTool.name, params: { ...toolParams }, connectionId: selectedConnectionId || null, ...result },
         ...prev.slice(0, 19)
       ]);
     } finally {
@@ -438,6 +455,18 @@ const MCPTestingTab = () => {
     }
   };
 
+  // Friendly label for connection type
+  const getConnectionTypeLabel = (connType) => {
+    const labels = {
+      'neo4j': 'Neo4j',
+      'postgres': 'PostgreSQL',
+      'minio': 'MinIO',
+      'kafka': 'Kafka',
+      'grafana': 'Grafana',
+    };
+    return labels[connType] || connType;
+  };
+
   return (
     <div className="flex h-full gap-4">
       {/* Neo4j Query Assistant Dialog */}
@@ -502,6 +531,9 @@ const MCPTestingTab = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm text-gray-900 truncate">{server.name}</span>
                         {getStatusIcon(server.status)}
+                        {server.supports_connection && (
+                          <Database size={12} className="text-blue-400" title="Supports saved connections" />
+                        )}
                       </div>
                       <div className="text-xs text-gray-500 truncate">{server.description}</div>
                     </div>
@@ -557,12 +589,12 @@ const MCPTestingTab = () => {
             </div>
 
             <div className="flex-1 overflow-auto p-4">
-              {/* Neo4j Connection Selector */}
-              {selectedServer?.id === 'mcp-neo4j' && neo4jConnections.length > 0 && (
+              {/* Connection Selector — shown for any infrastructure MCP server with saved connections */}
+              {selectedServer?.supports_connection && filteredConnections.length > 0 && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <label className="flex items-center text-sm font-medium text-blue-800 mb-2">
                     <Database size={14} className="mr-1.5" />
-                    Neo4j Connection
+                    {getConnectionTypeLabel(selectedServer.connection_type)} Connection
                   </label>
                   <select
                     value={selectedConnectionId}
@@ -570,18 +602,18 @@ const MCPTestingTab = () => {
                     className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                   >
                     <option value="">-- Use default server connection --</option>
-                    {neo4jConnections.map(conn => (
+                    {filteredConnections.map(conn => (
                       <option key={conn.id} value={conn.id}>
                         {conn.name} ({conn.host}:{conn.port}) {conn.status === 'Connected' ? '' : `[${conn.status}]`}
                       </option>
                     ))}
                   </select>
                   {selectedConnectionId && (() => {
-                    const conn = neo4jConnections.find(c => c.id === selectedConnectionId);
+                    const conn = filteredConnections.find(c => c.id === selectedConnectionId);
                     return conn ? (
                       <div className="mt-2 text-xs text-blue-600 space-y-0.5">
-                        <div>Host: {conn.host}:{conn.port} | DB: {conn.database || 'neo4j'}</div>
-                        <div>Protocol: {conn.protocol || 'bolt'} | User: {conn.username || 'N/A'}</div>
+                        <div>Host: {conn.host}:{conn.port} | DB: {conn.database || 'N/A'}</div>
+                        <div>Protocol: {conn.protocol || 'default'} | User: {conn.username || 'N/A'}</div>
                       </div>
                     ) : null;
                   })()}
@@ -710,6 +742,12 @@ const MCPTestingTab = () => {
                       </div>
                       <span className="text-gray-500">{item.duration}ms</span>
                     </div>
+                    {item.connectionId && (
+                      <div className="text-xs text-blue-500 mt-0.5 flex items-center gap-1">
+                        <Database size={10} />
+                        Connection: {item.connectionId.slice(0, 8)}...
+                      </div>
+                    )}
                     <div className="text-xs text-gray-400 mt-1">
                       {new Date(item.timestamp).toLocaleString()}
                     </div>

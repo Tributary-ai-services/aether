@@ -6,6 +6,8 @@ import {
   clearExecutionState,
   selectProducerPreferences,
 } from '../../store/slices/producersSlice.js';
+import aetherApi from '../../services/api.js';
+import RendererSelectModal from './RendererSelectModal.jsx';
 import {
   X,
   Play,
@@ -18,6 +20,8 @@ import {
   CheckCircle,
   XCircle,
   ChevronDown,
+  Headphones,
+  Wand2,
 } from 'lucide-react';
 
 const PRODUCTION_TYPES = [
@@ -26,6 +30,7 @@ const PRODUCTION_TYPES = [
   { value: 'outline', label: 'Outline', description: 'Create a structured outline of the content' },
   { value: 'insight', label: 'Insights', description: 'Extract key insights and observations' },
   { value: 'custom', label: 'Custom', description: 'Custom production based on agent configuration' },
+  { value: 'podcast', label: 'Podcast', description: 'Generate a podcast script from the content' },
 ];
 
 // Map internal producer agent IDs to their production types
@@ -35,6 +40,7 @@ const PRODUCER_TYPE_MAP = {
   '00000000-0000-0000-0000-000000000011': 'outline',  // Outline Creator
   '00000000-0000-0000-0000-000000000012': 'summary',  // Document Summarizer
   '00000000-0000-0000-0000-000000000013': 'insight',  // Insights Extractor
+  '00000000-0000-0000-0000-000000000014': 'podcast',  // Podcast Producer
 };
 
 /**
@@ -68,6 +74,7 @@ const inferProductionType = (producer) => {
   if (nameLower.includes('q&a') || nameLower.includes('qa') || nameLower.includes('question')) return 'qa';
   if (nameLower.includes('outline')) return 'outline';
   if (nameLower.includes('insight') || nameLower.includes('extract')) return 'insight';
+  if (nameLower.includes('podcast') || nameLower.includes('audio')) return 'podcast';
 
   // 5. Default to custom for unknown producers
   return 'custom';
@@ -99,6 +106,23 @@ const ProducerExecutionModal = ({
   const [selectedDocuments, setSelectedDocuments] = useState([]);
   const [showDocumentSelector, setShowDocumentSelector] = useState(false);
 
+  // Renderer state
+  const [selectedRenderer, setSelectedRenderer] = useState(null);
+  const [showRendererModal, setShowRendererModal] = useState(false);
+  const [ttsProvider, setTtsProvider] = useState('elevenlabs');
+  const [speakers, setSpeakers] = useState('Alex, Sam');
+  const [providers, setProviders] = useState([
+    { id: 'elevenlabs', name: 'ElevenLabs' },
+    { id: 'kokoro', name: 'Kokoro' },
+  ]);
+  const [voices, setVoices] = useState([
+    { id: 'Rachel', name: 'Rachel (Female)' },
+    { id: 'Adam', name: 'Adam (Male)' },
+    { id: 'Domi', name: 'Domi (Female)' },
+    { id: 'Josh', name: 'Josh (Male)' },
+  ]);
+  const [voiceMapping, setVoiceMapping] = useState({});
+
   // Initialize production type based on selected producer
   useEffect(() => {
     if (producer) {
@@ -128,8 +152,17 @@ const ProducerExecutionModal = ({
   useEffect(() => {
     if (isOpen) {
       dispatch(clearExecutionState());
+      setSelectedRenderer(null);
+      setVoiceMapping({});
     }
   }, [isOpen, dispatch]);
+
+  // Load voices when podcast renderer is selected and provider changes
+  useEffect(() => {
+    if (selectedRenderer && isPodcastRenderer(selectedRenderer)) {
+      loadProviderVoices(ttsProvider);
+    }
+  }, [selectedRenderer, ttsProvider]);
 
   // Handle successful execution
   useEffect(() => {
@@ -138,14 +171,56 @@ const ProducerExecutionModal = ({
     }
   }, [executionState.status, executionState.production, onSuccess]);
 
+  const isPodcastRenderer = (renderer) => {
+    const name = (renderer?.name || '').toLowerCase();
+    return name.includes('podcast') || renderer?.rendererType === 'podcast';
+  };
+
+  const loadProviderVoices = async (provider) => {
+    try {
+      const response = await aetherApi.post('/mcp/invoke', {
+        server_id: 'mcp-podcast',
+        tool_name: 'list_voices',
+        arguments: { provider },
+      });
+      const voiceList = response.data?.content?.[0]?.text;
+      if (voiceList) {
+        const parsed = JSON.parse(voiceList);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVoices(parsed.map(v => ({ id: v.id || v.name, name: v.name || v.id })));
+          return;
+        }
+      }
+    } catch (err) {
+      // Use fallback voices
+    }
+  };
+
   const handleExecute = async () => {
     if (!producer || !notebookId) return;
+
+    const context = {};
+
+    // Add renderer config to context if a renderer is selected
+    if (selectedRenderer) {
+      context.renderer_id = selectedRenderer.id;
+      context.renderer_type = isPodcastRenderer(selectedRenderer) ? 'podcast' : selectedRenderer.type;
+
+      if (isPodcastRenderer(selectedRenderer)) {
+        context.tts_provider = ttsProvider;
+        context.speakers = speakers;
+        if (Object.keys(voiceMapping).length > 0) {
+          context.voice_mapping = voiceMapping;
+        }
+      }
+    }
 
     const request = {
       title,
       type: productionType,
-      format,
+      format: selectedRenderer && isPodcastRenderer(selectedRenderer) ? 'audio' : format,
       source_documents: selectedDocuments.length > 0 ? selectedDocuments : undefined,
+      context: Object.keys(context).length > 0 ? context : undefined,
     };
 
     await dispatch(executeProducer({
@@ -297,6 +372,93 @@ const ProducerExecutionModal = ({
             </div>
           )}
 
+          {/* Renderer Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Renderer (Optional)
+            </label>
+            {selectedRenderer ? (
+              <div className="flex items-center gap-3 p-3 border border-rose-200 bg-rose-50 rounded-lg">
+                <Headphones size={18} className="text-rose-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">{selectedRenderer.name}</div>
+                  <div className="text-xs text-gray-500 truncate">{selectedRenderer.description}</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setShowRendererModal(true)}
+                    disabled={isExecuting || hasCompleted}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-white transition-colors"
+                  >
+                    Change
+                  </button>
+                  <button
+                    onClick={() => setSelectedRenderer(null)}
+                    disabled={isExecuting || hasCompleted}
+                    className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-white transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowRendererModal(true)}
+                disabled={isExecuting || hasCompleted}
+                className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors w-full disabled:opacity-50"
+              >
+                <Wand2 size={16} />
+                Add Renderer (e.g., Podcast, Presentation)
+              </button>
+            )}
+
+            {/* Podcast-specific config */}
+            {selectedRenderer && isPodcastRenderer(selectedRenderer) && (
+              <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">TTS Provider</label>
+                  <select
+                    value={ttsProvider}
+                    onChange={(e) => setTtsProvider(e.target.value)}
+                    disabled={isExecuting || hasCompleted}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-(--color-primary-500) disabled:bg-gray-100"
+                  >
+                    {providers.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Speakers</label>
+                  <input
+                    type="text"
+                    value={speakers}
+                    onChange={(e) => setSpeakers(e.target.value)}
+                    disabled={isExecuting || hasCompleted}
+                    placeholder="Alex, Sam"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-(--color-primary-500) disabled:bg-gray-100"
+                  />
+                </div>
+                {speakers.split(',').map(s => s.trim()).filter(Boolean).map(speaker => (
+                  <div key={speaker}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Voice for {speaker}</label>
+                    <select
+                      value={voiceMapping[speaker] || ''}
+                      onChange={(e) => setVoiceMapping(prev => ({ ...prev, [speaker]: e.target.value }))}
+                      disabled={isExecuting || hasCompleted}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-(--color-primary-500) disabled:bg-gray-100"
+                    >
+                      <option value="">Auto-select</option>
+                      {voices.map(v => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Execution Status */}
           {(isExecuting || hasCompleted || hasFailed) && (
             <div className={`p-4 rounded-lg ${
@@ -366,6 +528,13 @@ const ProducerExecutionModal = ({
           )}
         </div>
       </div>
+
+      {/* Renderer selection modal */}
+      <RendererSelectModal
+        isOpen={showRendererModal}
+        onClose={() => setShowRendererModal(false)}
+        onSelect={(renderer) => setSelectedRenderer(renderer)}
+      />
     </div>
   );
 };
