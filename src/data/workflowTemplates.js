@@ -11,6 +11,7 @@ export const workflowTemplateCategories = [
   { id: 'data_pipeline', label: 'Data Pipelines' },
   { id: 'ai_research', label: 'AI & Research' },
   { id: 'media', label: 'Media & Audio' },
+  { id: 'renderer', label: 'Renderers' },
   { id: 'custom', label: 'General' },
 ];
 
@@ -1529,10 +1530,10 @@ export const workflowTemplates = [
   // ─── Media & Audio Templates ───────────────────────────────────────────
   {
     id: 'tpl-podcast-generator',
-    name: 'Podcast Generator',
+    name: 'Podcast Renderer',
     description: 'End-to-end podcast creation: an AI agent writes a multi-speaker screenplay-style script from a topic, then the Podcast MCP server synthesizes it into a polished MP3 with multi-voice TTS, intro/outro music, and ambient audio via FFmpeg.',
-    category: 'media',
-    type: 'media',
+    category: 'renderer',
+    type: 'renderer',
     tags: ['podcast', 'tts', 'audio', 'speech', 'media', 'agent', 'ffmpeg'],
     steps: [
       {
@@ -1647,10 +1648,10 @@ export const workflowTemplates = [
               type: 'select',
               description: 'Text-to-speech provider to use',
               required: true,
-              default: 'kokoro',
+              default: 'elevenlabs',
               options: [
-                { label: 'Kokoro TTS (Self-hosted)', value: 'kokoro' },
                 { label: 'ElevenLabs', value: 'elevenlabs' },
+                { label: 'Kokoro TTS (Self-hosted)', value: 'kokoro' },
                 { label: 'MetaVoice-1B (Self-hosted, GPU)', value: 'metavoice' },
                 { label: 'Bark (Self-hosted)', value: 'bark' },
               ],
