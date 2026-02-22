@@ -129,6 +129,17 @@ const ProducerExecutionModal = ({
       // Infer the production type from producer properties
       const inferredType = inferProductionType(producer);
       setProductionType(inferredType);
+
+      // Auto-select podcast renderer for podcast producers
+      if (inferredType === 'podcast') {
+        setSelectedRenderer({
+          id: 'renderer-podcast',
+          name: 'Podcast Renderer',
+          description: 'Transform text into a multi-speaker podcast with TTS, music, and ambient audio',
+          rendererType: 'podcast',
+        });
+        setFormat('audio');
+      }
     }
   }, [producer]);
 
