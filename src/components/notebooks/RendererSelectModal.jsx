@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import aetherApi from '../../services/api.js';
+import { api } from '../../services/api.js';
 import {
   X,
   Headphones,
@@ -41,7 +41,7 @@ const RendererSelectModal = ({ isOpen, onClose, onSelect }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await aetherApi.get('/renderers');
+      const response = await api.get('/renderers');
       setRenderers(response.data?.renderers || []);
     } catch (err) {
       console.error('Failed to fetch renderers:', err);

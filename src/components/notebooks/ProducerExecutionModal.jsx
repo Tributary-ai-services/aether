@@ -6,7 +6,7 @@ import {
   clearExecutionState,
   selectProducerPreferences,
 } from '../../store/slices/producersSlice.js';
-import aetherApi from '../../services/api.js';
+import { api } from '../../services/api.js';
 import RendererSelectModal from './RendererSelectModal.jsx';
 import {
   X,
@@ -178,7 +178,7 @@ const ProducerExecutionModal = ({
 
   const loadProviderVoices = async (provider) => {
     try {
-      const response = await aetherApi.post('/mcp/invoke', {
+      const response = await api.post('/mcp/invoke', {
         server_id: 'mcp-podcast',
         tool_name: 'list_voices',
         arguments: { provider },
