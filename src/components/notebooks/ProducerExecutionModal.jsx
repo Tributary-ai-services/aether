@@ -109,19 +109,20 @@ const ProducerExecutionModal = ({
   // Renderer state
   const [selectedRenderer, setSelectedRenderer] = useState(null);
   const [showRendererModal, setShowRendererModal] = useState(false);
-  const [ttsProvider, setTtsProvider] = useState('elevenlabs');
+  const [ttsProvider, setTtsProvider] = useState('kokoro');
   const [speakers, setSpeakers] = useState('Alex, Sam');
   const [providers, setProviders] = useState([
-    { id: 'elevenlabs', name: 'ElevenLabs' },
     { id: 'kokoro', name: 'Kokoro' },
+    { id: 'elevenlabs', name: 'ElevenLabs' },
   ]);
   const [voices, setVoices] = useState([
-    { id: 'Rachel', name: 'Rachel (Female)' },
-    { id: 'Adam', name: 'Adam (Male)' },
-    { id: 'Domi', name: 'Domi (Female)' },
-    { id: 'Josh', name: 'Josh (Male)' },
+    { id: 'af_heart', name: 'Heart (Female)' },
+    { id: 'am_adam', name: 'Adam (Male)' },
+    { id: 'af_bella', name: 'Bella (Female)' },
+    { id: 'am_michael', name: 'Michael (Male)' },
   ]);
   const [voiceMapping, setVoiceMapping] = useState({});
+  const [podcastDuration, setPodcastDuration] = useState(10);
 
   // Initialize production type based on selected producer
   useEffect(() => {
@@ -220,8 +221,13 @@ const ProducerExecutionModal = ({
       if (isPodcastRenderer(selectedRenderer)) {
         context.tts_provider = ttsProvider;
         context.speakers = speakers;
-        if (Object.keys(voiceMapping).length > 0) {
-          context.voice_mapping = voiceMapping;
+        context.podcast_duration = podcastDuration;
+        // Only send voice_mapping entries that have non-empty values
+        const filteredMapping = Object.fromEntries(
+          Object.entries(voiceMapping).filter(([, v]) => v && v.length > 0)
+        );
+        if (Object.keys(filteredMapping).length > 0) {
+          context.voice_mapping = filteredMapping;
         }
       }
     }
@@ -449,6 +455,26 @@ const ProducerExecutionModal = ({
                     placeholder="Alex, Sam"
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-(--color-primary-500) disabled:bg-gray-100"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Duration: {podcastDuration} min
+                  </label>
+                  <input
+                    type="range"
+                    min={5}
+                    max={30}
+                    step={5}
+                    value={podcastDuration}
+                    onChange={(e) => setPodcastDuration(Number(e.target.value))}
+                    disabled={isExecuting || hasCompleted}
+                    className="w-full accent-rose-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                    <span>5 min</span>
+                    <span>15 min</span>
+                    <span>30 min</span>
+                  </div>
                 </div>
                 {speakers.split(',').map(s => s.trim()).filter(Boolean).map(speaker => (
                   <div key={speaker}>

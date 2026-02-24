@@ -44,7 +44,7 @@ const TYPE_LABELS = {
 const ProductionViewer = ({
   isOpen,
   onClose,
-  production,
+  production: productionProp,
   notebookId,
   onDelete,
 }) => {
@@ -52,6 +52,15 @@ const ProductionViewer = ({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Get refreshed production from store (may have updated mediaUrl after async rendering)
+  const storeProduction = useAppSelector(state => {
+    if (!productionProp || !notebookId) return null;
+    const items = state.producers.productions[notebookId]?.items;
+    return items?.find(p => p.id === productionProp.id) || null;
+  });
+  // Use store version if available (has fresh metadata), fall back to prop
+  const production = storeProduction || productionProp;
 
   // Get content from store
   const contentState = useAppSelector(state =>
@@ -62,11 +71,13 @@ const ProductionViewer = ({
   const contentError = contentState?.error;
 
   // Fetch content when modal opens
+  // Always re-fetch if production has a renderer but no mediaUrl yet (async render may have completed)
+  const needsRefresh = production?.rendererId && !production?.mediaUrl;
   useEffect(() => {
-    if (isOpen && production && !content && !contentLoading) {
+    if (isOpen && production && (!content || needsRefresh) && !contentLoading) {
       dispatch(fetchProductionContent(production.id));
     }
-  }, [isOpen, production, content, contentLoading, dispatch]);
+  }, [isOpen, production, content, contentLoading, needsRefresh, dispatch]);
 
   // Reset copy state
   useEffect(() => {
