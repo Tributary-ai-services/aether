@@ -16,6 +16,7 @@ import {
   List,
   Lightbulb,
   FileCode,
+  Headphones,
   Loader2,
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ const TYPE_CONFIG = {
   outline: { icon: List, color: 'text-purple-600', bg: 'bg-purple-50' },
   insight: { icon: Lightbulb, color: 'text-amber-600', bg: 'bg-amber-50' },
   custom: { icon: FileCode, color: 'text-gray-600', bg: 'bg-gray-50' },
+  podcast: { icon: Headphones, color: 'text-rose-600', bg: 'bg-rose-50' },
   default: { icon: Sparkles, color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 
@@ -35,6 +37,7 @@ const PRODUCER_TYPE_MAP = {
   '00000000-0000-0000-0000-000000000011': 'outline',  // Outline Creator
   '00000000-0000-0000-0000-000000000012': 'summary',  // Document Summarizer
   '00000000-0000-0000-0000-000000000013': 'insight',  // Insights Extractor
+  '00000000-0000-0000-0000-000000000014': 'podcast',  // Podcast Producer
 };
 
 /**
@@ -68,6 +71,7 @@ const inferProductionType = (producer) => {
   if (nameLower.includes('q&a') || nameLower.includes('qa') || nameLower.includes('question')) return 'qa';
   if (nameLower.includes('outline')) return 'outline';
   if (nameLower.includes('insight') || nameLower.includes('extract')) return 'insight';
+  if (nameLower.includes('podcast') || nameLower.includes('audio')) return 'podcast';
 
   // 5. Default for unknown producers
   return 'custom';

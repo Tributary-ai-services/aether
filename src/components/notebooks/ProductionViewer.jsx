@@ -15,8 +15,10 @@ import {
   Code,
   FileJson,
   AlignLeft,
+  FileAudio,
   Clock,
   Sparkles,
+  Headphones,
   Loader2,
   AlertTriangle,
   ExternalLink,
@@ -27,6 +29,7 @@ const FORMAT_ICONS = {
   html: Code,
   json: FileJson,
   text: AlignLeft,
+  audio: FileAudio,
 };
 
 const TYPE_LABELS = {
@@ -35,6 +38,7 @@ const TYPE_LABELS = {
   outline: 'Outline',
   insight: 'Insights',
   custom: 'Custom',
+  podcast: 'Podcast',
 };
 
 const ProductionViewer = ({
@@ -229,6 +233,41 @@ const ProductionViewer = ({
             </div>
           )}
         </div>
+
+        {/* Audio Player (for productions with media URL) */}
+        {production.mediaUrl && (
+          <div className="px-6 py-3 bg-rose-50 border-b border-rose-200">
+            <div className="flex items-center gap-3 mb-2">
+              <Headphones size={18} className="text-rose-600" />
+              <span className="text-sm font-medium text-rose-800">Podcast Audio</span>
+              {production.mediaMetadata?.duration && (
+                <span className="text-xs text-rose-600">
+                  {Math.floor(production.mediaMetadata.duration / 60)}:{String(Math.floor(production.mediaMetadata.duration % 60)).padStart(2, '0')}
+                </span>
+              )}
+              {production.mediaMetadata?.speakers && (
+                <span className="text-xs text-rose-600">
+                  Speakers: {Array.isArray(production.mediaMetadata.speakers)
+                    ? production.mediaMetadata.speakers.join(', ')
+                    : production.mediaMetadata.speakers}
+                </span>
+              )}
+              <a
+                href={production.mediaUrl}
+                download
+                className="ml-auto text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1"
+              >
+                <Download size={14} /> Download MP3
+              </a>
+            </div>
+            <audio
+              controls
+              src={production.mediaUrl}
+              className="w-full h-10"
+              preload="metadata"
+            />
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
