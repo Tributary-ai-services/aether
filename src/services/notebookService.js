@@ -292,7 +292,13 @@ class NotebookService {
       dataClassification: 'internal',
       redactionMode: 'mask',        // Options: mask, replace, hash, remove, tokenize, none
       redactionEnabled: true,       // Legacy flag for backwards compatibility
-      complianceFrameworks: ['SOC2']
+      complianceFrameworks: ['SOC2'],
+      // Content scanning (Gatekeeper) settings
+      scanInbound: true,
+      scanOutbound: true,
+      scanProfile: 'full',          // Options: full, pii_only, injection_only, compliance
+      blockOnCritical: true,
+      failOpen: true
     };
   }
 

@@ -1,13 +1,14 @@
 import React from 'react';
-import { 
-  Shield, 
-  Eye, 
-  Lock, 
-  FileText, 
-  Clock, 
+import {
+  Shield,
+  Eye,
+  Lock,
+  FileText,
+  Clock,
   AlertTriangle,
   Check,
-  Info
+  Info,
+  Scan
 } from 'lucide-react';
 
 const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
@@ -230,6 +231,95 @@ const ComplianceSettings = ({ settings, onChange, disabled = false }) => {
         </div>
       </div>
 
+
+      {/* Content Scanning (Gatekeeper) */}
+      <div>
+        <h3 className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+          <Scan size={16} />
+          Content Scanning
+        </h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Configure real-time content scanning for LLM requests and responses via Gatekeeper.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm text-gray-700">Inbound Scanning</label>
+              <p className="text-xs text-gray-500">Scan user messages before sending to LLM</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.scanInbound !== false}
+              onChange={(e) => handleChange('scanInbound', e.target.checked)}
+              disabled={disabled}
+              className="rounded border-gray-300"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm text-gray-700">Outbound Scanning</label>
+              <p className="text-xs text-gray-500">Scan LLM responses before displaying</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.scanOutbound !== false}
+              onChange={(e) => handleChange('scanOutbound', e.target.checked)}
+              disabled={disabled}
+              className="rounded border-gray-300"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm text-gray-700">Block on Critical</label>
+              <p className="text-xs text-gray-500">Block requests with critical violations</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.blockOnCritical !== false}
+              onChange={(e) => handleChange('blockOnCritical', e.target.checked)}
+              disabled={disabled}
+              className="rounded border-gray-300"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm text-gray-700">Fail Open</label>
+              <p className="text-xs text-gray-500">Allow requests if scanning errors occur</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.failOpen !== false}
+              onChange={(e) => handleChange('failOpen', e.target.checked)}
+              disabled={disabled}
+              className="rounded border-gray-300"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+            Scan Profile
+          </label>
+          <select
+            value={settings.scanProfile || 'full'}
+            onChange={(e) => handleChange('scanProfile', e.target.value)}
+            disabled={disabled}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+          >
+            <option value="full">Full (PII + Injection + Compliance)</option>
+            <option value="pii_only">PII Only</option>
+            <option value="injection_only">Injection Only</option>
+            <option value="compliance">Compliance Only</option>
+          </select>
+          <p className="text-xs text-gray-600 mt-1">
+            Determines which scanning checks are applied to LLM content
+          </p>
+        </div>
+      </div>
 
       {/* AudiModal Integration Note */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
