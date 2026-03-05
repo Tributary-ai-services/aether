@@ -95,7 +95,11 @@ export const fetchProductionContent = createAsyncThunk(
     try {
       const response = await aetherApi.productions.getContent(productionId);
       if (response.success) {
-        return { productionId, content: response.data.content };
+        return {
+          productionId,
+          content: response.data.content,
+          production: response.data.production || null,
+        };
       } else {
         return rejectWithValue(response.error || 'Failed to fetch production content');
       }
@@ -465,12 +469,26 @@ const producersSlice = createSlice({
         };
       })
       .addCase(fetchProductionContent.fulfilled, (state, action) => {
-        const { productionId, content } = action.payload;
+        const { productionId, content, production } = action.payload;
         state.productionContent[productionId] = {
           content,
           loading: false,
           error: null,
         };
+        // Update the production object in the notebook's list with fresh metadata
+        // (e.g., mediaUrl set after async rendering completed)
+        if (production) {
+          for (const notebookId of Object.keys(state.productions)) {
+            const items = state.productions[notebookId]?.items;
+            if (items) {
+              const index = items.findIndex(p => p.id === productionId);
+              if (index !== -1) {
+                items[index] = { ...items[index], ...production };
+                break;
+              }
+            }
+          }
+        }
       })
       .addCase(fetchProductionContent.rejected, (state, action) => {
         const productionId = action.meta.arg;

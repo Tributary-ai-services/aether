@@ -15,8 +15,10 @@ import {
   Code,
   FileJson,
   AlignLeft,
+  FileAudio,
   Clock,
   Sparkles,
+  Headphones,
   Loader2,
   AlertTriangle,
   ExternalLink,
@@ -27,6 +29,7 @@ const FORMAT_ICONS = {
   html: Code,
   json: FileJson,
   text: AlignLeft,
+  audio: FileAudio,
 };
 
 const TYPE_LABELS = {
@@ -35,12 +38,13 @@ const TYPE_LABELS = {
   outline: 'Outline',
   insight: 'Insights',
   custom: 'Custom',
+  podcast: 'Podcast',
 };
 
 const ProductionViewer = ({
   isOpen,
   onClose,
-  production,
+  production: productionProp,
   notebookId,
   onDelete,
 }) => {
@@ -48,6 +52,15 @@ const ProductionViewer = ({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Get refreshed production from store (may have updated mediaUrl after async rendering)
+  const storeProduction = useAppSelector(state => {
+    if (!productionProp || !notebookId) return null;
+    const items = state.producers.productions[notebookId]?.items;
+    return items?.find(p => p.id === productionProp.id) || null;
+  });
+  // Use store version if available (has fresh metadata), fall back to prop
+  const production = storeProduction || productionProp;
 
   // Get content from store
   const contentState = useAppSelector(state =>
@@ -58,11 +71,13 @@ const ProductionViewer = ({
   const contentError = contentState?.error;
 
   // Fetch content when modal opens
+  // Always re-fetch if production has a renderer but no mediaUrl yet (async render may have completed)
+  const needsRefresh = production?.rendererId && !production?.mediaUrl;
   useEffect(() => {
-    if (isOpen && production && !content && !contentLoading) {
+    if (isOpen && production && (!content || needsRefresh) && !contentLoading) {
       dispatch(fetchProductionContent(production.id));
     }
-  }, [isOpen, production, content, contentLoading, dispatch]);
+  }, [isOpen, production, content, contentLoading, needsRefresh, dispatch]);
 
   // Reset copy state
   useEffect(() => {
@@ -229,6 +244,41 @@ const ProductionViewer = ({
             </div>
           )}
         </div>
+
+        {/* Audio Player (for productions with media URL) */}
+        {production.mediaUrl && (
+          <div className="px-6 py-3 bg-rose-50 border-b border-rose-200">
+            <div className="flex items-center gap-3 mb-2">
+              <Headphones size={18} className="text-rose-600" />
+              <span className="text-sm font-medium text-rose-800">Podcast Audio</span>
+              {production.mediaMetadata?.duration && (
+                <span className="text-xs text-rose-600">
+                  {Math.floor(production.mediaMetadata.duration / 60)}:{String(Math.floor(production.mediaMetadata.duration % 60)).padStart(2, '0')}
+                </span>
+              )}
+              {production.mediaMetadata?.speakers && (
+                <span className="text-xs text-rose-600">
+                  Speakers: {Array.isArray(production.mediaMetadata.speakers)
+                    ? production.mediaMetadata.speakers.join(', ')
+                    : production.mediaMetadata.speakers}
+                </span>
+              )}
+              <a
+                href={production.mediaUrl}
+                download
+                className="ml-auto text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1"
+              >
+                <Download size={14} /> Download MP3
+              </a>
+            </div>
+            <audio
+              controls
+              src={production.mediaUrl}
+              className="w-full h-10"
+              preload="metadata"
+            />
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">

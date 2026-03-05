@@ -49,6 +49,7 @@ import HelpPage from './pages/HelpPage.jsx';
 import QueryConsolePage from './pages/QueryConsolePage.jsx';
 import SchemaBrowserPage from './pages/SchemaBrowserPage.jsx';
 import Neo4jExplorerPage from './pages/Neo4jExplorerPage.jsx';
+import KafkaExplorerPage from './pages/KafkaExplorerPage.jsx';
 import DeveloperToolsPage from './pages/DeveloperToolsPage.jsx';
 import ProductionsManagementPage from './pages/ProductionsManagementPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
@@ -500,6 +501,8 @@ const App = () => {
             <Route path="/schema-browser/:connectionId" element={<SchemaBrowserPage />} />
             <Route path="/neo4j-explorer" element={<Neo4jExplorerPage />} />
             <Route path="/neo4j-explorer/:connectionId" element={<Neo4jExplorerPage />} />
+            <Route path="/kafka-explorer" element={<KafkaExplorerPage />} />
+            <Route path="/kafka-explorer/:connectionId" element={<KafkaExplorerPage />} />
             <Route path="/developer-tools" element={<DeveloperToolsPage />} />
             <Route path="/developer-tools/:tab" element={<DeveloperToolsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />

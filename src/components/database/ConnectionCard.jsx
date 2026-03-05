@@ -72,14 +72,26 @@ const ConnectionCard = ({
   const status = getConnectionStatus();
   const StatusIcon = status.icon;
 
-  // Check if this is a Neo4j connection
-  const isNeo4j = (connection.databaseType || connection.type || '').toLowerCase() === 'neo4j';
+  // Check connection type
+  const connType = (connection.databaseType || connection.type || '').toLowerCase();
+  const isNeo4j = connType === 'neo4j';
+  const isKafka = connType === 'kafka';
 
-  // Handle navigation to schema browser (or Neo4j Explorer for neo4j)
+  // Get browse button config based on database type
+  const getBrowseConfig = () => {
+    if (isNeo4j) return { label: 'Explorer', title: 'Open Neo4j Explorer' };
+    if (isKafka) return { label: 'Topics', title: 'Browse Kafka topics' };
+    return { label: 'Schema', title: 'Browse schema' };
+  };
+  const browseConfig = getBrowseConfig();
+
+  // Handle navigation to schema browser, Neo4j Explorer, or Kafka Explorer
   const handleSchemaClick = () => {
     if (onCloseSettings) onCloseSettings();
     if (isNeo4j) {
       navigate(`/neo4j-explorer?connectionId=${connection.id}`);
+    } else if (isKafka) {
+      navigate(`/kafka-explorer?connectionId=${connection.id}`);
     } else {
       navigate(`/schema-browser?connectionId=${connection.id}`);
     }
@@ -178,20 +190,22 @@ const ConnectionCard = ({
         <button
           onClick={handleSchemaClick}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded transition-colors"
-          title="Browse schema"
+          title={browseConfig.title}
         >
           <FolderTree size={14} />
-          <span>Schema</span>
+          <span>{browseConfig.label}</span>
         </button>
 
-        <button
-          onClick={handleQueryClick}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary-700) bg-(--color-primary-50) hover:bg-(--color-primary-100) rounded transition-colors"
-          title="Open query console"
-        >
-          <Terminal size={14} />
-          <span>Query</span>
-        </button>
+        {!isKafka && (
+          <button
+            onClick={handleQueryClick}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary-700) bg-(--color-primary-50) hover:bg-(--color-primary-100) rounded transition-colors"
+            title="Open query console"
+          >
+            <Terminal size={14} />
+            <span>Query</span>
+          </button>
+        )}
 
         <button
           onClick={() => onEdit(connection)}
