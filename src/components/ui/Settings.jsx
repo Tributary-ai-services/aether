@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useNavigation } from '../../context/NavigationContext.jsx';
@@ -29,8 +29,13 @@ import {
   Eye,
   FolderTree,
   Terminal,
-  Server
+  Server,
+  Key,
+  Trash2,
+  Copy,
+  Clock
 } from 'lucide-react';
+import { bypassTokenService } from '../../services/bypassTokenService';
 import { useNavigate } from 'react-router-dom';
 import EditProfileModal from '../modals/EditProfileModal';
 import { fetchTeams, selectAllTeams, selectTeamsLoading } from '../../store/slices/teamsSlice';
@@ -56,6 +61,69 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
     desktop: true
   });
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
+  // Bypass token state
+  const [bypassTokens, setBypassTokens] = useState([]);
+  const [bypassTokensLoading, setBypassTokensLoading] = useState(false);
+  const [showGenerateToken, setShowGenerateToken] = useState(false);
+  const [newTokenTTL, setNewTokenTTL] = useState(4);
+  const [newTokenReason, setNewTokenReason] = useState('');
+  const [generatedToken, setGeneratedToken] = useState(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+
+  const loadBypassTokens = useCallback(async () => {
+    setBypassTokensLoading(true);
+    try {
+      const data = await bypassTokenService.list();
+      setBypassTokens(data.tokens || []);
+    } catch (err) {
+      console.error('Failed to load bypass tokens:', err);
+    } finally {
+      setBypassTokensLoading(false);
+    }
+  }, []);
+
+  const handleGenerateToken = async () => {
+    if (!newTokenReason.trim()) return;
+    try {
+      const data = await bypassTokenService.generate(newTokenTTL, newTokenReason.trim());
+      setGeneratedToken(data.token);
+      setNewTokenReason('');
+      loadBypassTokens();
+    } catch (err) {
+      console.error('Failed to generate bypass token:', err);
+    }
+  };
+
+  const handleRevokeToken = async (tokenId) => {
+    try {
+      await bypassTokenService.revoke(tokenId);
+      loadBypassTokens();
+    } catch (err) {
+      console.error('Failed to revoke bypass token:', err);
+    }
+  };
+
+  const handleCopyToken = (token) => {
+    navigator.clipboard.writeText(token);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 2000);
+  };
+
+  // Load bypass tokens when security tab is active
+  useEffect(() => {
+    if (isOpen && activeTab === 'security') {
+      loadBypassTokens();
+    }
+  }, [isOpen, activeTab, loadBypassTokens]);
+
+  // Reset generated token when modal closes
+  useEffect(() => {
+    if (!showGenerateToken) {
+      setGeneratedToken(null);
+      setTokenCopied(false);
+    }
+  }, [showGenerateToken]);
 
   // Load teams when component mounts or when switching to teams tab
   useEffect(() => {
@@ -748,6 +816,159 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Scan Bypass Tokens */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                          <Key className="w-4 h-4" />
+                          Scan Bypass Tokens
+                        </h4>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Generate bypass tokens for debugging LLM requests without content scanning.
+                          All bypass usage is logged for compliance audit.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowGenerateToken(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)]"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Generate Token
+                      </button>
+                    </div>
+
+                    {/* Active Tokens Table */}
+                    {bypassTokensLoading ? (
+                      <div className="text-sm text-gray-500 py-4 text-center">Loading tokens...</div>
+                    ) : bypassTokens.length === 0 ? (
+                      <div className="text-sm text-gray-500 py-4 text-center border border-dashed border-gray-200 rounded-lg">
+                        No active bypass tokens
+                      </div>
+                    ) : (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-gray-600 font-medium">Token ID</th>
+                              <th className="text-left px-3 py-2 text-gray-600 font-medium">Reason</th>
+                              <th className="text-left px-3 py-2 text-gray-600 font-medium">Expires</th>
+                              <th className="text-right px-3 py-2 text-gray-600 font-medium">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {bypassTokens.map((token) => (
+                              <tr key={token.token_id} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 font-mono text-xs text-gray-700">
+                                  {token.token_id.slice(0, 8)}...
+                                </td>
+                                <td className="px-3 py-2 text-gray-700">{token.reason}</td>
+                                <td className="px-3 py-2 text-gray-500 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {new Date(token.expires_at).toLocaleString()}
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button
+                                    onClick={() => handleRevokeToken(token.token_id)}
+                                    className="text-red-600 hover:text-red-700 p-1"
+                                    title="Revoke token"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Generate Token Modal */}
+                  {showGenerateToken && (
+                    <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center">
+                      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900">Generate Bypass Token</h4>
+                          <button onClick={() => setShowGenerateToken(false)} className="text-gray-400 hover:text-gray-600">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {generatedToken ? (
+                          <div className="space-y-4">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                              <p className="text-sm text-yellow-800 font-medium mb-1">Copy this token now</p>
+                              <p className="text-xs text-yellow-700">This token will only be shown once.</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={generatedToken}
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-xs"
+                              />
+                              <button
+                                onClick={() => handleCopyToken(generatedToken)}
+                                className="flex items-center gap-1 px-3 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] text-sm"
+                              >
+                                <Copy className="w-4 h-4" />
+                                {tokenCopied ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => setShowGenerateToken(false)}
+                              className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                              <select
+                                value={newTokenTTL}
+                                onChange={(e) => setNewTokenTTL(Number(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-500)]"
+                              >
+                                <option value={1}>1 hour</option>
+                                <option value={4}>4 hours</option>
+                                <option value={8}>8 hours</option>
+                                <option value={24}>24 hours</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Reason (required)</label>
+                              <input
+                                type="text"
+                                value={newTokenReason}
+                                onChange={(e) => setNewTokenReason(e.target.value)}
+                                placeholder="e.g., debugging prompt template"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-500)]"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShowGenerateToken(false)}
+                                className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleGenerateToken}
+                                disabled={!newTokenReason.trim()}
+                                className="flex-1 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Generate
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
