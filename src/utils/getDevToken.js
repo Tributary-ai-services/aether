@@ -1,7 +1,7 @@
 // Helper to get a real development token from Keycloak
 export async function getDevToken() {
   // Use the actual Keycloak URL
-  const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
+  const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
   const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
   const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
   // aether-frontend is a public client, doesn't need a client secret

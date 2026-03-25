@@ -279,39 +279,41 @@ export const AuthProvider = ({ children }) => {
 
       console.log('Attempting signup with:', userData);
 
-      const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
-      const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
+      // Step 1: Register user in Keycloak via backend registration endpoint
+      const API_BASE = import.meta.env.VITE_AETHER_API_BASE || window.location.origin;
+      const API_URL = import.meta.env.VITE_AETHER_API_URL || '/api/v1';
+      const registerUrl = `${API_BASE}${API_URL}/auth/register`;
 
-      // Step 1: Register user in Keycloak via backend onboarding endpoint
-      // Note: Since we need authentication to call the backend, we'll use a different approach
-      // For now, we'll login with credentials and then call the onboarding endpoint
-      // In production, Keycloak registration should be done via Keycloak's registration page
-      // or via an unauthenticated registration endpoint on the backend
+      const registerResponse = await fetch(registerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          password: userData.password,
+        }),
+      });
 
-      // For demonstration, try to authenticate and create user profile
-      // This assumes the user was already created in Keycloak
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json().catch(() => ({}));
+        if (registerResponse.status === 409) {
+          // User already exists — try logging in directly
+          console.log('User already exists, attempting login');
+        } else {
+          throw new Error(errorData.message || 'Registration failed');
+        }
+      } else {
+        console.log('User registered in Keycloak successfully');
+      }
+
+      // Step 2: Log in with the new credentials
       const result = await login(userData.email, userData.password, false);
 
       if (result.success) {
-        // User authenticated, now call onboarding endpoint to ensure profile is complete
-        try {
-          const onboardingResponse = await aetherApi.users.getOnboardingStatus();
-          console.log('Onboarding status:', onboardingResponse.data);
-
-          // If onboarding is incomplete, you might want to redirect to onboarding flow
-          if (!onboardingResponse.data.is_complete) {
-            console.log('User needs to complete onboarding');
-          }
-        } catch (onboardingError) {
-          console.error('Failed to check onboarding status:', onboardingError);
-          // Don't fail signup if onboarding check fails
-        }
-
         return { success: true, user: result.user };
       } else {
-        // If login fails, it means the user doesn't exist in Keycloak yet
-        // In production, this should redirect to Keycloak's registration page
-        throw new Error('User registration requires Keycloak admin setup. Please contact administrator.');
+        throw new Error('Account created but login failed. Please try signing in.');
       }
     } catch (error) {
       console.error('Signup failed:', error);

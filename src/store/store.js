@@ -14,6 +14,7 @@ import aiPlaygroundReducer from './slices/aiPlaygroundSlice.js';
 import producersReducer from './slices/producersSlice.js';
 import workflowsReducer from './slices/workflowsSlice.js';
 import notificationsReducer from './slices/notificationsSlice.js';
+import commentsReducer from './slices/commentsSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -33,6 +34,7 @@ const store = configureStore({
     producers: producersReducer,
     workflows: workflowsReducer,
     notifications: notificationsReducer,
+    comments: commentsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

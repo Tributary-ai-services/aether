@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import {
+  selectComments,
+  selectCommentsLoading,
+  selectCommentsCreating,
+  createComment as createCommentThunk,
+  fetchComments,
+} from '../store/slices/commentsSlice';
 
 const CollaborationContext = createContext();
 
@@ -10,209 +19,81 @@ export const useCollaboration = () => {
   return context;
 };
 
-export const CollaborationProvider = ({ children }) => {
-  const [comments, setComments] = useState({});
-  const [sharedItems, setSharedItems] = useState({});
-  const [activeUsers, setActiveUsers] = useState([]);
+export const CollaborationProvider = ({ children, notebookId }) => {
+  const dispatch = useDispatch();
+  const { user } = useAuth();
+  const comments = useSelector((state) => selectComments(state, notebookId));
+  const loading = useSelector(selectCommentsLoading);
+  const creating = useSelector(selectCommentsCreating);
 
-  // Mock active users
-  useEffect(() => {
-    const mockUsers = [
-      { 
-        id: '1', 
-        name: 'John Doe', 
-        email: 'john.doe@company.com', 
-        avatar: 'JD', 
-        status: 'online',
-        lastSeen: new Date(),
-        color: '#3b82f6'
-      },
-      { 
-        id: '2', 
-        name: 'Sarah Smith', 
-        email: 'sarah.smith@company.com', 
-        avatar: 'SS', 
-        status: 'online',
-        lastSeen: new Date(),
-        color: '#10b981'
-      },
-      { 
-        id: '3', 
-        name: 'Mike Johnson', 
-        email: 'mike.johnson@company.com', 
-        avatar: 'MJ', 
-        status: 'away',
-        lastSeen: new Date(Date.now() - 300000), // 5 minutes ago
-        color: '#f59e0b'
-      },
-      { 
-        id: '4', 
-        name: 'Lisa Chen', 
-        email: 'lisa.chen@company.com', 
-        avatar: 'LC', 
-        status: 'offline',
-        lastSeen: new Date(Date.now() - 3600000), // 1 hour ago
-        color: '#8b5cf6'
-      }
-    ];
+  // Build current user object from auth context
+  const currentUser = user ? {
+    id: user.id || user.sub,
+    name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+    email: user.email,
+    avatar: (user.name || user.email || '??').substring(0, 2).toUpperCase(),
+    status: 'online',
+    color: '#3b82f6',
+  } : null;
 
-    setActiveUsers(mockUsers);
-
-    // Mock comments for different resources
-    const mockComments = {
-      'notebook-1': [
-        {
-          id: '1',
-          userId: '1',
-          user: mockUsers[0],
-          content: 'This document analysis looks great! The accuracy improvements are impressive.',
-          timestamp: new Date(Date.now() - 3600000),
-          replies: [
-            {
-              id: '2',
-              userId: '2',
-              user: mockUsers[1],
-              content: 'Agreed! The HIPAA compliance scores are also looking much better.',
-              timestamp: new Date(Date.now() - 3000000)
-            }
-          ]
-        },
-        {
-          id: '3',
-          userId: '3',
-          user: mockUsers[2],
-          content: 'Should we consider adding OCR capabilities for handwritten notes?',
-          timestamp: new Date(Date.now() - 7200000),
-          replies: []
-        }
-      ],
-      'agent-1': [
-        {
-          id: '4',
-          userId: '2',
-          user: mockUsers[1],
-          content: 'The training metrics show excellent progress. Ready for production deployment.',
-          timestamp: new Date(Date.now() - 1800000),
-          replies: [
-            {
-              id: '5',
-              userId: '1',
-              user: mockUsers[0],
-              content: 'Let me review the compliance checklist first before we deploy.',
-              timestamp: new Date(Date.now() - 900000)
-            }
-          ]
-        }
-      ]
-    };
-
-    setComments(mockComments);
-  }, []);
-
-  const addComment = (resourceId, content, parentId = null) => {
-    const currentUser = activeUsers[0]; // Assume first user is current user
-    const newComment = {
-      id: Date.now().toString(),
-      userId: currentUser.id,
-      user: currentUser,
+  const addComment = useCallback((resourceId, content, parentId = null) => {
+    const id = resourceId || notebookId;
+    if (!id) return;
+    dispatch(createCommentThunk({
+      notebookId: id,
       content,
-      timestamp: new Date(),
-      replies: []
-    };
-
-    setComments(prev => {
-      const resourceComments = prev[resourceId] || [];
-      
-      if (parentId) {
-        // Add as reply
-        return {
-          ...prev,
-          [resourceId]: resourceComments.map(comment => 
-            comment.id === parentId 
-              ? { ...comment, replies: [...comment.replies, newComment] }
-              : comment
-          )
-        };
-      } else {
-        // Add as top-level comment
-        return {
-          ...prev,
-          [resourceId]: [...resourceComments, newComment]
-        };
-      }
-    });
-
-    return newComment.id;
-  };
-
-  const getComments = (resourceId) => {
-    return comments[resourceId] || [];
-  };
-
-  const shareResource = (resourceId, resourceType, shareWith, permissions = 'view') => {
-    const shareData = {
-      id: Date.now().toString(),
-      resourceId,
-      resourceType,
-      sharedBy: activeUsers[0], // Current user
-      sharedWith: shareWith,
-      permissions,
-      timestamp: new Date(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    };
-
-    setSharedItems(prev => ({
-      ...prev,
-      [resourceId]: [...(prev[resourceId] || []), shareData]
+      parentId,
+      mentions: [],
     }));
+  }, [dispatch, notebookId]);
 
-    return shareData.id;
-  };
+  const getComments = useCallback((resourceId) => {
+    const id = resourceId || notebookId;
+    // Comments are already in Redux; the component should subscribe via useSelector.
+    // This helper returns current snapshot for backward compat.
+    return comments;
+  }, [comments, notebookId]);
 
-  const getSharedUsers = (resourceId) => {
-    return sharedItems[resourceId] || [];
-  };
+  const loadComments = useCallback((resourceId) => {
+    const id = resourceId || notebookId;
+    if (id) {
+      dispatch(fetchComments(id));
+    }
+  }, [dispatch, notebookId]);
 
-  const updateUserStatus = (userId, status) => {
-    setActiveUsers(prev => 
-      prev.map(user => 
-        user.id === userId 
-          ? { ...user, status, lastSeen: new Date() }
-          : user
-      )
-    );
-  };
+  // Active users placeholder — will be populated from notebook shares in the future
+  const activeUsers = currentUser ? [currentUser] : [];
 
-  const getMentions = (content) => {
+  const getMentions = useCallback((content) => {
     const mentionRegex = /@(\w+)/g;
     const mentions = [];
     let match;
-
     while ((match = mentionRegex.exec(content)) !== null) {
       const username = match[1];
-      const user = activeUsers.find(u => 
+      const user = activeUsers.find(u =>
         u.name.toLowerCase().replace(' ', '') === username.toLowerCase() ||
         u.email.split('@')[0] === username.toLowerCase()
       );
-      
-      if (user) {
-        mentions.push(user);
-      }
+      if (user) mentions.push(user);
     }
-
     return mentions;
-  };
+  }, [activeUsers]);
 
   const value = {
     comments,
-    sharedItems,
+    loading,
+    creating,
     activeUsers,
+    currentUser,
     addComment,
     getComments,
-    shareResource,
-    getSharedUsers,
-    updateUserStatus,
-    getMentions
+    loadComments,
+    getMentions,
+    // Deprecated stubs for backward compatibility
+    sharedItems: {},
+    shareResource: () => {},
+    getSharedUsers: () => [],
+    updateUserStatus: () => {},
   };
 
   return (

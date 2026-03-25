@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { aetherApi } from '../services/aetherApi.js';
 import Logo from '../components/ui/Logo.jsx';
 import { 
   Eye, 
@@ -20,7 +21,9 @@ import {
 const SignupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { signup, loginWithProvider, isAuthenticated, loading, error } = useAuth();
+  const inviteToken = searchParams.get('invite');
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -37,13 +40,29 @@ const SignupPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated; accept pending invite if present
   useEffect(() => {
     if (isAuthenticated && !loading) {
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      const acceptAndRedirect = async () => {
+        // Check for invite token from URL or sessionStorage
+        const token = inviteToken || sessionStorage.getItem('pendingInviteToken');
+        if (token) {
+          try {
+            await aetherApi.invitations.accept(token);
+            sessionStorage.removeItem('pendingInviteToken');
+            navigate('/notebooks', { replace: true });
+            return;
+          } catch (err) {
+            console.error('Failed to accept invitation:', err);
+            sessionStorage.removeItem('pendingInviteToken');
+          }
+        }
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
+      };
+      acceptAndRedirect();
     }
-  }, [isAuthenticated, loading, navigate, location]);
+  }, [isAuthenticated, loading, navigate, location, inviteToken]);
 
   // Password strength calculation
   useEffect(() => {
@@ -129,8 +148,13 @@ const SignupPage = () => {
 
     setIsSubmitting(true);
 
+    // Store invite token so it survives the auth redirect
+    if (inviteToken) {
+      sessionStorage.setItem('pendingInviteToken', inviteToken);
+    }
+
     try {
-      // Attempt signup (will redirect to Keycloak registration if needed)
+      // Register user via backend API, then auto-login
       const result = await signup({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
@@ -138,20 +162,9 @@ const SignupPage = () => {
         password: formData.password
       });
 
-      if (!result.success && result.error.includes('Keycloak admin setup')) {
-        // Redirect to Keycloak registration page
-        const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
-        const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
-        const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
-
-        const registrationUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/registrations?` +
-          `client_id=${CLIENT_ID}&` +
-          `redirect_uri=${encodeURIComponent(window.location.origin)}/&` +
-          `response_type=code&` +
-          `scope=openid%20profile%20email`;
-
-        // Redirect to Keycloak registration
-        window.location.href = registrationUrl;
+      if (!result.success) {
+        // Error is already set in AuthContext
+        console.error('Signup failed:', result.error);
       }
       // Navigation will be handled by useEffect if successful
     } catch (err) {

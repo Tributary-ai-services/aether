@@ -33,7 +33,16 @@ import {
   selectNotebookTeams,
   selectSharingLoading,
   selectSharingError,
-  clearSharingError
+  clearSharingError,
+  shareNotebookWithUser,
+  unshareNotebookFromUser,
+  fetchNotebookShares,
+  selectNotebookShares,
+  sendInvitation,
+  fetchNotebookInvitations,
+  cancelInvitation,
+  selectNotebookInvitations,
+  selectInvitationLoading,
 } from '../../store/slices/notebooksSlice.js';
 import {
   fetchTeams,
@@ -46,11 +55,14 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
   const navigate = useNavigate();
   const availableTeams = useSelector(selectAllTeams);
   const sharedTeams = useSelector(state => selectNotebookTeams(state, notebook?.id));
+  const sharedUsers = useSelector(state => selectNotebookShares(state, notebook?.id));
+  const pendingInvitations = useSelector(state => selectNotebookInvitations(state, notebook?.id));
   const loading = useSelector(selectSharingLoading);
+  const invitationLoading = useSelector(selectInvitationLoading);
   const error = useSelector(selectSharingError);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [shareType, setShareType] = useState('team'); // 'team', 'user', 'organization'
+  const [shareType, setShareType] = useState('team'); // 'team', 'user', 'email'
   const [showAddShare, setShowAddShare] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
@@ -58,11 +70,15 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
   const [selectedPermission, setSelectedPermission] = useState('view');
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [orgSearchResults, setOrgSearchResults] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
 
   useEffect(() => {
     if (isOpen && notebook?.id) {
       dispatch(fetchTeams());
       dispatch(fetchNotebookTeams(notebook.id));
+      dispatch(fetchNotebookShares(notebook.id));
+      dispatch(fetchNotebookInvitations(notebook.id));
     }
   }, [dispatch, isOpen, notebook?.id]);
 
@@ -113,7 +129,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
 
   const handleShare = async () => {
     if (!notebook?.id) return;
-    
+
     try {
       if (shareType === 'team' && selectedTeam) {
         await dispatch(shareNotebookWithTeam({
@@ -122,13 +138,22 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
           permission: selectedPermission
         })).unwrap();
       } else if (shareType === 'user' && selectedUser) {
-        // Mock user sharing for now
-        console.log('Sharing with user:', selectedUser, 'permission:', selectedPermission);
-      } else if (shareType === 'organization' && selectedOrganization) {
-        // Mock organization sharing for now
-        console.log('Sharing with organization:', selectedOrganization, 'permission:', selectedPermission);
+        await dispatch(shareNotebookWithUser({
+          notebookId: notebook.id,
+          userId: selectedUser,
+          permission: selectedPermission
+        })).unwrap();
+        dispatch(fetchNotebookShares(notebook.id));
+      } else if (shareType === 'email' && inviteEmail.trim()) {
+        await dispatch(sendInvitation({
+          notebookId: notebook.id,
+          email: inviteEmail.trim(),
+          permission: selectedPermission,
+          message: inviteMessage,
+        })).unwrap();
+        dispatch(fetchNotebookInvitations(notebook.id));
       }
-      
+
       setShowAddShare(false);
       resetForm();
     } catch (error) {
@@ -144,6 +169,8 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
     setSearchQuery('');
     setUserSearchResults([]);
     setOrgSearchResults([]);
+    setInviteEmail('');
+    setInviteMessage('');
   };
 
   const handleUnshare = async (teamId) => {
@@ -353,6 +380,67 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
           )}
         </div>
 
+        {/* Shared Users */}
+        {sharedUsers.length > 0 && (
+          <div>
+            <h3 className="font-medium text-gray-900 mb-3">Users with Access</h3>
+            <div className="space-y-2">
+              {sharedUsers.map((share) => (
+                <div key={share.userId || share.user_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                      {(share.userName || share.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{share.userName || share.email}</div>
+                      <div className="text-xs text-gray-500 capitalize">{share.permission}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Remove access for this user?')) {
+                        dispatch(unshareNotebookFromUser({ notebookId: notebook.id, userId: share.userId || share.user_id }))
+                          .then(() => dispatch(fetchNotebookShares(notebook.id)));
+                      }
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                    title="Remove access"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pending Invitations */}
+        {pendingInvitations.length > 0 && (
+          <div>
+            <h3 className="font-medium text-gray-900 mb-3">Pending Invitations</h3>
+            <div className="space-y-2">
+              {pendingInvitations.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Mail size={16} className="text-yellow-600" />
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{inv.inviteeEmail || inv.invitee_email}</div>
+                      <div className="text-xs text-gray-500 capitalize">{inv.permission} - Pending</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => dispatch(cancelInvitation({ notebookId: notebook.id, invitationId: inv.id }))}
+                    className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                    title="Cancel invitation"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Add Share Form */}
         {showAddShare && (
           <div className="bg-(--color-primary-50) border border-(--color-primary-200) rounded-lg p-4">
@@ -406,19 +494,19 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                 </button>
                 <button
                   onClick={() => {
-                    setShareType('organization');
+                    setShareType('email');
                     setSearchQuery('');
                     setUserSearchResults([]);
                     setOrgSearchResults([]);
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                    shareType === 'organization'
+                    shareType === 'email'
                       ? 'border-(--color-primary-500) bg-(--color-primary-50) text-(--color-primary-700)'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <Building size={16} />
-                  Organizations
+                  <Mail size={16} />
+                  Invite by Email
                 </button>
               </div>
             </div>
@@ -426,7 +514,7 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
             {/* Search */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {shareType === 'team' ? 'Select Team' : shareType === 'user' ? 'Select User' : 'Select Organization'}
+                {shareType === 'team' ? 'Select Team' : shareType === 'user' ? 'Select User' : 'Enter Email'}
               </label>
               <div className="relative mb-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -504,36 +592,25 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
                   </label>
                 ))}
 
-                {/* Organizations */}
-                {shareType === 'organization' && orgSearchResults.map((org) => (
-                  <label
-                    key={org.id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                      selectedOrganization === org.id.toString() ? 'bg-(--color-primary-100)' : 'hover:bg-gray-100'
-                    }`}
-                  >
+                {/* Email Invite */}
+                {shareType === 'email' && (
+                  <div className="space-y-3 p-2">
                     <input
-                      type="radio"
-                      name="selection"
-                      value={org.id}
-                      checked={selectedOrganization === org.id.toString()}
-                      onChange={(e) => setSelectedOrganization(e.target.value)}
-                      className="sr-only"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="recipient@example.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
                     />
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-xs">
-                      <Building size={16} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{org.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {org.description} • {org.memberCount} members
-                      </div>
-                    </div>
-                    {selectedOrganization === org.id.toString() && (
-                      <Check className="text-(--color-primary-600)" size={16} />
-                    )}
-                  </label>
-                ))}
+                    <textarea
+                      value={inviteMessage}
+                      onChange={(e) => setInviteMessage(e.target.value)}
+                      placeholder="Add a personal message (optional)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
+                      rows={2}
+                    />
+                  </div>
+                )}
               </div>
               
               {/* No results messages */}
@@ -545,11 +622,6 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
               {shareType === 'user' && searchQuery && userSearchResults.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-2">
                   No users found
-                </p>
-              )}
-              {shareType === 'organization' && searchQuery && orgSearchResults.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-2">
-                  No organizations found
                 </p>
               )}
             </div>
@@ -604,10 +676,10 @@ const ShareNotebookModal = ({ isOpen, onClose, notebook }) => {
               </button>
               <button
                 onClick={handleShare}
-                disabled={loading || 
+                disabled={loading || invitationLoading ||
                   (shareType === 'team' && !selectedTeam) ||
                   (shareType === 'user' && !selectedUser) ||
-                  (shareType === 'organization' && !selectedOrganization)
+                  (shareType === 'email' && !inviteEmail.trim())
                 }
                 className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50"
               >
