@@ -54,6 +54,7 @@ import DeveloperToolsPage from './pages/DeveloperToolsPage.jsx';
 import ProductionsManagementPage from './pages/ProductionsManagementPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import OAuthCallbackPage from './pages/OAuthCallbackPage.jsx';
+import InvitationAcceptPage from './pages/InvitationAcceptPage.jsx';
 import CreateNotebookModal from './components/notebooks/CreateNotebookModal.jsx';
 import SpaceSelector from './components/ui/SpaceSelector.jsx';
 import OnboardingModal from './components/onboarding/OnboardingModal.jsx';
@@ -286,6 +287,7 @@ const App = () => {
       <div className="min-h-screen bg-gray-50">
         <Routes>
           <Route path="/oauth/callback/:provider" element={<OAuthCallbackPage />} />
+          <Route path="/invitations/accept" element={<InvitationAcceptPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="*" element={<LoginPage />} />
@@ -507,6 +509,7 @@ const App = () => {
             <Route path="/developer-tools/:tab" element={<DeveloperToolsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notebooks/:notebookId/productions" element={<ProductionsManagementPage />} />
+            <Route path="/invitations/accept" element={<InvitationAcceptPage />} />
           </Routes>
         </main>
       </div>

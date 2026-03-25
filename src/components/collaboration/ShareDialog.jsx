@@ -1,37 +1,80 @@
-import React, { useState } from 'react';
-import { useCollaboration } from '../../context/CollaborationContext.jsx';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import Modal from '../ui/Modal.jsx';
-import { 
-  Share2, 
-  Link, 
-  Mail, 
-  Eye, 
-  Edit, 
+import {
+  Share2,
+  Link,
+  Mail,
+  Eye,
+  Edit,
   UserPlus,
   Copy,
   Check,
   Globe,
   Lock,
   Users,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import {
+  sendInvitation,
+  fetchNotebookShares,
+  selectNotebookShares,
+  selectSharingLoading,
+  selectInvitationLoading,
+  selectInvitationError,
+} from '../../store/slices/notebooksSlice.js';
 
 const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }) => {
-  const { shareResource, getSharedUsers, activeUsers } = useCollaboration();
+  const dispatch = useDispatch();
+  const shares = useSelector((state) => selectNotebookShares(state, resourceId));
+  const sharingLoading = useSelector(selectSharingLoading);
+  const invitationLoading = useSelector(selectInvitationLoading);
+  const invitationError = useSelector(selectInvitationError);
+
   const [shareEmail, setShareEmail] = useState('');
   const [permissions, setPermissions] = useState('view');
   const [linkCopied, setLinkCopied] = useState(false);
   const [publicAccess, setPublicAccess] = useState(false);
   const [expirationDays, setExpirationDays] = useState(7);
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteSent, setInviteSent] = useState(false);
 
-  const sharedUsers = getSharedUsers(resourceId);
-  const shareLink = `https://aether.ai/shared/${resourceType}/${resourceId}`;
+  const shareLink = `${window.location.origin}/shared/${resourceType}/${resourceId}`;
+
+  useEffect(() => {
+    if (isOpen && resourceId) {
+      dispatch(fetchNotebookShares(resourceId));
+    }
+  }, [dispatch, isOpen, resourceId]);
 
   const handleShareWithUser = (e) => {
     e.preventDefault();
-    if (shareEmail.trim()) {
-      shareResource(resourceId, resourceType, shareEmail, permissions);
+    if (shareEmail.trim() && resourceId) {
+      dispatch(sendInvitation({
+        notebookId: resourceId,
+        email: shareEmail.trim(),
+        permission: permissions,
+        message: '',
+      }));
       setShareEmail('');
+    }
+  };
+
+  const handleSendEmailInvitation = () => {
+    if (shareEmail.trim() && resourceId) {
+      dispatch(sendInvitation({
+        notebookId: resourceId,
+        email: shareEmail.trim(),
+        permission: permissions,
+        message: inviteMessage,
+      })).unwrap().then(() => {
+        setInviteSent(true);
+        setShareEmail('');
+        setInviteMessage('');
+        setTimeout(() => setInviteSent(false), 3000);
+      }).catch(() => {});
     }
   };
 
@@ -50,37 +93,29 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
     }
   };
 
-  const UserAvatar = ({ user, size = 'default' }) => {
-    const sizeClasses = {
-      small: 'w-6 h-6 text-xs',
-      default: 'w-8 h-8 text-sm'
-    };
-
-    return (
-      <div 
-        className={`${sizeClasses[size]} rounded-full flex items-center justify-center text-white font-medium`}
-        style={{ backgroundColor: user.color }}
-      >
-        {user.avatar}
-      </div>
-    );
-  };
-
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title={`Share "${resourceName}"`}
       size="default"
     >
       <div className="p-6 space-y-6">
+        {/* Error */}
+        {invitationError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700 text-sm">
+            <AlertCircle size={16} />
+            {invitationError}
+          </div>
+        )}
+
         {/* Share with specific users */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <UserPlus size={20} />
             Share with people
           </h3>
-          
+
           <form onSubmit={handleShareWithUser} className="space-y-3">
             <div className="flex gap-3">
               <input
@@ -101,35 +136,35 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
               </select>
               <button
                 type="submit"
-                disabled={!shareEmail.trim()}
+                disabled={!shareEmail.trim() || invitationLoading}
                 className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Share
+                {invitationLoading ? <Loader2 size={16} className="animate-spin" /> : 'Share'}
               </button>
             </div>
           </form>
 
           {/* Current shared users */}
-          {sharedUsers.length > 0 && (
+          {shares.length > 0 && (
             <div className="mt-4 space-y-2">
               <h4 className="text-sm font-medium text-gray-700">People with access</h4>
               <div className="space-y-2">
-                {sharedUsers.map((share, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                {shares.map((share) => (
+                  <div key={share.userId || share.user_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {share.sharedWith.charAt(0).toUpperCase()}
+                        {(share.userName || share.email || '?').charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{share.sharedWith}</div>
+                        <div className="text-sm font-medium text-gray-900">{share.userName || share.email}</div>
                         <div className="text-xs text-gray-500">
-                          Shared {new Date(share.timestamp).toLocaleDateString()}
+                          Shared {new Date(share.grantedAt || share.granted_at).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getPermissionIcon(share.permissions)}
-                      <span className="text-sm text-gray-600 capitalize">{share.permissions}</span>
+                      {getPermissionIcon(share.permission)}
+                      <span className="text-sm text-gray-600 capitalize">{share.permission}</span>
                     </div>
                   </div>
                 ))}
@@ -144,9 +179,8 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
             <Link size={20} />
             Share via link
           </h3>
-          
+
           <div className="space-y-4">
-            {/* Public access toggle */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
                 {publicAccess ? <Globe size={20} className="text-green-600" /> : <Lock size={20} className="text-gray-600" />}
@@ -170,7 +204,6 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
               </label>
             </div>
 
-            {/* Link expiration */}
             <div className="flex items-center gap-3">
               <Calendar size={16} className="text-gray-600" />
               <label className="text-sm font-medium text-gray-700">Expires in:</label>
@@ -186,7 +219,6 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
               </select>
             </div>
 
-            {/* Copy link */}
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -211,39 +243,37 @@ const ShareDialog = ({ isOpen, onClose, resourceId, resourceType, resourceName }
             <Mail size={20} />
             Send via email
           </h3>
-          
+
           <div className="space-y-3">
+            {!shareEmail && (
+              <input
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
+              />
+            )}
             <textarea
+              value={inviteMessage}
+              onChange={(e) => setInviteMessage(e.target.value)}
               placeholder="Add a message (optional)"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) resize-none"
               rows={3}
             />
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors">
-              <Mail size={16} />
-              Send Email Invitation
+            <button
+              onClick={handleSendEmailInvitation}
+              disabled={!shareEmail.trim() || invitationLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50"
+            >
+              {invitationLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : inviteSent ? (
+                <><Check size={16} /> Invitation Sent!</>
+              ) : (
+                <><Mail size={16} /> Send Email Invitation</>
+              )}
             </button>
-          </div>
-        </div>
-
-        {/* Quick share suggestions */}
-        <div className="border-t border-gray-200 pt-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Suggested people</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {activeUsers.slice(1, 5).map(user => (
-              <button
-                key={user.id}
-                onClick={() => {
-                  shareResource(resourceId, resourceType, user.email, 'view');
-                }}
-                className="flex items-center gap-2 p-2 text-left hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <UserAvatar user={user} size="small" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
-                  <div className="text-xs text-gray-500 truncate">{user.email}</div>
-                </div>
-              </button>
-            ))}
           </div>
         </div>
       </div>

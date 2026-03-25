@@ -31,6 +31,7 @@ import NotebookSettingsModal from '../components/notebooks/NotebookSettingsModal
 import NotebookManager from '../components/notebooks/NotebookManager.jsx';
 import ShareDialog from '../components/collaboration/ShareDialog.jsx';
 import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
+import Comments from '../components/collaboration/Comments.jsx';
 import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
 import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
 import ProducersList from '../components/notebooks/ProducersList.jsx';
@@ -594,10 +595,13 @@ const NotebooksPage = () => {
   const allFilteredNotebooks = filterNotebooks(notebooks);
   
   // For card view, only show root notebooks (no parent_id) but include children count and document count
-  const filteredNotebooks = currentViewMode === 'cards' 
+  // Also treat shared notebooks whose parent isn't in the current list as root-level
+  const allNotebookIds = new Set(allFilteredNotebooks.map(nb => nb.id));
+  const filteredNotebooks = currentViewMode === 'cards'
     ? allFilteredNotebooks.filter(notebook => {
         const parentId = notebook.parent_id || notebook.parentId;
-        return !parentId || parentId === '' || parentId === null || parentId === undefined;
+        // Show as root if no parent, or if parent isn't in current list (cross-space shared notebooks)
+        return !parentId || parentId === '' || parentId === null || parentId === undefined || !allNotebookIds.has(parentId);
       }).map(rootNotebook => ({
         ...rootNotebook,
         documentCount: notebookDocumentCounts[rootNotebook.id] || 0,
@@ -1758,24 +1762,7 @@ const NotebooksPage = () => {
                   
                   {/* Collaborator Comments at Bottom */}
                   <div className="border-t border-gray-200 pt-4">
-                    <h4 className="font-medium text-gray-900 mb-3 text-sm">Collaborator Comments</h4>
-                    <div className="max-h-32 overflow-y-auto mb-3">
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        No comments yet. Start the conversation below.
-                      </div>
-                    </div>
-                    
-                    {/* Comment Input */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Add a comment for collaborators..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) text-sm"
-                      />
-                      <button className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
-                        Comment
-                      </button>
-                    </div>
+                    <Comments resourceId={selectedNotebook?.id} resourceType="notebook" />
                   </div>
                 </div>
               ) : (

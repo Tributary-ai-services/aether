@@ -182,17 +182,8 @@ export const shareNotebookWithUser = createAsyncThunk(
   'notebooks/shareNotebookWithUser',
   async ({ notebookId, userId, permission }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.notebooks.shareWithUser(notebookId, { userId, permission }).catch(() => {
-        return {
-          success: true,
-          data: { notebookId, userId, permission, sharedAt: new Date().toISOString() }
-        };
-      });
-      if (response.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.error || 'Failed to share notebook with user');
-      }
+      const response = await aetherApi.notebooks.share(notebookId, { userId, permission });
+      return { notebookId, ...response };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to share notebook with user');
     }
@@ -203,85 +194,93 @@ export const unshareNotebookFromUser = createAsyncThunk(
   'notebooks/unshareNotebookFromUser',
   async ({ notebookId, userId }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.notebooks.unshareFromUser(notebookId, userId).catch(() => {
-        return { success: true, data: { notebookId, userId } };
-      });
-      if (response.success) {
-        return { notebookId, userId };
-      } else {
-        return rejectWithValue(response.error || 'Failed to unshare notebook from user');
-      }
+      await aetherApi.notebooks.revokeShare(notebookId, userId);
+      return { notebookId, userId };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to unshare notebook from user');
     }
   }
 );
 
-// Organization sharing operations
-export const shareNotebookWithOrganization = createAsyncThunk(
-  'notebooks/shareNotebookWithOrganization',
-  async ({ notebookId, organizationId, permission }, { rejectWithValue }) => {
+// Fetch shares for a notebook
+export const fetchNotebookShares = createAsyncThunk(
+  'notebooks/fetchNotebookShares',
+  async (notebookId, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.notebooks.shareWithOrganization(notebookId, { organizationId, permission }).catch(() => {
-        return {
-          success: true,
-          data: { notebookId, organizationId, permission, sharedAt: new Date().toISOString() }
-        };
-      });
-      if (response.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.error || 'Failed to share notebook with organization');
-      }
+      const response = await aetherApi.notebooks.getShares(notebookId);
+      return { notebookId, shares: response.shares || [] };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to share notebook with organization');
+      return rejectWithValue(error.message || 'Failed to fetch notebook shares');
     }
   }
 );
 
-export const unshareNotebookFromOrganization = createAsyncThunk(
-  'notebooks/unshareNotebookFromOrganization',
-  async ({ notebookId, organizationId }, { rejectWithValue }) => {
+// Fetch notebooks shared with me
+export const fetchSharedWithMe = createAsyncThunk(
+  'notebooks/fetchSharedWithMe',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.notebooks.unshareFromOrganization(notebookId, organizationId).catch(() => {
-        return { success: true, data: { notebookId, organizationId } };
-      });
-      if (response.success) {
-        return { notebookId, organizationId };
-      } else {
-        return rejectWithValue(response.error || 'Failed to unshare notebook from organization');
-      }
+      const response = await aetherApi.notebooks.getSharedWithMe();
+      return response.notebooks || [];
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to unshare notebook from organization');
+      return rejectWithValue(error.message || 'Failed to fetch shared notebooks');
     }
   }
 );
 
-// Fetch all sharing information for a notebook
+// Invitation operations
+export const sendInvitation = createAsyncThunk(
+  'notebooks/sendInvitation',
+  async ({ notebookId, email, permission, message }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.notebooks.sendInvitation(notebookId, { email, permission, message });
+      return { notebookId, invitation: response };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to send invitation');
+    }
+  }
+);
+
+export const fetchNotebookInvitations = createAsyncThunk(
+  'notebooks/fetchNotebookInvitations',
+  async (notebookId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.notebooks.getInvitations(notebookId);
+      return { notebookId, invitations: response.invitations || [] };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch invitations');
+    }
+  }
+);
+
+export const cancelInvitation = createAsyncThunk(
+  'notebooks/cancelInvitation',
+  async ({ notebookId, invitationId }, { rejectWithValue }) => {
+    try {
+      await aetherApi.notebooks.cancelInvitation(notebookId, invitationId);
+      return { notebookId, invitationId };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to cancel invitation');
+    }
+  }
+);
+
+// Fetch all sharing information for a notebook (combines shares + invitations)
 export const fetchNotebookSharing = createAsyncThunk(
   'notebooks/fetchNotebookSharing',
   async (notebookId, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.notebooks.getSharing(notebookId).catch(() => {
-        return {
-          success: true,
-          data: {
-            teams: [
-              { id: '1', name: 'Engineering Team', permission: PERMISSIONS.RESOURCE_PERMISSIONS.EDIT },
-              { id: '2', name: 'Data Science', permission: PERMISSIONS.RESOURCE_PERMISSIONS.VIEW }
-            ],
-            users: [
-              { userId: '4', name: 'Alice Brown', email: 'alice@example.com', permission: PERMISSIONS.RESOURCE_PERMISSIONS.VIEW }
-            ],
-            organizations: []
-          }
-        };
-      });
-      if (response.success) {
-        return { notebookId, sharing: response.data };
-      } else {
-        return rejectWithValue(response.error || 'Failed to fetch notebook sharing');
-      }
+      const [sharesRes, invitationsRes] = await Promise.all([
+        aetherApi.notebooks.getShares(notebookId).catch(() => ({ shares: [] })),
+        aetherApi.notebooks.getInvitations(notebookId).catch(() => ({ invitations: [] })),
+      ]);
+      return {
+        notebookId,
+        sharing: {
+          users: sharesRes.shares || [],
+          invitations: invitationsRes.invitations || [],
+        }
+      };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch notebook sharing');
     }
@@ -329,9 +328,14 @@ const initialState = {
   notebookTeams: {}, // { notebookId: [teams] }
   notebookUsers: {}, // { notebookId: [users] }
   notebookOrganizations: {}, // { notebookId: [organizations] }
-  notebookSharing: {}, // { notebookId: { teams: [], users: [], organizations: [] } }
+  notebookSharing: {}, // { notebookId: { users: [], invitations: [] } }
+  notebookShares: {}, // { notebookId: [shares] }
+  notebookInvitations: {}, // { notebookId: [invitations] }
+  sharedWithMe: [],
   sharingLoading: false,
   sharingError: null,
+  invitationLoading: false,
+  invitationError: null,
   metadata: {
     total: 0,
     limit: 20,
@@ -598,6 +602,104 @@ const notebooksSlice = createSlice({
       .addCase(fetchNotebookDocuments.rejected, (state, action) => {
         state.documentsLoading = false;
         state.documentsError = action.payload || 'Failed to fetch documents';
+      })
+
+      // Share notebook with user
+      .addCase(shareNotebookWithUser.pending, (state) => {
+        state.sharingLoading = true;
+        state.sharingError = null;
+      })
+      .addCase(shareNotebookWithUser.fulfilled, (state) => {
+        state.sharingLoading = false;
+      })
+      .addCase(shareNotebookWithUser.rejected, (state, action) => {
+        state.sharingLoading = false;
+        state.sharingError = action.payload;
+      })
+
+      // Unshare notebook from user
+      .addCase(unshareNotebookFromUser.pending, (state) => {
+        state.sharingLoading = true;
+        state.sharingError = null;
+      })
+      .addCase(unshareNotebookFromUser.fulfilled, (state, action) => {
+        state.sharingLoading = false;
+        const { notebookId, userId } = action.payload;
+        if (state.notebookShares[notebookId]) {
+          state.notebookShares[notebookId] = state.notebookShares[notebookId].filter(
+            s => s.userId !== userId
+          );
+        }
+      })
+      .addCase(unshareNotebookFromUser.rejected, (state, action) => {
+        state.sharingLoading = false;
+        state.sharingError = action.payload;
+      })
+
+      // Fetch notebook shares
+      .addCase(fetchNotebookShares.pending, (state) => {
+        state.sharingLoading = true;
+        state.sharingError = null;
+      })
+      .addCase(fetchNotebookShares.fulfilled, (state, action) => {
+        state.sharingLoading = false;
+        state.notebookShares[action.payload.notebookId] = action.payload.shares;
+      })
+      .addCase(fetchNotebookShares.rejected, (state, action) => {
+        state.sharingLoading = false;
+        state.sharingError = action.payload;
+      })
+
+      // Fetch shared with me
+      .addCase(fetchSharedWithMe.fulfilled, (state, action) => {
+        state.sharedWithMe = action.payload;
+      })
+
+      // Send invitation
+      .addCase(sendInvitation.pending, (state) => {
+        state.invitationLoading = true;
+        state.invitationError = null;
+      })
+      .addCase(sendInvitation.fulfilled, (state, action) => {
+        state.invitationLoading = false;
+        const { notebookId, invitation } = action.payload;
+        if (!state.notebookInvitations[notebookId]) {
+          state.notebookInvitations[notebookId] = [];
+        }
+        state.notebookInvitations[notebookId].push(invitation);
+      })
+      .addCase(sendInvitation.rejected, (state, action) => {
+        state.invitationLoading = false;
+        state.invitationError = action.payload;
+      })
+
+      // Fetch notebook invitations
+      .addCase(fetchNotebookInvitations.fulfilled, (state, action) => {
+        state.notebookInvitations[action.payload.notebookId] = action.payload.invitations;
+      })
+
+      // Cancel invitation
+      .addCase(cancelInvitation.fulfilled, (state, action) => {
+        const { notebookId, invitationId } = action.payload;
+        if (state.notebookInvitations[notebookId]) {
+          state.notebookInvitations[notebookId] = state.notebookInvitations[notebookId].filter(
+            inv => inv.id !== invitationId
+          );
+        }
+      })
+
+      // Fetch notebook sharing (combined)
+      .addCase(fetchNotebookSharing.pending, (state) => {
+        state.sharingLoading = true;
+        state.sharingError = null;
+      })
+      .addCase(fetchNotebookSharing.fulfilled, (state, action) => {
+        state.sharingLoading = false;
+        state.notebookSharing[action.payload.notebookId] = action.payload.sharing;
+      })
+      .addCase(fetchNotebookSharing.rejected, (state, action) => {
+        state.sharingLoading = false;
+        state.sharingError = action.payload;
       });
   }
 });
@@ -640,4 +742,19 @@ export const selectNotebookTeams = createSelector(
 );
 export const selectSharingLoading = (state) => state.notebooks.sharingLoading;
 export const selectSharingError = (state) => state.notebooks.sharingError;
+
+export const selectNotebookShares = createSelector(
+  [(state) => state.notebooks.notebookShares, (state, notebookId) => notebookId],
+  (shares, notebookId) => shares[notebookId] || []
+);
+
+export const selectNotebookInvitations = createSelector(
+  [(state) => state.notebooks.notebookInvitations, (state, notebookId) => notebookId],
+  (invitations, notebookId) => invitations[notebookId] || []
+);
+
+export const selectSharedWithMe = (state) => state.notebooks.sharedWithMe;
+export const selectInvitationLoading = (state) => state.notebooks.invitationLoading;
+export const selectInvitationError = (state) => state.notebooks.invitationError;
+
 export default notebooksSlice.reducer;

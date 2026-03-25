@@ -685,6 +685,50 @@ class AetherApiService {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+    // User sharing operations
+    share: (notebookId, data) => this.request(`/notebooks/${notebookId}/share`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    getShares: (notebookId) => this.request(`/notebooks/${notebookId}/shares`),
+    revokeShare: (notebookId, userId) => this.request(`/notebooks/${notebookId}/share/${userId}`, {
+      method: 'DELETE',
+    }),
+    getSharedWithMe: () => this.request('/notebooks/shared-with-me'),
+
+    // Invitation operations
+    sendInvitation: (notebookId, data) => this.request(`/notebooks/${notebookId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    getInvitations: (notebookId) => this.request(`/notebooks/${notebookId}/invitations`),
+    cancelInvitation: (notebookId, invitationId) => this.request(`/notebooks/${notebookId}/invitations/${invitationId}`, {
+      method: 'DELETE',
+    }),
+
+    // Comment operations
+    getComments: (notebookId) => this.request(`/notebooks/${notebookId}/comments`),
+    createComment: (notebookId, data) => this.request(`/notebooks/${notebookId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateComment: (notebookId, commentId, data) => this.request(`/notebooks/${notebookId}/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteComment: (notebookId, commentId) => this.request(`/notebooks/${notebookId}/comments/${commentId}`, {
+      method: 'DELETE',
+    }),
+  };
+
+  // Invitation operations (top-level, no space context)
+  invitations = {
+    accept: (token) => this.request('/invitations/accept', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
+    getPending: () => this.request('/invitations/pending'),
   };
 
   // Producers API - Producer agents and productions (artifacts)

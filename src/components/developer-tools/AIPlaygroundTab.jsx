@@ -41,9 +41,9 @@ const LLM_PROVIDERS = {
   anthropic: {
     name: 'Anthropic',
     models: [
-      { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5' },
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' }
+      { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
+      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' }
     ]
   },
   openai: {
@@ -123,7 +123,7 @@ const LLMComparisonMode = () => {
   const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.');
   const [userPrompt, setUserPrompt] = useState('');
   const [selectedModels, setSelectedModels] = useState([
-    { provider: 'anthropic', model: 'claude-sonnet-4-20250514', temperature: 0.7 }
+    { provider: 'anthropic', model: 'claude-sonnet-4-6', temperature: 0.7 }
   ]);
   const [results, setResults] = useState({});
   const [isRunning, setIsRunning] = useState(false);
@@ -356,7 +356,7 @@ const AgentTestingMode = () => {
         name: 'Research Assistant',
         description: 'Helps with research tasks and information gathering',
         type: 'user',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         tools: ['web_search', 'calculator']
       },
       {
@@ -372,7 +372,7 @@ const AgentTestingMode = () => {
         name: 'Code Reviewer',
         description: 'Reviews code and suggests improvements',
         type: 'system',
-        model: 'claude-opus-4-5-20251101',
+        model: 'claude-opus-4-6',
         tools: ['analyze_code', 'suggest_fixes']
       }
     ]);

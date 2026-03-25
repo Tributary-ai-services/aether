@@ -307,7 +307,7 @@ const LoginPage = () => {
               onClick={(e) => {
                 e.preventDefault();
                 // Redirect to Keycloak registration page
-                const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || window.location.origin;
+                const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://keycloak.tas.scharber.com';
                 const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'aether';
                 const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'aether-frontend';
 
