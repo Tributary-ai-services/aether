@@ -15,6 +15,7 @@ import producersReducer from './slices/producersSlice.js';
 import workflowsReducer from './slices/workflowsSlice.js';
 import notificationsReducer from './slices/notificationsSlice.js';
 import commentsReducer from './slices/commentsSlice.js';
+import conversationsReducer from './slices/conversationsSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -35,6 +36,7 @@ const store = configureStore({
     workflows: workflowsReducer,
     notifications: notificationsReducer,
     comments: commentsReducer,
+    conversations: conversationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

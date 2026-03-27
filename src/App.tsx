@@ -478,9 +478,9 @@ const App = () => {
       </nav>
 
       <div className="flex">
-        <LeftNavigation 
-          isCollapsed={leftNavCollapsed} 
-          onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)} 
+        <LeftNavigation
+          isCollapsed={leftNavCollapsed}
+          onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)}
         />
 
         {/* Main Content */}
