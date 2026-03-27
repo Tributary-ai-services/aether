@@ -24,10 +24,11 @@ import {
   X,
 } from 'lucide-react';
 
-const Comments = ({ resourceId, resourceType = 'notebook' }) => {
+const Comments = ({ resourceId, resourceType = 'notebook', conversationId }) => {
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const comments = useSelector((state) => selectComments(state, resourceId));
+  const commentKey = conversationId || resourceId;
+  const comments = useSelector((state) => selectComments(state, commentKey));
   const loading = useSelector(selectCommentsLoading);
   const creating = useSelector(selectCommentsCreating);
 
@@ -44,9 +45,9 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
   // Fetch comments on mount / resource change
   useEffect(() => {
     if (resourceId) {
-      dispatch(fetchComments(resourceId));
+      dispatch(fetchComments({ notebookId: resourceId, conversationId }));
     }
-  }, [dispatch, resourceId]);
+  }, [dispatch, resourceId, conversationId]);
 
   const currentUser = user ? {
     id: user.id || user.sub,
@@ -72,7 +73,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
   const handleSubmitComment = (e) => {
     e.preventDefault();
     if (newComment.trim() && resourceId) {
-      dispatch(createComment({ notebookId: resourceId, content: newComment }));
+      dispatch(createComment({ notebookId: resourceId, conversationId, content: newComment }));
       setNewComment('');
     }
   };
@@ -80,7 +81,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
   const handleSubmitReply = (e, parentId) => {
     e.preventDefault();
     if (replyContent.trim() && resourceId) {
-      dispatch(createComment({ notebookId: resourceId, content: replyContent, parentId }));
+      dispatch(createComment({ notebookId: resourceId, conversationId, content: replyContent, parentId }));
       setReplyContent('');
       setReplyToId(null);
     }
@@ -88,7 +89,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
 
   const handleEdit = (commentId) => {
     if (editContent.trim() && resourceId) {
-      dispatch(updateComment({ notebookId: resourceId, commentId, content: editContent }));
+      dispatch(updateComment({ notebookId: resourceId, commentId, content: editContent, resourceKey: commentKey }));
       setEditingId(null);
       setEditContent('');
     }
@@ -96,7 +97,7 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
 
   const handleDelete = (commentId) => {
     if (resourceId && window.confirm('Delete this comment?')) {
-      dispatch(deleteComment({ notebookId: resourceId, commentId }));
+      dispatch(deleteComment({ notebookId: resourceId, commentId, resourceKey: commentKey }));
     }
   };
 
@@ -107,9 +108,20 @@ const Comments = ({ resourceId, resourceType = 'notebook' }) => {
   };
 
   const getCommentAuthor = (comment) => {
-    return comment.author || {
-      name: comment.authorName || 'Unknown',
-      avatar: (comment.authorName || '??').substring(0, 2).toUpperCase(),
+    const raw = comment.author;
+    if (raw) {
+      const displayName = raw.name || raw.fullName || raw.username || 'Unknown';
+      return {
+        ...raw,
+        name: displayName,
+        avatar: raw.avatar || displayName.substring(0, 2).toUpperCase(),
+        color: raw.color || '#3b82f6',
+      };
+    }
+    const fallbackName = comment.authorName || 'Unknown';
+    return {
+      name: fallbackName,
+      avatar: fallbackName.substring(0, 2).toUpperCase(),
       color: '#6b7280',
     };
   };

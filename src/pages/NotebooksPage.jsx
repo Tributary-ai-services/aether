@@ -32,6 +32,17 @@ import NotebookManager from '../components/notebooks/NotebookManager.jsx';
 import ShareDialog from '../components/collaboration/ShareDialog.jsx';
 import ShareNotebookModal from '../components/notebooks/ShareNotebookModal.jsx';
 import Comments from '../components/collaboration/Comments.jsx';
+import ConversationSidebar from '../components/chat/ConversationSidebar.jsx';
+import MarkdownRenderer from '../components/ui/MarkdownRenderer.jsx';
+import {
+  selectActiveConversationId,
+  selectMessages,
+  selectSendingMessage,
+  sendChatMessage,
+  clearActiveConversation,
+  fetchConversations,
+  fetchMessages,
+} from '../store/slices/conversationsSlice';
 import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
 import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
 import ProducersList from '../components/notebooks/ProducersList.jsx';
@@ -42,7 +53,7 @@ import DocumentsManagementModal from '../components/notebooks/DocumentsManagemen
 import ProducersManagementModal from '../components/notebooks/ProducersManagementModal.jsx';
 import { fetchNotebookProductions, deleteProduction, fetchNotebookProducers, selectSortedProducers } from '../store/slices/producersSlice.js';
 import { LoadingWrapper, NotebookCardSkeleton } from '../components/skeletons/index.js';
-import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, GripVertical, FileText, Trash2, BarChart3, Upload, Folder, CheckCircle2, Clock, XCircle, Circle, Square, CheckSquare, DownloadCloud, Eye, X, File, Image, Code, Settings2 } from 'lucide-react';
+import { FolderTree, Grid, Plus, Settings, AlertCircle, Share2, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, GripVertical, FileText, Trash2, BarChart3, Upload, Folder, CheckCircle2, Clock, XCircle, Circle, Square, CheckSquare, DownloadCloud, Eye, X, File, Image, Code, Settings2, MessageCircle } from 'lucide-react';
 
 // Document Preview Modal Component
 const DocumentPreviewModal = ({ document, isOpen, onClose }) => {
@@ -467,10 +478,13 @@ const NotebooksPage = () => {
   // Producers management modal state
   const [producersManagementOpen, setProducersManagementOpen] = useState(false);
 
-  // Chat state
+  // Chat state - input remains local, messages/loading via Redux
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatLoading, setChatLoading] = useState(false);
+  const [conversationSidebarCollapsed, setConversationSidebarCollapsed] = useState(false);
+  const [chatSplitPercent, setChatSplitPercent] = useState(75); // conversation gets 75%, comments gets 25%
+  const activeConversationId = useAppSelector(selectActiveConversationId);
+  const chatMessages = useAppSelector((state) => selectMessages(state, activeConversationId));
+  const chatLoading = useAppSelector(selectSendingMessage);
 
   // Initialize spaces first, then data
   useEffect(() => {
@@ -1130,58 +1144,22 @@ const NotebooksPage = () => {
   };
 
   // Chat handlers
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!chatInput.trim() || !selectedNotebook || chatLoading) return;
 
     const userMessage = chatInput.trim();
     setChatInput('');
 
-    // Add user message to chat
-    const newUserMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date().toISOString(),
-    };
-    setChatMessages(prev => [...prev, newUserMessage]);
-    setChatLoading(true);
-
-    try {
-      // Send message to the Notebook Chat Assistant via the backend
-      const response = await aetherApi.chat.sendMessage(selectedNotebook.id, userMessage, chatMessages);
-
-      // Extract assistant response from the new API format
-      const assistantContent = response?.message
-        || response?.data?.message
-        || 'Sorry, I could not generate a response.';
-
-      const assistantMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: assistantContent,
-        timestamp: new Date().toISOString(),
-      };
-      setChatMessages(prev => [...prev, assistantMessage]);
-
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: `Error: ${error.message || 'Failed to get response. Please try again.'}`,
-        timestamp: new Date().toISOString(),
-        isError: true,
-      };
-      setChatMessages(prev => [...prev, errorMessage]);
-
-      dispatch(addNotification({
-        type: 'error',
-        title: 'Chat Error',
-        message: error.message || 'Failed to send message. Please try again.'
-      }));
-    } finally {
-      setChatLoading(false);
-    }
+    dispatch(sendChatMessage({
+      notebookId: selectedNotebook.id,
+      conversationId: activeConversationId,
+      message: userMessage,
+    })).then((result) => {
+      // Refresh conversation list to pick up auto-naming and metadata updates
+      if (result.payload?.conversationId) {
+        dispatch(fetchConversations(selectedNotebook.id));
+      }
+    });
   };
 
   const handleChatKeyPress = (e) => {
@@ -1191,11 +1169,18 @@ const NotebooksPage = () => {
     }
   };
 
-  // Clear chat when notebook changes
+  // Clear active conversation when notebook changes
   useEffect(() => {
-    setChatMessages([]);
+    dispatch(clearActiveConversation());
     setChatInput('');
-  }, [selectedNotebook?.id]);
+  }, [selectedNotebook?.id, dispatch]);
+
+  // Fetch messages when active conversation changes
+  useEffect(() => {
+    if (activeConversationId && selectedNotebook?.id) {
+      dispatch(fetchMessages({ notebookId: selectedNotebook.id, conversationId: activeConversationId }));
+    }
+  }, [activeConversationId, selectedNotebook?.id, dispatch]);
 
 
   return (
@@ -1348,15 +1333,15 @@ const NotebooksPage = () => {
             </LoadingWrapper>
           </div>
         ) : (
-          <div className="flex h-full gap-1">
+          <div className="flex flex-1 min-h-0 gap-1">
             {/* Left Panel - Documents Tree */}
             {!leftPanelCollapsed && (
               <>
-                <div 
-                  className="bg-white border border-gray-200 rounded-lg p-4 flex-shrink-0 relative"
+                <div
+                  className="bg-white border border-gray-200 rounded-lg flex-shrink-0 relative flex flex-col overflow-hidden"
                   style={{ width: `${leftPanelWidth}px` }}
                 >
-                  <div className="mb-4 pb-2 border-b border-gray-200 flex justify-between items-center">
+                  <div className="mx-4 mt-4 mb-4 pb-2 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
                     <h3 className="font-medium text-gray-900">Documents</h3>
                     <div className="flex items-center gap-1">
                       <button 
@@ -1385,7 +1370,7 @@ const NotebooksPage = () => {
                     </div>
                   </div>
                   {selectedNotebook ? (
-                    <div className="space-y-4">
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-4">
                       {/* Sub-notebooks section */}
                       {selectedNotebook.children && selectedNotebook.children.length > 0 && (
                         <div>
@@ -1647,122 +1632,174 @@ const NotebooksPage = () => {
             )}
             
             {/* Center Panel - Chat History */}
-            <div className="flex-1 bg-white border border-gray-200 rounded-lg p-4 flex flex-col">
-              <div className="mb-4 pb-2 border-b border-gray-200">
+            <div className="flex-1 min-h-0 min-w-0 bg-white border border-gray-200 rounded-lg flex flex-col overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200">
                 <h3 className="font-medium text-gray-900">
                   {selectedNotebook ? `Chat: ${selectedNotebook.name}` : 'Chat History'}
                 </h3>
               </div>
-              
+
               {selectedNotebook ? (
-                <div className="flex flex-col h-full">
-                  {/* Chat Messages Area */}
-                  <div className="flex-1 overflow-y-auto mb-4 space-y-4">
-                    {chatMessages.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 text-sm">
-                        No messages yet. Start a conversation about your notebook content.
+                <div className="flex flex-1 min-h-0 overflow-hidden">
+                  {/* Conversation Sidebar */}
+                  <ConversationSidebar
+                    notebookId={selectedNotebook.id}
+                    collapsed={conversationSidebarCollapsed}
+                    onToggle={() => setConversationSidebarCollapsed(!conversationSidebarCollapsed)}
+                  />
+
+                  {/* Chat Area - fixed to viewport height */}
+                  <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+                    {/* Conversation Section */}
+                    <div className="flex flex-col overflow-hidden" style={{ height: `${chatSplitPercent}%` }}>
+                      {/* Chat Messages */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {chatMessages.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500 text-sm">
+                            {activeConversationId
+                              ? 'No messages yet in this conversation.'
+                              : 'No messages yet. Start a conversation about your notebook content.'}
+                          </div>
+                        ) : (
+                          chatMessages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                                  message.role === 'user'
+                                    ? 'bg-(--color-primary-600) text-white'
+                                    : message.isError
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {message.role === 'user' ? (
+                                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                ) : (
+                                  <div className="text-sm">
+                                    <MarkdownRenderer content={message.content} />
+                                  </div>
+                                )}
+                                <p className={`text-xs mt-1 ${
+                                  message.role === 'user' ? 'text-white/70' : 'text-gray-500'
+                                }`}>
+                                  {new Date(message.createdAt || message.timestamp).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        {chatLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                                <span className="text-sm">Thinking...</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      chatMessages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[80%] px-4 py-2 rounded-lg ${
-                              message.role === 'user'
-                                ? 'bg-(--color-primary-600) text-white'
-                                : message.isError
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
+
+                      {/* Message Input */}
+                      <div className="border-t border-gray-200 px-4 pt-3 pb-2 flex-shrink-0">
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Ask questions about your notebook content..."
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyPress={handleChatKeyPress}
+                            disabled={chatLoading}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) disabled:bg-gray-50 disabled:text-gray-500"
+                          />
+                          <button
+                            onClick={handleSendMessage}
+                            disabled={!chatInput.trim() || chatLoading}
+                            className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                            <p className={`text-xs mt-1 ${
-                              message.role === 'user' ? 'text-white/70' : 'text-gray-500'
-                            }`}>
-                              {new Date(message.timestamp).toLocaleTimeString()}
-                            </p>
-                          </div>
+                            {chatLoading ? 'Sending...' : 'Send'}
+                          </button>
                         </div>
-                      ))
-                    )}
-                    {chatLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                            <span className="text-sm">Thinking...</span>
-                          </div>
+
+                        {/* Quick Action Buttons */}
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => { setChatInput('Summarize the key points from these documents'); }}
+                            disabled={chatLoading}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors disabled:opacity-50"
+                          >
+                            Summarize
+                          </button>
+                          <button
+                            onClick={() => { setChatInput('What are the main takeaways from this content?'); }}
+                            disabled={chatLoading}
+                            className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors disabled:opacity-50"
+                          >
+                            Extract Key Points
+                          </button>
+                          <button
+                            onClick={() => { setChatInput('Generate some study questions based on this material'); }}
+                            disabled={chatLoading}
+                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors disabled:opacity-50"
+                          >
+                            Generate Questions
+                          </button>
+                          <button
+                            onClick={() => { setChatInput('Create a detailed outline of this content'); }}
+                            disabled={chatLoading}
+                            className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors disabled:opacity-50"
+                          >
+                            Create Outline
+                          </button>
+                          <button
+                            onClick={() => { setChatInput('Provide a deep analysis and insights on this topic'); }}
+                            disabled={chatLoading}
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200 transition-colors disabled:opacity-50"
+                          >
+                            Deep Research
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Message Input */}
-                  <div className="border-t border-gray-200 pt-3 mb-4">
-                    <div className="flex gap-2 mb-3">
-                      <input
-                        type="text"
-                        placeholder="Ask questions about your notebook content..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyPress={handleChatKeyPress}
-                        disabled={chatLoading}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500) disabled:bg-gray-50 disabled:text-gray-500"
-                      />
-                      <button
-                        onClick={handleSendMessage}
-                        disabled={!chatInput.trim() || chatLoading}
-                        className="px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {chatLoading ? 'Sending...' : 'Send'}
-                      </button>
                     </div>
 
-                    {/* Quick Action Buttons */}
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => { setChatInput('Summarize the key points from these documents'); }}
-                        disabled={chatLoading}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors disabled:opacity-50"
-                      >
-                        Summarize
-                      </button>
-                      <button
-                        onClick={() => { setChatInput('What are the main takeaways from this content?'); }}
-                        disabled={chatLoading}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors disabled:opacity-50"
-                      >
-                        Extract Key Points
-                      </button>
-                      <button
-                        onClick={() => { setChatInput('Generate some study questions based on this material'); }}
-                        disabled={chatLoading}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors disabled:opacity-50"
-                      >
-                        Generate Questions
-                      </button>
-                      <button
-                        onClick={() => { setChatInput('Create a detailed outline of this content'); }}
-                        disabled={chatLoading}
-                        className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors disabled:opacity-50"
-                      >
-                        Create Outline
-                      </button>
-                      <button
-                        onClick={() => { setChatInput('Provide a deep analysis and insights on this topic'); }}
-                        disabled={chatLoading}
-                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200 transition-colors disabled:opacity-50"
-                      >
-                        Deep Research
-                      </button>
+                    {/* Draggable Divider between Conversation and Comments */}
+                    <div
+                      className="h-1.5 cursor-row-resize bg-gray-200 hover:bg-blue-300 transition-colors flex-shrink-0 flex items-center justify-center"
+                      onMouseDown={(e) => {
+                        const container = e.currentTarget.parentElement;
+                        const containerRect = container.getBoundingClientRect();
+                        const handleMouseMove = (ev) => {
+                          const pct = ((ev.clientY - containerRect.top) / containerRect.height) * 100;
+                          setChatSplitPercent(Math.max(30, Math.min(90, pct)));
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    >
+                      <div className="w-8 h-0.5 bg-gray-400 rounded" />
                     </div>
-                  </div>
-                  
-                  {/* Collaborator Comments at Bottom */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <Comments resourceId={selectedNotebook?.id} resourceType="notebook" />
+
+                    {/* Comments Section */}
+                    <div className="flex flex-col overflow-hidden" style={{ height: `${100 - chatSplitPercent}%` }}>
+                      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+                        <MessageCircle size={14} className="text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700">Comments</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto px-4 py-2">
+                        <Comments
+                          resourceId={selectedNotebook?.id}
+                          resourceType={activeConversationId ? 'conversation' : 'notebook'}
+                          conversationId={activeConversationId}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (

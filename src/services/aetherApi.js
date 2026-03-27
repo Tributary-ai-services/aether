@@ -708,7 +708,12 @@ class AetherApiService {
     }),
 
     // Comment operations
-    getComments: (notebookId) => this.request(`/notebooks/${notebookId}/comments`),
+    getComments: (notebookId, conversationId = null) => {
+      const url = conversationId
+        ? `/notebooks/${notebookId}/comments?conversation_id=${conversationId}`
+        : `/notebooks/${notebookId}/comments`;
+      return this.request(url);
+    },
     createComment: (notebookId, data) => this.request(`/notebooks/${notebookId}/comments`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -869,7 +874,7 @@ class AetherApiService {
   // Chat API - Notebook conversations using the Notebook Chat Assistant agent
   chat = {
     // Send a chat message for a notebook using the internal Notebook Chat Assistant
-    sendMessage: (notebookId, message, history = []) => this.request(`/notebooks/${notebookId}/chat`, {
+    sendMessage: (notebookId, message, history = [], conversationId = null) => this.request(`/notebooks/${notebookId}/chat`, {
       method: 'POST',
       body: JSON.stringify({
         message: message,
@@ -877,8 +882,26 @@ class AetherApiService {
           role: msg.role,
           content: msg.content
         })),
+        ...(conversationId ? { conversation_id: conversationId } : {}),
       }),
     }),
+  };
+
+  // Conversations API - Persistent chat conversations within notebooks
+  conversations = {
+    getConversations: (notebookId) => this.request(`/notebooks/${notebookId}/conversations`),
+    createConversation: (notebookId, data = {}) => this.request(`/notebooks/${notebookId}/conversations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateConversation: (notebookId, convId, data) => this.request(`/notebooks/${notebookId}/conversations/${convId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteConversation: (notebookId, convId) => this.request(`/notebooks/${notebookId}/conversations/${convId}`, {
+      method: 'DELETE',
+    }),
+    getMessages: (notebookId, convId) => this.request(`/notebooks/${notebookId}/conversations/${convId}/messages`),
   };
 
   // Users API
