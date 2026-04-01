@@ -86,7 +86,7 @@ const KNOWLEDGE_PRESETS = [
   }
 ];
 
-const KnowledgeConfigurationForm = ({ config, onChange, agentType = 'qa' }) => {
+const KnowledgeConfigurationForm = ({ config, onChange, agentType = 'qa', maxContextTokensLimit = 128000 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('custom');
 
@@ -244,14 +244,14 @@ const KnowledgeConfigurationForm = ({ config, onChange, agentType = 'qa' }) => {
               <input
                 type="number"
                 min="1000"
-                max="32000"
+                max={maxContextTokensLimit}
                 step="1000"
                 value={currentConfig.max_context_tokens}
                 onChange={(e) => handleChange('max_context_tokens', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Maximum tokens for document context
+                Maximum tokens for document context (model max: {maxContextTokensLimit.toLocaleString()})
               </p>
             </div>
 

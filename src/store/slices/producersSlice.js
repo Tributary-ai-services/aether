@@ -152,6 +152,27 @@ export const bulkDeleteProductions = createAsyncThunk(
 );
 
 /**
+ * Retry a failed production (republishes to Kafka job queue)
+ */
+export const retryProduction = createAsyncThunk(
+  'producers/retryProduction',
+  async ({ productionId, notebookId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.request(`/productions/${productionId}/retry`, {
+        method: 'POST',
+      });
+      if (response.success) {
+        return { productionId, notebookId, production: response.data };
+      } else {
+        return rejectWithValue(response.error || 'Failed to retry production');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to retry production');
+    }
+  }
+);
+
+/**
  * Fetch producer preferences for current user
  */
 export const fetchProducerPreferences = createAsyncThunk(
@@ -224,6 +245,9 @@ const initialState = {
   // Production content cache
   productionContent: {}, // { [productionId]: { content: string, loading: false, error: null } }
 
+  // Production progress (real-time updates from SSE/polling)
+  productionProgress: {}, // { [productionId]: { phase, clipsTotal, clipsCompleted, clipsFailed, message } }
+
   // Execution state
   executing: {
     isExecuting: false,
@@ -293,6 +317,43 @@ const producersSlice = createSlice({
       recent.unshift(agentId);
       // Keep only last 10 recent
       state.preferences.recent = recent.slice(0, 10);
+    },
+
+    // Update production progress from SSE/polling
+    updateProductionProgress: (state, action) => {
+      const { productionId, progress } = action.payload;
+      state.productionProgress[productionId] = {
+        phase: progress.phase,
+        clipsTotal: progress.clips_total || 0,
+        clipsCompleted: progress.clips_completed || 0,
+        clipsFailed: progress.clips_failed || 0,
+        message: progress.message || '',
+      };
+
+      // If completed or failed, update production status in notebook items
+      if (progress.phase === 'completed' || progress.phase === 'failed') {
+        for (const notebookId of Object.keys(state.productions)) {
+          const items = state.productions[notebookId]?.items;
+          if (items) {
+            const idx = items.findIndex(p => p.id === productionId);
+            if (idx !== -1) {
+              items[idx] = {
+                ...items[idx],
+                status: progress.phase,
+                mediaUrl: progress.media_url || items[idx].mediaUrl,
+                progressPhase: progress.phase,
+              };
+              break;
+            }
+          }
+        }
+      }
+    },
+
+    // Clear production progress
+    clearProductionProgress: (state, action) => {
+      const { productionId } = action.payload;
+      delete state.productionProgress[productionId];
     },
 
     // Set custom producer order (for drag-and-drop reordering)
@@ -550,6 +611,28 @@ const producersSlice = createSlice({
       });
 
     // =====================
+    // Retry Production
+    // =====================
+    builder
+      .addCase(retryProduction.fulfilled, (state, action) => {
+        const { productionId, notebookId, production } = action.payload;
+        // Update production status in notebook items
+        if (state.productions[notebookId]) {
+          const idx = state.productions[notebookId].items.findIndex(p => p.id === productionId);
+          if (idx !== -1) {
+            state.productions[notebookId].items[idx] = {
+              ...state.productions[notebookId].items[idx],
+              ...production,
+              status: 'queued',
+              progressPhase: '',
+            };
+          }
+        }
+        // Clear old progress
+        delete state.productionProgress[productionId];
+      });
+
+    // =====================
     // Fetch Producer Preferences
     // =====================
     builder
@@ -605,6 +688,8 @@ export const {
   clearProductionContent,
   addToRecent,
   setProducerOrder,
+  updateProductionProgress,
+  clearProductionProgress,
 } = producersSlice.actions;
 
 // =====================
@@ -636,6 +721,12 @@ export const selectNotebookProductions = createSelector(
 export const selectProductionContent = createSelector(
   [selectProducersState, (_, productionId) => productionId],
   (state, productionId) => state.productionContent[productionId]?.content || null
+);
+
+// Select production progress
+export const selectProductionProgress = createSelector(
+  [selectProducersState, (_, productionId) => productionId],
+  (state, productionId) => state.productionProgress[productionId] || null
 );
 
 // Select execution state

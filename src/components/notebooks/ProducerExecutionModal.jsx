@@ -5,7 +5,9 @@ import {
   selectExecutionState,
   clearExecutionState,
   selectProducerPreferences,
+  selectProductionProgress,
 } from '../../store/slices/producersSlice.js';
+import { useProductionProgress } from '../../hooks/useProductionProgress.js';
 import { api } from '../../services/api.js';
 import RendererSelectModal from './RendererSelectModal.jsx';
 import {
@@ -123,6 +125,17 @@ const ProducerExecutionModal = ({
   ]);
   const [voiceMapping, setVoiceMapping] = useState({});
   const [podcastDuration, setPodcastDuration] = useState(10);
+  const [podcastTopics, setPodcastTopics] = useState('');
+
+  // Track production progress for podcast productions via SSE
+  const productionId = executionState.production?.id;
+  const isPodcast = productionType === 'podcast';
+  const progress = useAppSelector(state =>
+    productionId ? selectProductionProgress(state, productionId) : null
+  );
+  useProductionProgress(productionId, {
+    enabled: isPodcast && !!productionId && executionState.status !== 'failed',
+  });
 
   // Initialize production type based on selected producer
   useEffect(() => {
@@ -222,6 +235,9 @@ const ProducerExecutionModal = ({
         context.tts_provider = ttsProvider;
         context.speakers = speakers;
         context.podcast_duration = podcastDuration;
+        if (podcastTopics.trim()) {
+          context.topics = podcastTopics.trim();
+        }
         // Only send voice_mapping entries that have non-empty values
         const filteredMapping = Object.fromEntries(
           Object.entries(voiceMapping).filter(([, v]) => v && v.length > 0)
@@ -263,7 +279,7 @@ const ProducerExecutionModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -285,7 +301,7 @@ const ProducerExecutionModal = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -457,6 +473,18 @@ const ProducerExecutionModal = ({
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Topics (optional)</label>
+                  <textarea
+                    value={podcastTopics}
+                    onChange={(e) => setPodcastTopics(e.target.value)}
+                    disabled={isExecuting || hasCompleted}
+                    placeholder="e.g., focus on water conservation policies, compare urban vs rural approaches"
+                    rows={2}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-(--color-primary-500) disabled:bg-gray-100 resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-0.5">Guide the podcast to focus on specific topics from the documents</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Duration: {podcastDuration} min
                   </label>
@@ -507,13 +535,14 @@ const ProducerExecutionModal = ({
                 {isExecuting && <Loader2 size={20} className="text-blue-600 animate-spin" />}
                 {hasCompleted && <CheckCircle size={20} className="text-green-600" />}
                 {hasFailed && <XCircle size={20} className="text-red-600" />}
-                <div>
+                <div className="flex-1">
                   <p className={`font-medium ${
                     isExecuting ? 'text-blue-800' :
                     hasCompleted ? 'text-green-800' :
                     'text-red-800'
                   }`}>
-                    {isExecuting && 'Executing producer...'}
+                    {isExecuting && !progress && 'Executing producer...'}
+                    {isExecuting && progress && (progress.message || `Phase: ${progress.phase}`)}
                     {hasCompleted && 'Production completed!'}
                     {hasFailed && 'Execution failed'}
                   </p>
@@ -522,6 +551,37 @@ const ProducerExecutionModal = ({
                   )}
                 </div>
               </div>
+
+              {/* Progress bar for podcast generation */}
+              {isPodcast && progress && progress.clipsTotal > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
+                    <span>
+                      {progress.phase === 'tts_generating' && `Generating clip ${progress.clipsCompleted}/${progress.clipsTotal}`}
+                      {progress.phase === 'assembling' && 'Assembling audio...'}
+                      {progress.phase === 'uploading' && 'Uploading...'}
+                      {progress.phase === 'completed' && 'Done!'}
+                    </span>
+                    <span>{progress.phase === 'completed' ? 100 : Math.round((progress.clipsCompleted / progress.clipsTotal) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${progress.phase === 'completed' ? 100 :
+                          progress.phase === 'uploading' ? 95 :
+                          progress.phase === 'assembling' ? 85 :
+                          Math.round((progress.clipsCompleted / progress.clipsTotal) * 80)}%`,
+                      }}
+                    />
+                  </div>
+                  {progress.clipsFailed > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {progress.clipsFailed} clip{progress.clipsFailed > 1 ? 's' : ''} failed
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

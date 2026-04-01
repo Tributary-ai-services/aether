@@ -110,15 +110,19 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   // Per-skill connection overrides: { skillName: { connectionId, serverId } }
   const [skillConnections, setSkillConnections] = useState({});
 
-  // Fetch available skills
+  // Fetch available skills (use mocks until backend skills endpoint exists)
   useEffect(() => {
     if (!isOpen) return;
     const fetchSkills = async () => {
       try {
         setLoadingSkills(true);
-        const response = await api.skills.list();
-        const skillList = response.skills || response || [];
-        setAvailableSkills(Array.isArray(skillList) ? skillList : []);
+        if (api.skills && typeof api.skills.list === 'function') {
+          const response = await api.skills.list();
+          const skillList = response.skills || response || [];
+          setAvailableSkills(Array.isArray(skillList) ? skillList : []);
+        } else {
+          setAvailableSkills(mockSkills);
+        }
       } catch (err) {
         console.warn('[AgentCreate] Failed to fetch skills, using mocks:', err);
         setAvailableSkills(mockSkills);
@@ -456,8 +460,8 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       errors.temperature = 'Temperature must be between 0 and 1';
     }
 
-    if (formData.llm_config.max_tokens < 1 || formData.llm_config.max_tokens > 32000) {
-      errors.max_tokens = 'Max tokens must be between 1 and 32000';
+    if (formData.llm_config.max_tokens < 1 || formData.llm_config.max_tokens > maxTokensLimit) {
+      errors.max_tokens = `Max tokens must be between 1 and ${maxTokensLimit.toLocaleString()}`;
     }
 
     return errors;
@@ -511,6 +515,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       const agentData = {
         ...formData,
         type: formData.type || 'qa', // Explicitly ensure type is included
+        tags: (formData.tags || []).filter(t => t && t.trim()), // Strip empty tags
         skills: effectiveSkills, // Include both explicit and auto-detected skills
         skill_connections: Object.keys(skillConnections).length > 0 ? skillConnections : undefined,
         space_id: currentSpace.space_id
@@ -565,6 +570,18 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       availableModels = selectedProvider.models;
     }
   }
+
+  // Look up the selected model's capabilities from the router data
+  const selectedModel = availableModels.find(m => {
+    const mName = typeof m === 'string' ? m : (m.id || m.name);
+    return mName === formData.llm_config.model;
+  });
+  const selectedModelMaxOutputTokens = (typeof selectedModel === 'object' && selectedModel?.max_output_tokens) || null;
+  const selectedModelMaxContextWindow = (typeof selectedModel === 'object' && selectedModel?.max_context_window) || null;
+  // For the max_tokens input: use model's max_output_tokens if available, otherwise a generous fallback
+  const maxTokensLimit = selectedModelMaxOutputTokens || 128000;
+  // For the knowledge config max_context_tokens: use model's max_context_window if available
+  const maxContextTokensLimit = selectedModelMaxContextWindow || 128000;
 
   return (
     <Modal
@@ -769,7 +786,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                 type="number"
                 min="0"
                 max="1"
-                step="0.1"
+                step="0.05"
                 value={formData.llm_config.temperature}
                 onChange={(e) => handleLLMConfigChange('temperature', parseFloat(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
@@ -779,11 +796,14 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Max Tokens
+                {selectedModelMaxOutputTokens && (
+                  <span className="text-xs text-gray-400 ml-1">(max {selectedModelMaxOutputTokens.toLocaleString()})</span>
+                )}
               </label>
               <input
                 type="number"
                 min="1"
-                max="32000"
+                max={maxTokensLimit}
                 value={formData.llm_config.max_tokens}
                 onChange={(e) => handleLLMConfigChange('max_tokens', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-(--color-primary-500) focus:border-(--color-primary-500)"
@@ -920,6 +940,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
                   }}
                   onChange={handleKnowledgeConfigChange}
                   agentType={formData.type}
+                  maxContextTokensLimit={maxContextTokensLimit}
                 />
               </div>
             )}

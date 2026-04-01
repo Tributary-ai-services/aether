@@ -4,7 +4,10 @@ import {
   fetchProductionContent,
   selectProductionContent,
   deleteProduction,
+  retryProduction,
+  selectProductionProgress,
 } from '../../store/slices/producersSlice.js';
+import { useProductionProgress } from '../../hooks/useProductionProgress.js';
 import {
   X,
   Download,
@@ -22,6 +25,7 @@ import {
   Loader2,
   AlertTriangle,
   ExternalLink,
+  RotateCcw,
 } from 'lucide-react';
 
 const FORMAT_ICONS = {
@@ -52,6 +56,7 @@ const ProductionViewer = ({
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   // Get refreshed production from store (may have updated mediaUrl after async rendering)
   const storeProduction = useAppSelector(state => {
@@ -70,14 +75,30 @@ const ProductionViewer = ({
   const contentLoading = contentState?.loading;
   const contentError = contentState?.error;
 
+  // Production progress (for queued/rendering productions)
+  const isInProgress = production && ['queued', 'rendering', 'retrying'].includes(production.status);
+  const progress = useAppSelector(state =>
+    production ? selectProductionProgress(state, production.id) : null
+  );
+  useProductionProgress(production?.id, { enabled: isOpen && isInProgress });
+
+  // Track whether we've already fetched for this production to prevent infinite re-fetch loops
+  const [fetchedId, setFetchedId] = useState(null);
+
   // Fetch content when modal opens
-  // Always re-fetch if production has a renderer but no mediaUrl yet (async render may have completed)
-  const needsRefresh = production?.rendererId && !production?.mediaUrl;
   useEffect(() => {
-    if (isOpen && production && (!content || needsRefresh) && !contentLoading) {
+    if (isOpen && production && !contentLoading && production.id !== fetchedId) {
+      setFetchedId(production.id);
       dispatch(fetchProductionContent(production.id));
     }
-  }, [isOpen, production, content, contentLoading, needsRefresh, dispatch]);
+  }, [isOpen, production?.id, contentLoading, fetchedId, dispatch]);
+
+  // Reset fetchedId when modal closes so re-opening triggers a fresh fetch
+  useEffect(() => {
+    if (!isOpen) {
+      setFetchedId(null);
+    }
+  }, [isOpen]);
 
   // Reset copy state
   useEffect(() => {
@@ -135,6 +156,18 @@ const ProductionViewer = ({
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!production || !notebookId) return;
+    setRetrying(true);
+    try {
+      await dispatch(retryProduction({ productionId: production.id, notebookId }));
+    } catch (err) {
+      console.error('Failed to retry production:', err);
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -244,6 +277,62 @@ const ProductionViewer = ({
             </div>
           )}
         </div>
+
+        {/* Progress indicator for in-progress productions */}
+        {isInProgress && (
+          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
+            <div className="flex items-center gap-3 mb-2">
+              <Loader2 size={18} className="text-blue-600 animate-spin" />
+              <span className="text-sm font-medium text-blue-800">
+                {progress?.message || `Status: ${production.status}`}
+              </span>
+            </div>
+            {progress && progress.clipsTotal > 0 && (
+              <div>
+                <div className="flex items-center justify-between text-xs text-blue-700 mb-1">
+                  <span>
+                    {progress.phase === 'tts_generating' && `Generating clip ${progress.clipsCompleted}/${progress.clipsTotal}`}
+                    {progress.phase === 'assembling' && 'Assembling audio...'}
+                    {progress.phase === 'uploading' && 'Uploading...'}
+                  </span>
+                  <span>{progress.phase === 'completed' ? 100 : Math.round((progress.clipsCompleted / progress.clipsTotal) * 100)}%</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${progress.phase === 'uploading' ? 95 :
+                        progress.phase === 'assembling' ? 85 :
+                        Math.round((progress.clipsCompleted / progress.clipsTotal) * 80)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Retry banner for failed productions */}
+        {production.status === 'failed' && (
+          <div className="px-6 py-3 bg-red-50 border-b border-red-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-600" />
+              <span className="text-sm text-red-800">This production failed.</span>
+            </div>
+            <button
+              onClick={handleRetry}
+              disabled={retrying}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {retrying ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RotateCcw size={14} />
+              )}
+              {retrying ? 'Retrying...' : 'Retry'}
+            </button>
+          </div>
+        )}
 
         {/* Audio Player (for productions with media URL) */}
         {production.mediaUrl && (
