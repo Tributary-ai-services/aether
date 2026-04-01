@@ -39,15 +39,19 @@ const Comments = ({ resourceId, resourceType = 'notebook', conversationId }) => 
   const [editContent, setEditContent] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
 
+  // Only subscribe to SSE and fetch comments for notebook resources
+  // Other resource types (agent, workflow, etc.) don't have backend comment endpoints yet
+  const isNotebook = resourceType === 'notebook';
+
   // Subscribe to real-time SSE updates
-  useCommentSSE(resourceId);
+  useCommentSSE(isNotebook ? resourceId : null);
 
   // Fetch comments on mount / resource change
   useEffect(() => {
-    if (resourceId) {
+    if (resourceId && isNotebook) {
       dispatch(fetchComments({ notebookId: resourceId, conversationId }));
     }
-  }, [dispatch, resourceId, conversationId]);
+  }, [dispatch, resourceId, conversationId, isNotebook]);
 
   const currentUser = user ? {
     id: user.id || user.sub,
