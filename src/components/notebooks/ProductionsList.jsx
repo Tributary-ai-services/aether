@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/index.js';
 import {
   fetchNotebookProductions,
@@ -56,6 +56,26 @@ const ProductionsList = ({
       dispatch(fetchNotebookProductions({ notebookId, limit: 20, offset: 0 }));
     }
   }, [dispatch, notebookId]);
+
+  // Poll for updates while any production is in-progress
+  const pollRef = useRef(null);
+  const hasInProgress = productions.some(p =>
+    p.status === 'processing' || p.status === 'queued' || p.status === 'rendering' || p.status === 'retrying'
+  );
+
+  useEffect(() => {
+    if (hasInProgress && notebookId) {
+      pollRef.current = setInterval(() => {
+        dispatch(fetchNotebookProductions({ notebookId, limit: 20, offset: 0 }));
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [hasInProgress, notebookId, dispatch]);
 
   // Filter out failed productions and sort by date (newest first)
   const sortedProductions = [...productions]

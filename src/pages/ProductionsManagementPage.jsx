@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/index.js';
 import {
@@ -86,6 +86,26 @@ const ProductionsManagementPage = () => {
       console.warn('[ProductionsManagement] No notebookId provided');
     }
   }, [dispatch, notebookId]);
+
+  // Poll for updates while any production is in-progress
+  const pollRef = useRef(null);
+  const hasInProgress = productions.some(p =>
+    p.status === 'processing' || p.status === 'queued' || p.status === 'rendering' || p.status === 'retrying'
+  );
+
+  useEffect(() => {
+    if (hasInProgress && notebookId) {
+      pollRef.current = setInterval(() => {
+        dispatch(fetchNotebookProductions({ notebookId, limit: 100, offset: 0 }));
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [hasInProgress, notebookId, dispatch]);
 
   // Filtered and sorted productions
   const filteredProductions = useMemo(() => {
