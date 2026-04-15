@@ -43,6 +43,8 @@ import {
   fetchConversations,
   fetchMessages,
 } from '../store/slices/conversationsSlice';
+import { fetchSkills } from '../store/slices/skillsSlice.js';
+import { getSkillIcon, getSkillTypeStyle } from '../utils/skillUtils.js';
 import DocumentAnalysisModal from '../components/modals/DocumentAnalysisModal.jsx';
 import DataSourceModal from '../components/notebooks/DataSourceModal.jsx';
 import ProducersList from '../components/notebooks/ProducersList.jsx';
@@ -482,9 +484,11 @@ const NotebooksPage = () => {
   const [chatInput, setChatInput] = useState('');
   const [conversationSidebarCollapsed, setConversationSidebarCollapsed] = useState(false);
   const [chatSplitPercent, setChatSplitPercent] = useState(75); // conversation gets 75%, comments gets 25%
+  const [selectedSkillIds, setSelectedSkillIds] = useState([]);
   const activeConversationId = useAppSelector(selectActiveConversationId);
   const chatMessages = useAppSelector((state) => selectMessages(state, activeConversationId));
   const chatLoading = useAppSelector(selectSendingMessage);
+  const { items: availableSkills, loading: skillsLoading } = useAppSelector((state) => state.skills);
 
   // Initialize spaces first, then data
   useEffect(() => {
@@ -499,6 +503,13 @@ const NotebooksPage = () => {
       dispatch(fetchNotebooks());
     }
   }, [dispatch, initialized, currentSpace]);
+
+  // Fetch available skills for notebook chat
+  useEffect(() => {
+    if (initialized && availableSkills.length === 0 && !skillsLoading) {
+      dispatch(fetchSkills());
+    }
+  }, [dispatch, initialized, availableSkills.length, skillsLoading]);
   
   // Fetch document counts for notebooks after notebooks are loaded
   useEffect(() => {
@@ -1154,6 +1165,7 @@ const NotebooksPage = () => {
       notebookId: selectedNotebook.id,
       conversationId: activeConversationId,
       message: userMessage,
+      skillIds: selectedSkillIds,
     })).then((result) => {
       // Refresh conversation list to pick up auto-naming and metadata updates
       if (result.payload?.conversationId) {
@@ -1724,43 +1736,43 @@ const NotebooksPage = () => {
                           </button>
                         </div>
 
-                        {/* Quick Action Buttons */}
+                        {/* Skill Buttons - MCP tools that enhance chat responses */}
                         <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => { setChatInput('Summarize the key points from these documents'); }}
-                            disabled={chatLoading}
-                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors disabled:opacity-50"
-                          >
-                            Summarize
-                          </button>
-                          <button
-                            onClick={() => { setChatInput('What are the main takeaways from this content?'); }}
-                            disabled={chatLoading}
-                            className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors disabled:opacity-50"
-                          >
-                            Extract Key Points
-                          </button>
-                          <button
-                            onClick={() => { setChatInput('Generate some study questions based on this material'); }}
-                            disabled={chatLoading}
-                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors disabled:opacity-50"
-                          >
-                            Generate Questions
-                          </button>
-                          <button
-                            onClick={() => { setChatInput('Create a detailed outline of this content'); }}
-                            disabled={chatLoading}
-                            className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors disabled:opacity-50"
-                          >
-                            Create Outline
-                          </button>
-                          <button
-                            onClick={() => { setChatInput('Provide a deep analysis and insights on this topic'); }}
-                            disabled={chatLoading}
-                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200 transition-colors disabled:opacity-50"
-                          >
-                            Deep Research
-                          </button>
+                          {skillsLoading ? (
+                            <>
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="px-3 py-1 bg-gray-100 rounded-full text-sm w-24 h-7 animate-pulse" />
+                              ))}
+                            </>
+                          ) : (
+                            availableSkills.filter(s => s.is_system !== false).map((skill) => {
+                              const isSelected = selectedSkillIds.includes(skill.id);
+                              const style = getSkillTypeStyle(skill.type);
+                              const IconComponent = getSkillIcon(skill.icon);
+                              return (
+                                <button
+                                  key={skill.id}
+                                  onClick={() => {
+                                    setSelectedSkillIds(prev =>
+                                      prev.includes(skill.id)
+                                        ? prev.filter(id => id !== skill.id)
+                                        : [...prev, skill.id]
+                                    );
+                                  }}
+                                  disabled={chatLoading}
+                                  title={skill.description}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-all disabled:opacity-50 ${
+                                    isSelected
+                                      ? `${style.activeBg} ${style.text} ring-2 ${style.ring} font-medium`
+                                      : `${style.bg} ${style.text} hover:${style.activeBg}`
+                                  }`}
+                                >
+                                  <IconComponent size={14} />
+                                  {skill.display_name}
+                                </button>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     </div>

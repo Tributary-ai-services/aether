@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSpace } from '../../hooks/useSpaces.js';
 import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
 import { api } from '../../services/api.js';
+import { aetherApi } from '../../services/aetherApi.js';
 import Modal from '../ui/Modal.jsx';
 import RetryConfigurationForm from '../agent/RetryConfigurationForm.jsx';
 import FallbackConfigurationForm from '../agent/FallbackConfigurationForm.jsx';
@@ -116,13 +117,10 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
     const fetchSkills = async () => {
       try {
         setLoadingSkills(true);
-        if (api.skills && typeof api.skills.list === 'function') {
-          const response = await api.skills.list();
-          const skillList = response.skills || response || [];
-          setAvailableSkills(Array.isArray(skillList) ? skillList : []);
-        } else {
-          setAvailableSkills(mockSkills);
-        }
+        const response = await aetherApi.skills.list({ size: 100 });
+        const data = response?.data || response;
+        const skillList = Array.isArray(data) ? data : (data?.skills || data?.items || []);
+        setAvailableSkills(skillList.length > 0 ? skillList : mockSkills);
       } catch (err) {
         console.warn('[AgentCreate] Failed to fetch skills, using mocks:', err);
         setAvailableSkills(mockSkills);
