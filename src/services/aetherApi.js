@@ -874,7 +874,7 @@ class AetherApiService {
   // Chat API - Notebook conversations using the Notebook Chat Assistant agent
   chat = {
     // Send a chat message for a notebook using the internal Notebook Chat Assistant
-    sendMessage: (notebookId, message, history = [], conversationId = null) => this.request(`/notebooks/${notebookId}/chat`, {
+    sendMessage: (notebookId, message, history = [], conversationId = null, skillIds = []) => this.request(`/notebooks/${notebookId}/chat`, {
       method: 'POST',
       body: JSON.stringify({
         message: message,
@@ -883,6 +883,7 @@ class AetherApiService {
           content: msg.content
         })),
         ...(conversationId ? { conversation_id: conversationId } : {}),
+        ...(skillIds.length > 0 ? { skill_ids: skillIds } : {}),
       }),
     }),
   };

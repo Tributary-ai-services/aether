@@ -16,6 +16,7 @@ import workflowsReducer from './slices/workflowsSlice.js';
 import notificationsReducer from './slices/notificationsSlice.js';
 import commentsReducer from './slices/commentsSlice.js';
 import conversationsReducer from './slices/conversationsSlice.js';
+import skillsReducer from './slices/skillsSlice.js';
 import { syncMiddleware } from './middleware/syncMiddleware.js';
 
 const store = configureStore({
@@ -37,6 +38,7 @@ const store = configureStore({
     notifications: notificationsReducer,
     comments: commentsReducer,
     conversations: conversationsReducer,
+    skills: skillsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

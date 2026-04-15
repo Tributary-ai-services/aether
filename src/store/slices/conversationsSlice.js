@@ -66,9 +66,9 @@ export const fetchMessages = createAsyncThunk(
 
 export const sendChatMessage = createAsyncThunk(
   'conversations/sendChatMessage',
-  async ({ notebookId, conversationId, message }, { rejectWithValue }) => {
+  async ({ notebookId, conversationId, message, skillIds = [] }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.chat.sendMessage(notebookId, message, [], conversationId || null);
+      const response = await aetherApi.chat.sendMessage(notebookId, message, [], conversationId || null, skillIds);
       const data = response?.data || response;
       return {
         notebookId,
