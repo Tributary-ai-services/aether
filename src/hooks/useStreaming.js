@@ -1,8 +1,69 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { api } from '../services/api.js';
 import { aetherApi } from '../services/aetherApi.js';
+import { StreamingSocket } from '../services/streamingSocket.js';
 import { addRealtimeViolation } from '../store/slices/complianceSlice.js';
+
+const MAX_EVENTS = 50;
+
+// mapCEToUIEvent converts a CloudEvents 1.0 envelope from the WebSocket
+// into the shape StreamingPage.jsx renders.
+function mapCEToUIEvent(ce) {
+  const isCompliance = ce.type?.startsWith('com.tas.compliance.');
+  const severity = ce.severity || null;
+
+  return {
+    id: ce.id || `ce-${Date.now()}`,
+    source: ce.source?.replace('urn:tas:service:', '') || 'unknown',
+    type: ce.type?.split('.').pop() || 'event',
+    content: summarizePayload(ce),
+    sentiment: isCompliance ? getSentimentFromSeverity(severity) : 'neutral',
+    timestamp: formatTimeAgo(ce.time),
+    mediaType: isCompliance ? 'security' : 'text',
+    hasAuditTrail: true,
+    isComplianceEvent: isCompliance,
+    severity,
+    confidence: ce.data?.confidence || null,
+    violationId: ce.id,
+    ruleName: ce.data?.pattern_id || ce.data?.rule_id || null,
+    fileName: ce.data?.file_name || ce.subject || null,
+  };
+}
+
+function summarizePayload(ce) {
+  const d = ce.data || {};
+  const typeSuffix = ce.type?.split('.').slice(-2).join('.') || '';
+
+  switch (typeSuffix) {
+    case 'document.uploaded':
+      return `Document uploaded: ${d.file_name || d.file_id || 'unknown'}`;
+    case 'document.processed':
+      return `Document processed: ${d.file_name || d.file_id || 'unknown'} (${d.chunk_count || '?'} chunks)`;
+    case 'document.failed':
+      return `Document failed: ${d.file_name || d.file_id || 'unknown'} — ${d.error || 'unknown error'}`;
+    case 'llm.request':
+      return `LLM request: ${d.model || 'unknown model'}`;
+    case 'llm.response':
+      return `LLM response: ${d.model || 'unknown'} (${d.tokens_out || '?'} tokens)`;
+    case 'agent.executed':
+      return `Agent executed: ${d.agent_name || d.agent_id || 'unknown'}`;
+    case 'agent.failed':
+      return `Agent failed: ${d.agent_name || 'unknown'} — ${d.error || ''}`;
+    case 'workflow.started':
+      return `Workflow started: ${d.workflow_name || d.workflow_id || 'unknown'}`;
+    case 'workflow.completed':
+      return `Workflow completed: ${d.workflow_name || 'unknown'}`;
+    case 'workflow.failed':
+      return `Workflow failed: ${d.workflow_name || 'unknown'} — ${d.error || ''}`;
+    case 'mcp.tool_invoked':
+      return `MCP tool: ${d.tool_name || 'unknown'} on ${d.server_name || d.server_id || 'unknown'}`;
+    case 'finding.detected':
+      return `Compliance finding: ${d.pattern_id || 'unknown pattern'} (${d.action_taken || 'detected'})`;
+    default:
+      return ce.type || 'Event received';
+  }
+}
 
 export const useStreaming = () => {
   const dispatch = useDispatch();
@@ -10,144 +71,129 @@ export const useStreaming = () => {
   const [streamSources, setStreamSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastComplianceCheck, setLastComplianceCheck] = useState(null);
-
-  const fetchStreamingData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [eventsResponse, sourcesResponse] = await Promise.all([
-        api.streaming.getLiveEvents(),
-        api.streaming.getStreamSources()
-      ]);
-      setLiveEvents(eventsResponse.data);
-      setStreamSources(sourcesResponse.data);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch streaming data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch recent compliance violations and merge into live events
-  const fetchComplianceEvents = useCallback(async () => {
-    try {
-      const response = await aetherApi.compliance.getViolations({
-        page: 1,
-        pageSize: 10,
-        acknowledged: false, // Only get unacknowledged violations
-      });
-
-      if (response.success && response.data?.data) {
-        const violations = response.data.data || response.data || [];
-
-        // Convert violations to live event format
-        const complianceEvents = violations.map(violation => ({
-          id: `compliance-${violation.id}`,
-          source: 'Compliance',
-          type: 'dlp_violation',
-          content: `${violation.rule_name || violation.ruleName}: ${violation.file_name || violation.fileName || 'Unknown file'}`,
-          sentiment: getSentimentFromSeverity(violation.severity),
-          timestamp: formatTimeAgo(violation.created_at || violation.createdAt),
-          mediaType: 'security',
-          hasAuditTrail: true,
-          // Additional compliance-specific fields
-          severity: violation.severity,
-          ruleName: violation.rule_name || violation.ruleName,
-          fileName: violation.file_name || violation.fileName,
-          confidence: violation.confidence,
-          violationId: violation.id,
-          isComplianceEvent: true,
-        }));
-
-        return complianceEvents;
-      }
-      return [];
-    } catch (err) {
-      console.error('Failed to fetch compliance events:', err);
-      return [];
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStreamingData();
-  }, []);
-
-  // Simulate real-time updates and poll for compliance events
   const [eventsPerSecond, setEventsPerSecond] = useState(0);
   const [activeStreams, setActiveStreams] = useState(0);
+  const [wsConnected, setWsConnected] = useState(false);
+  const eventCountRef = useRef(0);
+  const socketRef = useRef(null);
 
+  // Fetch initial stream sources (still from mock/REST until backend wired)
+  const fetchStreamSources = useCallback(async () => {
+    try {
+      const response = await api.streaming.getStreamSources();
+      setStreamSources(response.data);
+    } catch {
+      // non-critical — keep whatever we have
+    }
+  }, []);
+
+  // Fetch stats from backend (when /api/v1/streams/stats is available)
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await aetherApi.get('/streams/stats');
+      if (response.success && response.data) {
+        setEventsPerSecond(response.data.events_per_min / 60);
+        setActiveStreams(response.data.active_sources || 0);
+        return;
+      }
+    } catch {
+      // /stats not available yet — compute from local event rate
+    }
+    setEventsPerSecond(eventCountRef.current);
+    eventCountRef.current = 0;
+  }, []);
+
+  // Handle incoming CloudEvent from WebSocket
+  const handleEvent = useCallback((ce) => {
+    eventCountRef.current += 1;
+
+    const uiEvent = mapCEToUIEvent(ce);
+
+    setLiveEvents(prev => [uiEvent, ...prev].slice(0, MAX_EVENTS));
+
+    // Dispatch high-severity compliance events to Redux for toast notifications
+    if (uiEvent.isComplianceEvent && (uiEvent.severity === 'critical' || uiEvent.severity === 'high')) {
+      dispatch(addRealtimeViolation({
+        id: uiEvent.violationId,
+        rule_name: uiEvent.ruleName,
+        file_name: uiEvent.fileName,
+        severity: uiEvent.severity,
+        confidence: uiEvent.confidence,
+      }));
+    }
+  }, [dispatch]);
+
+  // Set up WebSocket connection
   useEffect(() => {
-    const interval = setInterval(async () => {
-      setActiveStreams(Math.floor(Math.random() * 5) + 8);
-      setEventsPerSecond(Math.floor(Math.random() * 100) + 50);
+    setLoading(true);
 
-      // Poll for new compliance violations every 10 seconds
-      const now = Date.now();
-      if (!lastComplianceCheck || now - lastComplianceCheck >= 10000) {
-        setLastComplianceCheck(now);
+    const socket = new StreamingSocket({
+      onEvent: handleEvent,
+      onOpen: () => {
+        setWsConnected(true);
+        setError(null);
+        setLoading(false);
+      },
+      onClose: () => {
+        setWsConnected(false);
+      },
+      onError: () => {
+        setWsConnected(false);
+      },
+    });
 
-        const complianceEvents = await fetchComplianceEvents();
+    socket.connect();
+    socketRef.current = socket;
 
-        if (complianceEvents.length > 0) {
-          // Add new compliance events to the feed
-          setLiveEvents(prev => {
-            // Remove old compliance events and add new ones
-            const nonComplianceEvents = prev.filter(e => !e.isComplianceEvent);
-            // Merge and sort by recency
-            const merged = [...complianceEvents, ...nonComplianceEvents];
-            return merged.slice(0, 20); // Keep max 20 events
-          });
-
-          // Dispatch new violations to Redux for toast notifications
-          complianceEvents.forEach(event => {
-            if (event.severity === 'critical' || event.severity === 'high') {
-              dispatch(addRealtimeViolation({
-                id: event.violationId,
-                rule_name: event.ruleName,
-                file_name: event.fileName,
-                severity: event.severity,
-                confidence: event.confidence,
-              }));
-            }
-          });
+    // If WS doesn't connect within 3s, load mock data as fallback
+    const fallbackTimer = setTimeout(async () => {
+      if (!socketRef.current?.ws || socketRef.current.ws.readyState !== WebSocket.OPEN) {
+        try {
+          const [eventsRes, sourcesRes] = await Promise.all([
+            api.streaming.getLiveEvents(),
+            api.streaming.getStreamSources(),
+          ]);
+          setLiveEvents(eventsRes.data || []);
+          setStreamSources(sourcesRes.data || []);
+        } catch {
+          setError('WebSocket unavailable and mock data failed');
         }
+        setLoading(false);
       }
+    }, 3000);
 
-      // Simulate new non-compliance events occasionally
-      if (Math.random() < 0.3) {
-        const newEvent = {
-          id: Date.now(),
-          source: 'Real-time Update',
-          type: 'system',
-          content: 'New data processed',
-          sentiment: 'neutral',
-          timestamp: 'now',
-          mediaType: 'text',
-          hasAuditTrail: true
-        };
-        setLiveEvents(prev => [newEvent, ...prev.slice(0, 19)]);
-      }
-    }, 2000);
+    return () => {
+      clearTimeout(fallbackTimer);
+      socket.disconnect();
+    };
+  }, [handleEvent]);
+
+  // Poll stream sources + stats every 30s
+  useEffect(() => {
+    fetchStreamSources();
+
+    const interval = setInterval(() => {
+      fetchStreamSources();
+      fetchStats();
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [lastComplianceCheck, fetchComplianceEvents, dispatch]);
+  }, [fetchStreamSources, fetchStats]);
 
   const refreshLiveEvents = useCallback(async () => {
     try {
-      const [eventsResponse, complianceEvents] = await Promise.all([
+      const [eventsResponse] = await Promise.all([
         api.streaming.getLiveEvents(),
-        fetchComplianceEvents(),
       ]);
-
-      // Merge compliance events with regular events
       const regularEvents = eventsResponse.data || [];
-      const merged = [...complianceEvents, ...regularEvents];
-      setLiveEvents(merged.slice(0, 20));
+      setLiveEvents(prev => {
+        const wsEvents = prev.filter(e => e.id?.startsWith('ce-') || e.source !== 'Real-time Update');
+        return [...wsEvents, ...regularEvents].slice(0, MAX_EVENTS);
+      });
     } catch (err) {
       setError(err.message || 'Failed to refresh live events');
     }
-  }, [fetchComplianceEvents]);
+  }, []);
 
   return {
     liveEvents,
@@ -156,16 +202,15 @@ export const useStreaming = () => {
     activeStreams,
     loading,
     error,
-    refetch: fetchStreamingData,
-    refreshLiveEvents
+    wsConnected,
+    refetch: fetchStreamSources,
+    refreshLiveEvents,
   };
 };
 
-// Helper function to map severity to sentiment
 function getSentimentFromSeverity(severity) {
   switch (severity?.toLowerCase()) {
     case 'critical':
-      return 'negative';
     case 'high':
       return 'negative';
     case 'medium':
@@ -177,7 +222,6 @@ function getSentimentFromSeverity(severity) {
   }
 }
 
-// Helper function to format timestamp as "X ago"
 function formatTimeAgo(timestamp) {
   if (!timestamp) return 'just now';
 
