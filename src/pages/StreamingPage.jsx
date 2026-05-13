@@ -169,14 +169,7 @@ const StreamingPage = () => {
                   
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-500 capitalize">{stream.type}</span>
-                    <div className="flex gap-1">
-                      {stream.status === 'active' ? (
-                        <Pause size={12} className="text-gray-400 cursor-pointer hover:text-gray-600" />
-                      ) : (
-                        <Play size={12} className="text-gray-400 cursor-pointer hover:text-green-600" />
-                      )}
-                      <Settings size={12} className="text-gray-400 cursor-pointer hover:text-gray-600" />
-                    </div>
+                    <Settings size={12} className="text-gray-400 cursor-pointer hover:text-gray-600" />
                   </div>
                 </div>
               );
