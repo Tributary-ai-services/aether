@@ -8,11 +8,17 @@ const INITIAL_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 
 export class StreamingSocket {
-  constructor({ onEvent, onOpen, onClose, onError } = {}) {
+  constructor({ onEvent, onOpen, onClose, onError, space } = {}) {
     this.onEvent = onEvent || (() => {});
     this.onOpen = onOpen || (() => {});
     this.onClose = onClose || (() => {});
     this.onError = onError || (() => {});
+    // Browser WebSocket upgrades cannot set custom headers, so the SpaceContext
+    // middleware on the server has to read space_type / space_id from the
+    // query string. Pass the current space here so the server passes its
+    // RequireSpaceContext middleware; otherwise the upgrade 400s before the
+    // hub ever sees the connection and the frontend falls back to mock data.
+    this.space = space || null;
     this.ws = null;
     this.retryMs = INITIAL_RETRY_MS;
     this.stopped = false;
@@ -42,7 +48,14 @@ export class StreamingSocket {
     const token = tokenStorage.getToken?.() || '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const url = `${protocol}//${host}${WS_PATH}?token=${encodeURIComponent(token)}`;
+
+    const params = new URLSearchParams();
+    if (token) params.set('token', token);
+    if (this.space?.space_type && this.space?.space_id) {
+      params.set('space_type', this.space.space_type);
+      params.set('space_id', this.space.space_id);
+    }
+    const url = `${protocol}//${host}${WS_PATH}?${params.toString()}`;
 
     try {
       this.ws = new WebSocket(url);

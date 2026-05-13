@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { api } from '../services/api.js';
 import { aetherApi } from '../services/aetherApi.js';
 import { StreamingSocket } from '../services/streamingSocket.js';
@@ -67,6 +67,9 @@ function summarizePayload(ce) {
 
 export const useStreaming = () => {
   const dispatch = useDispatch();
+  // Space context is REQUIRED by the backend WebSocket handler. Without it
+  // the upgrade request fails with 400 and we fall back to mock data.
+  const currentSpace = useSelector((state) => state.spaces?.currentSpace);
   const [liveEvents, setLiveEvents] = useState([]);
   const [streamSources, setStreamSources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,11 +126,21 @@ export const useStreaming = () => {
     }
   }, [dispatch]);
 
-  // Set up WebSocket connection
+  // Set up WebSocket connection. Re-runs when the user switches spaces so
+  // the new connection carries the right space context.
   useEffect(() => {
+    // Wait for a space to be selected before connecting; otherwise the
+    // backend would reject the upgrade with `Space context is required`
+    // and we'd fall back to mock data even on a fully working pipeline.
+    if (!currentSpace?.space_id || !currentSpace?.space_type) {
+      setLoading(false);
+      return undefined;
+    }
+
     setLoading(true);
 
     const socket = new StreamingSocket({
+      space: { space_type: currentSpace.space_type, space_id: currentSpace.space_id },
       onEvent: handleEvent,
       onOpen: () => {
         setWsConnected(true);
@@ -166,7 +179,7 @@ export const useStreaming = () => {
       clearTimeout(fallbackTimer);
       socket.disconnect();
     };
-  }, [handleEvent]);
+  }, [handleEvent, currentSpace?.space_id, currentSpace?.space_type]);
 
   // Poll stream sources + stats every 30s
   useEffect(() => {
