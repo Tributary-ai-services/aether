@@ -103,8 +103,13 @@ function buildStreamSources(events) {
 
 export const useStreaming = () => {
   const dispatch = useDispatch();
-  // Space context is REQUIRED by the backend WebSocket handler. Without it
-  // the upgrade request fails with 400 and no events flow.
+  // Two preconditions for the WS to succeed:
+  //   1. The user is authenticated (token has been stored).
+  //   2. A space is selected (the backend's RequireSpaceContext middleware
+  //      rejects WS upgrades that don't carry space_type + space_id).
+  // Gate the effect on both so we don't fire a connect attempt that's
+  // guaranteed to be refused.
+  const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated);
   const currentSpace = useSelector((state) => state.spaces?.currentSpace);
   const [liveEvents, setLiveEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,13 +157,19 @@ export const useStreaming = () => {
     }
   }, [dispatch]);
 
-  // Set up WebSocket connection. Re-runs when the user switches spaces so
-  // the new connection carries the right space context.
+  // Set up WebSocket connection. Re-runs when the user switches spaces, or
+  // when auth state flips (sign-in / sign-out), so the connection always
+  // carries a valid token + space context.
   useEffect(() => {
-    // Without a selected space the backend rejects the upgrade with 400.
-    // Leave the WS uninitialized; the StreamingPage shows a "select a space"
-    // state from `loading=false && !wsConnected`.
+    if (!isAuthenticated) {
+      // Pre-login or post-logout — don't attempt to connect.
+      setLoading(false);
+      setWsConnected(false);
+      return undefined;
+    }
     if (!currentSpace?.space_id || !currentSpace?.space_type) {
+      // Authenticated but no space resolved yet — wait. The StreamingPage
+      // shows a contextual empty state from `loading=false && !wsConnected`.
       setLoading(false);
       setWsConnected(false);
       return undefined;
@@ -192,7 +203,7 @@ export const useStreaming = () => {
     return () => {
       socket.disconnect();
     };
-  }, [handleEvent, currentSpace?.space_id, currentSpace?.space_type]);
+  }, [handleEvent, isAuthenticated, currentSpace?.space_id, currentSpace?.space_type]);
 
   // Poll the TimescaleDB-backed stats every 30s for the summary cards
   useEffect(() => {

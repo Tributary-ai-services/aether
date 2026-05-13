@@ -45,7 +45,11 @@ export class StreamingSocket {
   _open() {
     if (this.stopped) return;
 
-    const token = tokenStorage.getToken?.() || '';
+    // The token-storage service exposes getAccessToken(); the older getToken()
+    // name doesn't exist, so `?.()` silently resolved to undefined and we
+    // connected without a token. The server then dropped the upgrade because
+    // the auth middleware had no JWT to verify.
+    const token = tokenStorage.getAccessToken?.() || '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
 
