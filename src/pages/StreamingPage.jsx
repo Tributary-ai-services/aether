@@ -4,23 +4,21 @@ import { getStatusColor, getSentimentColor, getMediaIcon } from '../utils/helper
 import {
   Radio,
   Activity,
-  Camera,
-  Volume2,
   Shield,
   Settings,
   Filter,
   Eye,
-  Play,
-  Pause,
   Clock,
-  CheckCircle,
-  XCircle,
-  BarChart3,
   Image,
   Video,
   Mic,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Database,
+  Cpu,
+  Workflow,
+  MessageSquare,
+  Wrench
 } from 'lucide-react';
 
 // Helper to get severity badge styles
@@ -39,30 +37,33 @@ const getSeverityBadgeStyles = (severity) => {
   }
 };
 
+// Map source `type` field (set by useStreaming.buildStreamSources) to a
+// Lucide icon component. Used for the Data Streams panel rows.
+const TYPE_ICON = {
+  document: FileText,
+  llm:      MessageSquare,
+  agent:    Cpu,
+  workflow: Workflow,
+  mcp:      Wrench,
+  security: Shield,
+};
+
 const StreamingPage = () => {
-  const { 
-    liveEvents, 
-    streamSources, 
-    eventsPerSecond, 
-    activeStreams, 
-    loading, 
-    error 
+  const {
+    liveEvents,
+    streamSources,
+    eventsPerSecond,
+    activeStreams,
+    loading,
+    error,
+    wsConnected,
   } = useStreaming();
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading streaming data...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <h3 className="text-red-800 font-medium">Error loading streaming data</h3>
-        <p className="text-red-600 text-sm mt-1">{error}</p>
+        <span className="ml-2 text-gray-600">Connecting to live stream…</span>
       </div>
     );
   }
@@ -130,11 +131,18 @@ const StreamingPage = () => {
           </div>
           
           <div className="space-y-3">
+            {streamSources.length === 0 && (
+              <div className="p-4 rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+                {wsConnected
+                  ? 'Connected. Sources will appear here as events arrive.'
+                  : 'Not connected — events will appear when the live stream is active.'}
+              </div>
+            )}
             {streamSources.map(stream => {
-              const Icon = stream.icon;
+              const Icon = TYPE_ICON[stream.type] || Activity;
               return (
-                <div 
-                  key={stream.id} 
+                <div
+                  key={stream.id}
                   className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -144,7 +152,7 @@ const StreamingPage = () => {
                     </div>
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(stream.status)}`}></div>
                   </div>
-                  
+
                   <div className="flex justify-between text-sm text-gray-600 mb-2">
                     <span>{stream.events.toLocaleString()} events</span>
                     <span>{stream.rate}/min</span>
@@ -177,6 +185,15 @@ const StreamingPage = () => {
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
+            {liveEvents.length === 0 && (
+              <div className="p-4 rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+                {error
+                  ? error
+                  : wsConnected
+                    ? 'Connected. Waiting for events…'
+                    : 'Not connected. Live events will appear here once the stream opens.'}
+              </div>
+            )}
             {liveEvents.map(event => (
               <div
                 key={event.id}

@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { api } from '../services/api.js';
 import { aetherApi } from '../services/aetherApi.js';
 import { StreamingSocket } from '../services/streamingSocket.js';
 import { addRealtimeViolation } from '../store/slices/complianceSlice.js';
@@ -17,6 +16,7 @@ function mapCEToUIEvent(ce) {
     id: ce.id || `ce-${Date.now()}`,
     source: ce.source?.replace('urn:tas:service:', '') || 'unknown',
     type: ce.type?.split('.').pop() || 'event',
+    fullType: ce.type || '',
     content: summarizePayload(ce),
     sentiment: isCompliance ? getSentimentFromSeverity(severity) : 'neutral',
     timestamp: formatTimeAgo(ce.time),
@@ -65,13 +65,48 @@ function summarizePayload(ce) {
   }
 }
 
+// Service display metadata for the Data Streams panel, keyed on the
+// short source name produced by mapCEToUIEvent (URN tail).
+const SOURCE_DISPLAY = {
+  audimodal:       { name: 'Document Ingest',   type: 'document', color: 'blue' },
+  'llm-router':    { name: 'LLM Router',        type: 'llm',      color: 'purple' },
+  'agent-builder': { name: 'Agent Builder',     type: 'agent',    color: 'green' },
+  'aether-be':                 { name: 'Workflow Engine', type: 'workflow', color: 'amber' },
+  'aether-be:mcp-proxy':       { name: 'MCP Proxy',       type: 'mcp',      color: 'cyan' },
+  gatekeeper:      { name: 'Gatekeeper',        type: 'security', color: 'red' },
+};
+
+function buildStreamSources(events) {
+  const byKey = new Map();
+  for (const e of events) {
+    const key = e.source || 'unknown';
+    let s = byKey.get(key);
+    if (!s) {
+      const meta = SOURCE_DISPLAY[key] || { name: key, type: 'event', color: 'gray' };
+      s = {
+        id: key,
+        name: meta.name,
+        type: meta.type,
+        color: meta.color,
+        status: 'live',
+        events: 0,
+        rate: 0,
+        lastSeen: 0,
+      };
+      byKey.set(key, s);
+    }
+    s.events += 1;
+    s.lastSeen = Math.max(s.lastSeen, Date.now());
+  }
+  return Array.from(byKey.values()).sort((a, b) => b.events - a.events);
+}
+
 export const useStreaming = () => {
   const dispatch = useDispatch();
   // Space context is REQUIRED by the backend WebSocket handler. Without it
-  // the upgrade request fails with 400 and we fall back to mock data.
+  // the upgrade request fails with 400 and no events flow.
   const currentSpace = useSelector((state) => state.spaces?.currentSpace);
   const [liveEvents, setLiveEvents] = useState([]);
-  const [streamSources, setStreamSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [eventsPerSecond, setEventsPerSecond] = useState(0);
@@ -80,17 +115,8 @@ export const useStreaming = () => {
   const eventCountRef = useRef(0);
   const socketRef = useRef(null);
 
-  // Fetch initial stream sources (still from mock/REST until backend wired)
-  const fetchStreamSources = useCallback(async () => {
-    try {
-      const response = await api.streaming.getStreamSources();
-      setStreamSources(response.data);
-    } catch {
-      // non-critical — keep whatever we have
-    }
-  }, []);
-
-  // Fetch stats from backend (when /api/v1/streams/stats is available)
+  // Fetch stats from the TimescaleDB-backed /streams/stats endpoint. Falls
+  // back to a local-event rate calculation if the endpoint is unavailable.
   const fetchStats = useCallback(async () => {
     try {
       const response = await aetherApi.get('/streams/stats');
@@ -100,7 +126,7 @@ export const useStreaming = () => {
         return;
       }
     } catch {
-      // /stats not available yet — compute from local event rate
+      // ignore — fall through to local computation
     }
     setEventsPerSecond(eventCountRef.current);
     eventCountRef.current = 0;
@@ -129,11 +155,12 @@ export const useStreaming = () => {
   // Set up WebSocket connection. Re-runs when the user switches spaces so
   // the new connection carries the right space context.
   useEffect(() => {
-    // Wait for a space to be selected before connecting; otherwise the
-    // backend would reject the upgrade with `Space context is required`
-    // and we'd fall back to mock data even on a fully working pipeline.
+    // Without a selected space the backend rejects the upgrade with 400.
+    // Leave the WS uninitialized; the StreamingPage shows a "select a space"
+    // state from `loading=false && !wsConnected`.
     if (!currentSpace?.space_id || !currentSpace?.space_type) {
       setLoading(false);
+      setWsConnected(false);
       return undefined;
     }
 
@@ -152,61 +179,30 @@ export const useStreaming = () => {
       },
       onError: () => {
         setWsConnected(false);
+        // Surface a one-line hint, but keep retrying via StreamingSocket's
+        // exponential backoff. The UI never falls back to mock data.
+        setError('Live stream disconnected — reconnecting…');
+        setLoading(false);
       },
     });
 
     socket.connect();
     socketRef.current = socket;
 
-    // If WS doesn't connect within 3s, load mock data as fallback
-    const fallbackTimer = setTimeout(async () => {
-      if (!socketRef.current?.ws || socketRef.current.ws.readyState !== WebSocket.OPEN) {
-        try {
-          const [eventsRes, sourcesRes] = await Promise.all([
-            api.streaming.getLiveEvents(),
-            api.streaming.getStreamSources(),
-          ]);
-          setLiveEvents(eventsRes.data || []);
-          setStreamSources(sourcesRes.data || []);
-        } catch {
-          setError('WebSocket unavailable and mock data failed');
-        }
-        setLoading(false);
-      }
-    }, 3000);
-
     return () => {
-      clearTimeout(fallbackTimer);
       socket.disconnect();
     };
   }, [handleEvent, currentSpace?.space_id, currentSpace?.space_type]);
 
-  // Poll stream sources + stats every 30s
+  // Poll the TimescaleDB-backed stats every 30s for the summary cards
   useEffect(() => {
-    fetchStreamSources();
-
-    const interval = setInterval(() => {
-      fetchStreamSources();
-      fetchStats();
-    }, 30000);
-
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
-  }, [fetchStreamSources, fetchStats]);
+  }, [fetchStats]);
 
-  const refreshLiveEvents = useCallback(async () => {
-    try {
-      const [eventsResponse] = await Promise.all([
-        api.streaming.getLiveEvents(),
-      ]);
-      const regularEvents = eventsResponse.data || [];
-      setLiveEvents(prev => {
-        const wsEvents = prev.filter(e => e.id?.startsWith('ce-') || e.source !== 'Real-time Update');
-        return [...wsEvents, ...regularEvents].slice(0, MAX_EVENTS);
-      });
-    } catch (err) {
-      setError(err.message || 'Failed to refresh live events');
-    }
-  }, []);
+  // Derive the Data Streams panel from real events; no mock list.
+  const streamSources = useMemo(() => buildStreamSources(liveEvents), [liveEvents]);
 
   return {
     liveEvents,
@@ -216,8 +212,6 @@ export const useStreaming = () => {
     loading,
     error,
     wsConnected,
-    refetch: fetchStreamSources,
-    refreshLiveEvents,
   };
 };
 

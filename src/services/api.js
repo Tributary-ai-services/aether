@@ -4,9 +4,7 @@ import {
   mlModels,
   analyticsData,
   experiments,
-  communityItems,
-  liveEvents,
-  streamSources
+  communityItems
 } from '../data/mockData.js';
 import { tokenStorage } from './tokenStorage.js';
 import { aetherApi } from './aetherApi.js';
@@ -793,15 +791,7 @@ export const api = {
     }
   },
 
-  // Streaming endpoints
-  streaming: {
-    getLiveEvents: async () => {
-      await delay(200);
-      return { data: liveEvents, success: true };
-    },
-    getStreamSources: async () => {
-      await delay(300);
-      return { data: streamSources, success: true };
-    }
-  }
+  // Streaming endpoints removed — Live Streams data now flows exclusively
+  // through the StreamingSocket WebSocket and the /api/v1/streams/stats
+  // endpoint on aether-be (see useStreaming.js). No mock fallback.
 };
