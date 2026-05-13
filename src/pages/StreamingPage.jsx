@@ -9,16 +9,14 @@ import {
   Filter,
   Eye,
   Clock,
-  Image,
-  Video,
-  Mic,
-  FileText,
   AlertTriangle,
-  Database,
   Cpu,
   Workflow,
   MessageSquare,
-  Wrench
+  Wrench,
+  Wifi,
+  WifiOff,
+  FileText
 } from 'lucide-react';
 
 // Helper to get severity badge styles
@@ -67,6 +65,13 @@ const StreamingPage = () => {
       </div>
     );
   }
+  // Compute on-panel summary numbers from the streamed events themselves
+  // so every figure on the page is provably real, not seeded mock data.
+  const highSeverityCount = liveEvents.filter(
+    (e) => e.isComplianceEvent && (e.severity === 'critical' || e.severity === 'high')
+  ).length;
+  const complianceCount = liveEvents.filter((e) => e.isComplianceEvent).length;
+
   return (
     <div className="h-full">
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
@@ -77,47 +82,51 @@ const StreamingPage = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{activeStreams}</div>
-              <div className="text-sm text-gray-600">Live Streams</div>
+              <div className="text-sm text-gray-600">Active Sources (5m)</div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <Activity className="text-green-600" size={20} />
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-900">2.4M</div>
-              <div className="text-sm text-gray-600">Media Processed</div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Camera className="text-purple-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">847</div>
-              <div className="text-sm text-gray-600">Video Analysis</div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Volume2 className="text-orange-600" size={20} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">1.2K</div>
-              <div className="text-sm text-gray-600">Audio Hours</div>
+              <div className="text-2xl font-bold text-gray-900">{eventsPerSecond.toFixed(1)}</div>
+              <div className="text-sm text-gray-600">Events / sec</div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <Shield className="text-red-600" size={20} />
+            <div className={`p-2 ${wsConnected ? 'bg-emerald-100' : 'bg-gray-100'} rounded-lg`}>
+              {wsConnected
+                ? <Wifi className="text-emerald-600" size={20} />
+                : <WifiOff className="text-gray-500" size={20} />}
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-900">99.1%</div>
-              <div className="text-sm text-gray-600">Audit Score</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {wsConnected ? 'Live' : 'Off'}
+              </div>
+              <div className="text-sm text-gray-600">WebSocket</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <FileText className="text-orange-600" size={20} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">{liveEvents.length}</div>
+              <div className="text-sm text-gray-600">Events on Panel</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className={`p-2 ${highSeverityCount > 0 ? 'bg-red-100' : 'bg-gray-100'} rounded-lg`}>
+              <Shield className={`${highSeverityCount > 0 ? 'text-red-600' : 'text-gray-500'}`} size={20} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">{complianceCount}</div>
+              <div className="text-sm text-gray-600">Compliance Findings</div>
             </div>
           </div>
         </div>
@@ -266,103 +275,110 @@ const StreamingPage = () => {
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Real-Time Insights</h2>
-          
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Sentiment Trend</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Positive</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-gray-200 rounded-full">
-                    <div className="w-12 h-2 bg-green-500 rounded-full"></div>
-                  </div>
-                  <span className="text-sm text-gray-900">75%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Neutral</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-gray-200 rounded-full">
-                    <div className="w-3 h-2 bg-gray-500 rounded-full"></div>
-                  </div>
-                  <span className="text-sm text-gray-900">18%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Negative</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-gray-200 rounded-full">
-                    <div className="w-1 h-2 bg-red-500 rounded-full"></div>
-                  </div>
-                  <span className="text-sm text-gray-900">7%</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Multimodal Processing</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Image size={14} className="text-blue-600" />
-                  <span className="text-sm text-gray-600">Images</span>
-                </div>
-                <span className="text-sm text-gray-900">1,234</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Video size={14} className="text-purple-600" />
-                  <span className="text-sm text-gray-600">Videos</span>
-                </div>
-                <span className="text-sm text-gray-900">89</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Mic size={14} className="text-green-600" />
-                  <span className="text-sm text-gray-600">Audio</span>
-                </div>
-                <span className="text-sm text-gray-900">456</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <FileText size={14} className="text-gray-600" />
-                  <span className="text-sm text-gray-600">Documents</span>
-                </div>
-                <span className="text-sm text-gray-900">2,341</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Audit & Compliance</h3>
-            <div className="space-y-2">
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle size={14} className="text-green-600" />
-                  <span className="text-sm font-medium text-green-900">Compliance Check</span>
-                </div>
-                <p className="text-xs text-green-700">All PII properly redacted in video transcript</p>
-              </div>
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <XCircle size={14} className="text-red-600" />
-                  <span className="text-sm font-medium text-red-900">Audit Flag</span>
-                </div>
-                <p className="text-xs text-red-700">Sensitive data detected in image upload</p>
-              </div>
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart3 size={14} className="text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-900">Quality Review</span>
-                </div>
-                <p className="text-xs text-yellow-700">Low OCR confidence on handwritten form</p>
-              </div>
-            </div>
-          </div>
+          <RealtimeInsights events={liveEvents} />
         </div>
       </div>
     </div>
+  );
+};
+
+// RealtimeInsights renders three at-a-glance summaries computed live from the
+// events currently on the panel. Every figure is derived; nothing is mock.
+const RealtimeInsights = ({ events }) => {
+  const total = events.length;
+
+  // Sentiment is set by mapCEToUIEvent based on CE severity ('critical'/'high'
+  // → negative, 'low' → positive, otherwise neutral). Counting these gives a
+  // real distribution rather than a hard-coded 75/18/7.
+  const sentimentCounts = events.reduce((acc, e) => {
+    const s = e.sentiment || 'neutral';
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {});
+  const sentimentPct = (k) => (total === 0 ? 0 : Math.round(((sentimentCounts[k] || 0) / total) * 100));
+
+  // Event-type distribution replaces the hard-coded Multimodal Processing
+  // section. Group by the short CE type tail (e.g. document.uploaded → uploaded).
+  const typeCounts = events.reduce((acc, e) => {
+    const t = e.fullType || `unknown.${e.type || 'event'}`;
+    const family = t.split('.').slice(-2).join('.');
+    acc[family] = (acc[family] || 0) + 1;
+    return acc;
+  }, {});
+  const topTypes = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const recentCompliance = events
+    .filter((e) => e.isComplianceEvent)
+    .slice(0, 3);
+
+  return (
+    <>
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-900 mb-3">Sentiment Distribution (panel)</h3>
+        {total === 0 ? (
+          <div className="text-xs text-gray-500 italic">No events yet</div>
+        ) : (
+          <div className="space-y-2">
+            {['positive', 'neutral', 'negative'].map((k) => {
+              const color = k === 'positive' ? 'green' : k === 'neutral' ? 'gray' : 'red';
+              const pct = sentimentPct(k);
+              return (
+                <div key={k} className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 capitalize">{k}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-200 rounded-full">
+                      <div className={`h-2 bg-${color}-500 rounded-full`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-sm text-gray-900 w-10 text-right">{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-900 mb-3">Top Event Types (panel)</h3>
+        {topTypes.length === 0 ? (
+          <div className="text-xs text-gray-500 italic">No events yet</div>
+        ) : (
+          <div className="space-y-2">
+            {topTypes.map(([family, count]) => (
+              <div key={family} className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 truncate" title={family}>{family}</span>
+                <span className="text-sm text-gray-900">{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-medium text-gray-900 mb-3">Recent Compliance Activity</h3>
+        {recentCompliance.length === 0 ? (
+          <div className="text-xs text-gray-500 italic">No compliance findings on the panel</div>
+        ) : (
+          <div className="space-y-2">
+            {recentCompliance.map((e) => {
+              const bg = e.severity === 'critical' || e.severity === 'high' ? 'red' : 'amber';
+              return (
+                <div key={e.id} className={`p-3 bg-${bg}-50 border border-${bg}-200 rounded-lg`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Shield size={14} className={`text-${bg}-600`} />
+                    <span className={`text-sm font-medium text-${bg}-900`}>{e.severity?.toUpperCase() || 'FINDING'}</span>
+                  </div>
+                  <p className={`text-xs text-${bg}-700 truncate`}>{e.content}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
