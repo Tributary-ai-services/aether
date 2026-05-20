@@ -139,6 +139,15 @@ export const useStreaming = () => {
 
   // Handle incoming CloudEvent from WebSocket
   const handleEvent = useCallback((ce) => {
+    // Hub handshake frames (e.g. {type:"connection_established"}) arrive on
+    // the same socket but carry no CloudEvents fields. The "WebSocket: Live"
+    // summary card already shows connection state, so don't surface them as
+    // user-visible events — otherwise they show up as an "unknown" source on
+    // the Data Streams panel and skew Top Event Types.
+    if (!ce?.source || !ce?.specversion) {
+      return;
+    }
+
     eventCountRef.current += 1;
 
     const uiEvent = mapCEToUIEvent(ce);
