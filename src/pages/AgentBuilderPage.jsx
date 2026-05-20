@@ -188,12 +188,6 @@ const AgentBuilderPage = () => {
             <Plus size={16} />
             Create Agent
           </button>
-          <button
-            className="px-4 py-2 border rounded-lg flex items-center gap-2 transition-colors border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            <Settings size={16} />
-            Settings
-          </button>
         </div>
       </div>
 
