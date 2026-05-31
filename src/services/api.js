@@ -583,6 +583,26 @@ export const api = {
       return await response.json();
     },
 
+    getHealth: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/router/health`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch router health');
+      return await response.json();
+    },
+
+    getCapabilities: async () => {
+      const response = await fetch(`${import.meta.env.VITE_AETHER_API_URL}/router/capabilities`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch router capabilities');
+      return await response.json();
+    },
+
     validateConfig: async (config) => {
       // Skip API call entirely - validation endpoint not implemented yet
       // Return default valid response without logging to avoid console spam
