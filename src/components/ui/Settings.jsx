@@ -33,11 +33,13 @@ import {
   Key,
   Trash2,
   Copy,
-  Clock
+  Clock,
+  Cpu
 } from 'lucide-react';
 import { bypassTokenService } from '../../services/bypassTokenService';
 import { useNavigate } from 'react-router-dom';
 import EditProfileModal from '../modals/EditProfileModal';
+import LLMSettingsPanel from '../settings/LLMSettingsPanel.jsx';
 import { fetchTeams, selectAllTeams, selectTeamsLoading } from '../../store/slices/teamsSlice';
 import { ConnectionList, McpServerStatus } from '../database';
 
@@ -165,6 +167,7 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
     { id: 'navigation', label: 'Navigation', icon: Layout },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'ai', label: 'AI / LLM', icon: Cpu },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'account', label: 'Account', icon: User },
     { id: 'data', label: 'Data Sources', icon: Database }
@@ -797,6 +800,10 @@ const Settings = ({ isOpen, onClose, onOpenThemeCustomizer }) => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'ai' && (
+              <LLMSettingsPanel />
             )}
 
             {activeTab === 'security' && (

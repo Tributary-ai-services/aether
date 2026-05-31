@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSpace } from '../../hooks/useSpaces.js';
 import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
+import { useUserPreferences } from '../../hooks/useUserPreferences.js';
 import { api } from '../../services/api.js';
 import { aetherApi } from '../../services/aetherApi.js';
 import Modal from '../ui/Modal.jsx';
@@ -35,6 +36,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
   const dispatch = useDispatch();
   const allConnections = useSelector(selectConnections);
   const { providers, models, fetchModels, validateConfig } = useAgentProviders();
+  const { llm: llmPrefs } = useUserPreferences();
   
   // Handle both array and object with providers property
   const providersArray = Array.isArray(providers) ? providers : (providers?.providers || []);
@@ -223,18 +225,21 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
           }
         });
       } else {
-        // Creation mode - use defaults
+        // Creation mode - use defaults, falling back to user-level LLM
+        // preferences from profile → Settings → AI / LLM where set.
+        // See docs/LLM_SETTINGS_TAB_PLAN.md.
+        const firstProvider = providers.length > 0 ? providers[0].name : '';
         setFormData({
           name: '',
           description: '',
-          system_prompt: '',
+          system_prompt: llmPrefs?.default_system_prompt || '',
           llm_config: {
-            provider: providers.length > 0 ? providers[0].name : '',
-            model: '',
-            temperature: 0.7,
-            max_tokens: 1000,
+            provider: llmPrefs?.default_provider || firstProvider,
+            model: llmPrefs?.default_model || '',
+            temperature: llmPrefs?.default_temperature ?? 0.7,
+            max_tokens: llmPrefs?.default_max_tokens ?? 1000,
             optimize_for: 'quality',
-            streaming: true,
+            streaming: llmPrefs?.stream_by_default ?? true,
             retry_config: {
               max_attempts: 3,
               backoff_type: 'exponential',
@@ -278,7 +283,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       setConfigValidation(null);
       setActiveModalTab('general');
     }
-  }, [isOpen, agent, providers]);
+  }, [isOpen, agent, providers, llmPrefs]);
 
   // Load models when provider changes
   useEffect(() => {
