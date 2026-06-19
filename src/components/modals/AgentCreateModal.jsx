@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSpace } from '../../hooks/useSpaces.js';
 import { useAgentBuilder, useAgentProviders } from '../../hooks/useAgentBuilder.js';
 import { useUserPreferences } from '../../hooks/useUserPreferences.js';
@@ -94,6 +94,9 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
   const [currentTag, setCurrentTag] = useState('');
   const [loading, setLoading] = useState(false);
+  // Synchronous re-entry guard: `disabled={loading}` alone can't stop a fast
+  // double-click (React state is async), which would create duplicate agents.
+  const submittingRef = useRef(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
   const [configValidation, setConfigValidation] = useState(null);
@@ -472,13 +475,18 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    // Drop re-entrant submits (double-click / Enter+click) so we never
+    // create the same agent twice.
+    if (submittingRef.current) return;
+
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -554,6 +562,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       setError(err.message || `Failed to ${agent ? 'update' : 'create'} agent`);
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
