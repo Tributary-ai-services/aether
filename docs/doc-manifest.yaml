@@ -1,0 +1,29 @@
+# Maps code paths to the documents that describe them.
+# Read by .claude/skills/doc-factory/scripts/detect_stale_docs.py.
+#
+# READMEs watch broadly on purpose: a README's status section goes stale
+# without any commit touching the README itself.
+
+documents:
+  - path: README.md
+    doc_type: readme
+    owner: "@jscharber"
+    watches:
+      - "src/App.tsx"
+      - "src/Test.tsx"
+      - "src/components"
+      - "src/config"
+      - "src/context"
+      - "src/contexts"
+      - "src/data"
+      - "src/hooks"
+      - "src/index.css"
+      - "src/main-test.tsx"
+      - "src/main.tsx"
+      - "src/pages"
+      - "src/services"
+      - "src/store"
+      - "src/types"
+      - "src/utils"
+      - "src/vite-env.d.ts"
+      - "package.json"
