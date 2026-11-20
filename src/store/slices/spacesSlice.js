@@ -293,4 +293,4 @@ export const selectHasSpacePermission = (permission) => (state) => {
 export const selectCurrentSpaceRole = (state) =>
   state.spaces.currentSpace?.user_role || 'viewer';
 
-export default spacesSlice.reducer;
+export default spacesSlice.reducer;
