@@ -8,13 +8,13 @@ import {
   Clock, 
   Zap,
   Shield,
-  Eye,
   EyeOff,
   Crown,
   Copy
 } from 'lucide-react';
 import { useAgentExecution } from '../../hooks/useAgentBuilder.js';
 import ShareDialog from '../collaboration/ShareDialog.jsx';
+import VisibilityBadge from '../agent/VisibilityBadge.jsx';
 
 const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent, isSystemAgent = false }) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -101,9 +101,7 @@ const AgentCard = ({ agent, onOpenDetail, onTestAgent, onDuplicateAgent, isSyste
                   System
                 </span>
               )}
-              {agent.is_public && (
-                <Eye className="text-(--color-primary-500)" size={14} title="Public Agent" />
-              )}
+              <VisibilityBadge agent={agent} />
               {agent.is_template && (
                 <Crown className="text-yellow-500" size={14} title="Template Agent" />
               )}

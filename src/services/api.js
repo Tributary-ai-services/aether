@@ -60,6 +60,7 @@ export const api = {
       if (filter.space_id) queryParams.append('space_id', filter.space_id);
       if (filter.status) queryParams.append('status', filter.status);
       if (filter.is_public !== undefined) queryParams.append('is_public', filter.is_public);
+      if (filter.visibility) queryParams.append('visibility', filter.visibility);
       if (filter.is_template !== undefined) queryParams.append('is_template', filter.is_template);
       if (filter.include_internal) queryParams.append('include_internal', 'true');
       if (filter.search) queryParams.append('search', filter.search);

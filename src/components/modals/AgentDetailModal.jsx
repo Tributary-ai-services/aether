@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal.jsx';
 import Comments from '../collaboration/Comments.jsx';
 import ShareDialog from '../collaboration/ShareDialog.jsx';
+import VisibilityBadge from '../agent/VisibilityBadge.jsx';
+import { agentVisibility, visibilityLabel } from '../../utils/agentVisibility.js';
 import AgentTestModal from './AgentTestModal.jsx';
 import { useAgentBuilder, useAgentStats, useAgentExecution } from '../../hooks/useAgentBuilder.js';
 import {
@@ -150,9 +152,7 @@ const AgentDetailModal = ({ isOpen, onClose, agent: agentProp, onTestAgent, onEd
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h2 className="text-xl font-semibold text-gray-900">{agent.name}</h2>
-              {agent.is_public && (
-                <Eye className="text-blue-500" size={16} title="Public Agent" />
-              )}
+              <VisibilityBadge agent={agent} />
               {agent.is_template && (
                 <Crown className="text-yellow-500" size={16} title="Template Agent" />
               )}
@@ -637,7 +637,7 @@ const AgentDetailModal = ({ isOpen, onClose, agent: agentProp, onTestAgent, onEd
                 <div className="flex justify-between">
                   <span className="text-gray-600">Visibility:</span>
                   <span className="text-gray-900">
-                    {agent.is_public ? 'Public' : 'Private'}
+                    {visibilityLabel(agentVisibility(agent))}
                     {agent.is_template && ' • Template'}
                   </span>
                 </div>

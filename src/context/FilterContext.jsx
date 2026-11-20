@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import { getDefaultSectionFilters } from '../config/filterConfigs.ts';
+import { agentVisibility } from '../utils/agentVisibility.js';
 
 // Get default section filters from configuration
 const defaultSectionFilters = getDefaultSectionFilters();
@@ -230,8 +231,9 @@ export const FilterProvider = ({ children }) => {
 
       // Space type filter
       if (spaceType && spaceType.length > 0) {
-        const visibility = agent.is_public ? 'organization' : 'personal';
-        if (!spaceType.includes(visibility)) {
+        // Agent visibility (AB-13). 'personal' is the old option for private.
+        const wanted = spaceType.map(v => (v === 'personal' ? 'private' : v));
+        if (!wanted.includes(agentVisibility(agent))) {
           return false;
         }
       }
