@@ -257,6 +257,19 @@ export const selectAvailableSpaces = (state) => state.spaces.availableSpaces;
 export const selectPersonalSpace = (state) => state.spaces.availableSpaces.personal_space;
 export const selectOrganizationSpaces = (state) => state.spaces.availableSpaces.organization_spaces;
 export const selectSpacesLoading = (state) => state.spaces.loading;
+// The Organization the current space belongs to, or "" for a personal space
+// or a legacy organisation space with no Organization link (Plan #22 AB-13).
+// currentSpace may be the minimal {space_type, space_id} restored from
+// localStorage, so fall back to the full entry in availableSpaces.
+export const selectCurrentSpaceOrganizationId = (state) => {
+  const current = state.spaces.currentSpace;
+  if (!current || current.space_type !== 'organization') return '';
+  if (current.organization_id) return current.organization_id;
+  const match = (state.spaces.availableSpaces.organization_spaces || []).find(
+    (s) => (s.space_id || s.id) === current.space_id
+  );
+  return match?.organization_id || '';
+};
 export const selectSpacesError = (state) => state.spaces.error;
 export const selectSpacesInitialized = (state) => state.spaces.initialized;
 
@@ -280,4 +293,4 @@ export const selectHasSpacePermission = (permission) => (state) => {
 export const selectCurrentSpaceRole = (state) =>
   state.spaces.currentSpace?.user_role || 'viewer';
 
-export default spacesSlice.reducer;
+export default spacesSlice.reducer;

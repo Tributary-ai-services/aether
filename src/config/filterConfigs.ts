@@ -122,12 +122,15 @@ export const SECTION_FILTER_CONFIGS: Record<string, SectionFilterConfig> = {
         ]
       },
       {
+        // Values are agent visibility (AB-13), not space type; the id is kept
+        // so existing filter state and wiring keep working.
         id: 'spaceType',
         type: 'checkbox',
         label: 'Visibility',
         options: [
-          { value: 'personal', label: 'Personal' },
-          { value: 'organization', label: 'Organization' }
+          { value: 'private', label: 'Only me' },
+          { value: 'organization', label: 'My organization' },
+          { value: 'public', label: 'Public' }
         ]
       }
     ],

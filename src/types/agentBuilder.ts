@@ -1,3 +1,5 @@
+export type AgentVisibility = 'private' | 'organization' | 'public';
+
 /**
  * TypeScript definitions for Agent Builder backend models
  * Generated from Go models in TAS Agent Builder service
@@ -55,6 +57,11 @@ export interface Agent {
   tenant_id: string;
   status: AgentStatus;
   space_type: SpaceType;
+  /** Who may use the agent (AB-13). */
+  visibility?: AgentVisibility;
+  /** Organization of the space the agent was made in; '' for personal spaces. */
+  organization_id?: string;
+  /** Derived from visibility; kept for agents saved before it existed. */
   is_public: boolean;
   is_template: boolean;
   notebook_ids: string[];              // Array of notebook UUIDs
@@ -83,7 +90,7 @@ export interface CreateAgentRequest {
   system_prompt: string;
   llm_config: AgentLLMConfig;
   space_id: string;
-  is_public?: boolean;
+  visibility?: AgentVisibility;
   is_template?: boolean;
   notebook_ids?: string[];
   tags?: string[];
@@ -103,7 +110,7 @@ export interface UpdateAgentRequest {
   system_prompt?: string;
   llm_config?: AgentLLMConfig;
   status?: AgentStatus;
-  is_public?: boolean;
+  visibility?: AgentVisibility;
   is_template?: boolean;
   notebook_ids?: string[];
   tags?: string[];
@@ -131,6 +138,8 @@ export interface AgentListFilter {
   tenant_id?: string;
   status?: AgentStatus;
   space_type?: SpaceType;
+  visibility?: AgentVisibility;
+  /** @deprecated use visibility */
   is_public?: boolean;
   is_template?: boolean;
   tags?: string[];

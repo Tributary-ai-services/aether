@@ -29,12 +29,25 @@ import {
 } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchDatabaseConnections, selectConnections } from '../../store/slices/databaseConnectionsSlice';
+import { selectCurrentSpaceOrganizationId } from '../../store/slices/spacesSlice';
+import { useIsAdmin } from '../../hooks/useIsAdmin.js';
+import {
+  VISIBILITY,
+  VISIBILITY_OPTIONS,
+  agentVisibility,
+  defaultVisibility,
+  visibilityErrorMessage,
+} from '../../utils/agentVisibility.js';
 
 const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent }) => {
   const { currentSpace } = useSpace();
   const { createAgent } = useAgentBuilder();
   const dispatch = useDispatch();
   const allConnections = useSelector(selectConnections);
+  const organizationId = useSelector(selectCurrentSpaceOrganizationId);
+  const isAdmin = useIsAdmin();
+  // Once the user picks a visibility, stop re-deriving the default from the space.
+  const visibilityTouched = useRef(false);
   const { providers, models, fetchModels, validateConfig } = useAgentProviders();
   const { llm: llmPrefs } = useUserPreferences();
   
@@ -67,7 +80,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
         require_same_features: true
       }
     },
-    is_public: false,
+    visibility: VISIBILITY.PRIVATE,
     is_template: false,
     tags: [],
     skills: [],
@@ -203,7 +216,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
               require_same_features: true
             }
           },
-          is_public: agent.is_public || false,
+          visibility: agentVisibility(agent),
           is_template: agent.is_template || false,
           tags: agent.tags || [],
           skills: agent.skills || [],
@@ -256,7 +269,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
               require_same_features: true
             }
           },
-          is_public: false,
+          visibility: defaultVisibility(organizationId),
           is_template: false,
           tags: [],
           skills: [],
@@ -285,8 +298,25 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       setValidationErrors({});
       setConfigValidation(null);
       setActiveModalTab('general');
+      visibilityTouched.current = false;
     }
   }, [isOpen, agent, providers, llmPrefs]);
+
+  // The spaces list can arrive after the modal opens. Until the user chooses,
+  // keep a new agent's default in step with the current space's organization,
+  // and never leave "My organization" selected where there is none.
+  useEffect(() => {
+    if (!isOpen || agent) return;
+    setFormData(prev => {
+      if (!visibilityTouched.current) {
+        return { ...prev, visibility: defaultVisibility(organizationId) };
+      }
+      if (!organizationId && prev.visibility === VISIBILITY.ORGANIZATION) {
+        return { ...prev, visibility: VISIBILITY.PRIVATE };
+      }
+      return prev;
+    });
+  }, [isOpen, agent, organizationId]);
 
   // Load models when provider changes
   useEffect(() => {
@@ -531,6 +561,8 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
         skill_connections: Object.keys(skillConnections).length > 0 ? skillConnections : undefined,
         space_id: currentSpace.space_id
       };
+      // visibility replaces is_public (AB-13); never send both.
+      delete agentData.is_public;
       
       console.log('Agent data being sent:', JSON.stringify(agentData, null, 2));
       console.log('Space headers that will be sent:', {
@@ -559,7 +591,7 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
       onClose();
     } catch (err) {
       console.error(`Failed to ${agent ? 'update' : 'create'} agent:`, err);
-      setError(err.message || `Failed to ${agent ? 'update' : 'create'} agent`);
+      setError(visibilityErrorMessage(err) || err.message || `Failed to ${agent ? 'update' : 'create'} agent`);
     } finally {
       setLoading(false);
       submittingRef.current = false;
@@ -1143,15 +1175,42 @@ const AgentCreateModal = ({ isOpen, onClose, agent, onCreateAgent, onUpdateAgent
 
                 {/* Publishing Options */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_public}
-                      onChange={(e) => handleInputChange('is_public', e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-(--color-primary-500)"
-                    />
-                    <span className="text-sm text-gray-700">Make Public</span>
-                  </label>
+                  <div>
+                    <label htmlFor="agent-visibility" className="block text-sm font-medium text-gray-700 mb-1">
+                      Who can use this agent
+                    </label>
+                    <select
+                      id="agent-visibility"
+                      value={formData.visibility}
+                      onChange={(e) => {
+                        visibilityTouched.current = true;
+                        handleInputChange('visibility', e.target.value);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-(--color-primary-500)"
+                    >
+                      {VISIBILITY_OPTIONS
+                        // Public is admin-only; still show it on an agent that is
+                        // already public so its current setting is not misreported.
+                        .filter(o => o.value !== VISIBILITY.PUBLIC || isAdmin || formData.visibility === VISIBILITY.PUBLIC)
+                        .map(o => (
+                          <option
+                            key={o.value}
+                            value={o.value}
+                            disabled={
+                              (o.value === VISIBILITY.ORGANIZATION && !organizationId) ||
+                              (o.value === VISIBILITY.PUBLIC && !isAdmin)
+                            }
+                          >
+                            {o.label}
+                          </option>
+                        ))}
+                    </select>
+                    {!organizationId && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        "My organization" is available in an organization space.
+                      </p>
+                    )}
+                  </div>
 
                   <label className="flex items-center gap-2">
                     <input
