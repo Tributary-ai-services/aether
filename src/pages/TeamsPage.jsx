@@ -25,11 +25,25 @@ import {
   selectAllTeams,
   selectTeamsLoading,
   selectTeamsError,
-  clearTeamsError
+  clearTeamsError,
+  buildTeamTree
 } from '../store/slices/teamsSlice.js';
 import CreateTeamModal from '../components/teams/CreateTeamModal.jsx';
 import TeamDetailsModal from '../components/teams/TeamDetailsModal.jsx';
 import InviteTeamMemberModal from '../components/teams/InviteTeamMemberModal.jsx';
+
+// TeamTree renders the nested team list. Each name links to the team page.
+const TeamTree = ({ nodes, depth = 0 }) => (
+  <ul className={depth === 0 ? 'space-y-1' : 'mt-1 ml-5 space-y-1 border-l border-gray-200 pl-3'}>
+    {nodes.map((n) => (
+      <li key={n.id}>
+        <a href={`/teams/${n.id}`} className="text-sm text-gray-800 hover:text-(--color-primary-700)">{n.name}</a>
+        {n.userRole && <span className="ml-2 text-xs text-gray-500">{n.userRole}</span>}
+        {n.children.length > 0 && <TeamTree nodes={n.children} depth={depth + 1} />}
+      </li>
+    ))}
+  </ul>
+);
 
 const TeamsPage = () => {
   const dispatch = useDispatch();
@@ -55,11 +69,14 @@ const TeamsPage = () => {
       setCreateModalOpen(false);
     } catch (err) {
       console.error('Failed to create team:', err);
+      throw err; // the modal shows it; swallowing it here closed the modal as if it worked
     }
   };
 
   const handleDeleteTeam = async (teamId) => {
-    if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
+    // DELETE archives (Plan #22 A.2): the team is kept for history, hidden from
+    // lists, and can no longer be changed.
+    if (window.confirm('Archive this team? It is kept for history but hidden from team lists and can no longer be changed.')) {
       try {
         await dispatch(deleteTeam(teamId)).unwrap();
       } catch (err) {
@@ -177,6 +194,14 @@ const TeamsPage = () => {
       </div>
 
       {/* Teams Grid */}
+      {/* Team structure (Plan #22 A.5): nesting by parent team. */}
+      {!searchQuery && teams.some((t) => t.parentTeamId) && (
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h2 className="text-sm font-medium text-gray-700 mb-2">Team structure</h2>
+          <TeamTree nodes={buildTeamTree(teams)} />
+        </div>
+      )}
+
       {filteredTeams.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
           <div className="text-center">
@@ -215,6 +240,9 @@ const TeamsPage = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                      {team.parentTeamId && teams.find((t) => t.id === team.parentTeamId) && (
+                        <p className="text-xs text-gray-500">Part of {teams.find((t) => t.id === team.parentTeamId).name}</p>
+                      )}
                       <div className="flex gap-2">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(team.userRole || 'member')}`}>
                           {team.userRole || 'Member'}
@@ -261,7 +289,7 @@ const TeamsPage = () => {
                               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                             >
                               <Trash2 size={16} />
-                              Delete Team
+                              Archive Team
                             </button>
                           </>
                         )}

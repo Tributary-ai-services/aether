@@ -1117,6 +1117,22 @@ class AetherApiService {
       method: 'DELETE',
     }),
 
+    // Structure and joining (Plan #22 A.2/A.3)
+    move: (teamId, data) => this.request(`/teams/${teamId}/move`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    join: (teamId) => this.request(`/teams/${teamId}/join`, { method: 'POST' }),
+    getJoinRequests: (teamId) => this.request(`/teams/${teamId}/join-requests`),
+    decideJoinRequest: (teamId, requestId, data) => this.request(`/teams/${teamId}/join-requests/${requestId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    setMemberJoinedAt: (teamId, userId, data) => this.request(`/teams/${teamId}/members/${userId}/joined-at`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
     // Team settings
     getSettings: (teamId) => this.request(`/teams/${teamId}/settings`),
     updateSettings: (teamId, data) => this.request(`/teams/${teamId}/settings`, {

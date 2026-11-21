@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import Modal from '../ui/Modal.jsx';
+import {
+  fetchOrganizations,
+  selectAllOrganizations,
+  selectCurrentOrganization,
+} from '../../store/slices/organizationsSlice.js';
+import { selectAllTeams } from '../../store/slices/teamsSlice.js';
 import { 
   Users, 
   Globe, 
@@ -9,11 +16,31 @@ import {
 } from 'lucide-react';
 
 const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
+  const dispatch = useDispatch();
+  const organizations = useSelector(selectAllOrganizations);
+  const currentOrganization = useSelector(selectCurrentOrganization);
+  const teams = useSelector(selectAllTeams);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     visibility: 'private',
+    organizationId: '',
+    parentTeamId: '',
   });
+
+  // A team belongs to exactly one organization, which the API requires. This
+  // modal never sent one, so creating a team could not succeed (the old slice
+  // hid that behind mock data). Default to the current organization.
+  useEffect(() => {
+    if (isOpen && organizations.length === 0) dispatch(fetchOrganizations());
+  }, [dispatch, isOpen, organizations.length]);
+  useEffect(() => {
+    if (!formData.organizationId) {
+      const def = currentOrganization?.id || organizations[0]?.id;
+      if (def) setFormData((f) => ({ ...f, organizationId: def }));
+    }
+  }, [currentOrganization, organizations, formData.organizationId]);
+  const parentOptions = teams.filter((t) => t.organizationId === formData.organizationId && !t.archivedAt);
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +83,9 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
     if (formData.description && formData.description.length > 200) {
       newErrors.description = 'Description must be less than 200 characters';
     }
+    if (!formData.organizationId) {
+      newErrors.organizationId = 'Choose the organization this team belongs to';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,23 +99,29 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
     setIsSubmitting(true);
     
     try {
-      await onCreateTeam({
+      const payload = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         visibility: formData.visibility,
-      });
+        organization_id: formData.organizationId,
+      };
+      if (formData.parentTeamId) payload.parent_team_id = formData.parentTeamId;
+      await onCreateTeam(payload);
       
       // Reset form
       setFormData({
         name: '',
         description: '',
         visibility: 'private',
+        organizationId: formData.organizationId,
+        parentTeamId: '',
       });
       setErrors({});
       onClose();
     } catch (error) {
       console.error('Failed to create team:', error);
-      setErrors({ submit: 'Failed to create team. Please try again.' });
+      const msg = typeof error === 'string' ? error : error?.message || error?.error?.message;
+      setErrors({ submit: msg ? `Failed to create team: ${msg}` : 'Failed to create team. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -166,7 +202,38 @@ const CreateTeamModal = ({ isOpen, onClose, onCreateTeam }) => {
           </p>
         </div>
 
-        {/* Visibility */}
+        {/* Organization, parent team and visibility */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
+            <select
+              name="organizationId"
+              value={formData.organizationId}
+              onChange={(e) => setFormData({ ...formData, organizationId: e.target.value, parentTeamId: '' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              {organizations.length === 0 && <option value="">No organizations</option>}
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+            {errors.organizationId && <p className="mt-1 text-sm text-red-600">{errors.organizationId}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Parent team (optional)</label>
+            <select
+              name="parentTeamId"
+              value={formData.parentTeamId}
+              onChange={(e) => setFormData({ ...formData, parentTeamId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">None (top level)</option>
+              {parentOptions.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Team Visibility
