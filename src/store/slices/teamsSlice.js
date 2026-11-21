@@ -2,112 +2,10 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { aetherApi } from '../../services/aetherApi.js';
 import { PERMISSIONS } from '../../utils/permissions.js';
 
-// Mock data for development with proper relationships - matches Neo4j data
-const mockTeams = [
-  {
-    id: '1',
-    name: 'Engineering Team',
-    description: 'Core engineering and development team',
-    organizationId: '1',
-    visibility: 'private',
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-    memberCount: 5,
-    notebookCount: 12,
-    icon: null,
-    settings: {
-      allowExternalSharing: false,
-      requireApprovalForJoining: true,
-      defaultNotebookVisibility: 'team'
-    },
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-08-08T15:30:00Z',
-    createdBy: '1'
-  },
-  {
-    id: '2',
-    name: 'Data Science',
-    description: 'ML and data analysis team',
-    organizationId: '1',
-    visibility: 'organization',
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-    memberCount: 8,
-    notebookCount: 24,
-    icon: null,
-    settings: {
-      allowExternalSharing: true,
-      requireApprovalForJoining: false,
-      defaultNotebookVisibility: 'organization'
-    },
-    createdAt: '2024-02-20T14:00:00Z',
-    updatedAt: '2024-08-07T09:15:00Z',
-    createdBy: '1'
-  },
-  {
-    id: '3',
-    name: 'Research Team',
-    description: 'Research and development initiatives',
-    organizationId: '1',
-    visibility: 'private',
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-    memberCount: 3,
-    notebookCount: 7,
-    icon: null,
-    settings: {
-      allowExternalSharing: false,
-      requireApprovalForJoining: true,
-      defaultNotebookVisibility: 'team'
-    },
-    createdAt: '2024-03-10T11:30:00Z',
-    updatedAt: '2024-08-06T16:45:00Z',
-    createdBy: '1'
-  },
-  {
-    id: '4',
-    name: 'ML Research',
-    description: 'Machine learning research and experiments',
-    organizationId: '1',
-    visibility: 'private',
-    userRole: PERMISSIONS.ENTITY_ROLES.OWNER,
-    memberCount: 4,
-    notebookCount: 15,
-    icon: null,
-    settings: {
-      allowExternalSharing: false,
-      requireApprovalForJoining: true,
-      defaultNotebookVisibility: 'team'
-    },
-    createdAt: '2024-03-05T14:00:00Z',
-    updatedAt: '2024-08-05T12:00:00Z',
-    createdBy: '1'
-  }
-];
-
-// Standardized members data - removed redundant 'id' field, using userId as primary key
-const mockMembers = {
-  '1': [
-    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-01-15T10:00:00Z', invitedBy: null },
-    { userId: '2', name: 'Jane Smith', email: 'jane@example.com', role: PERMISSIONS.ENTITY_ROLES.ADMIN, joinedAt: '2024-01-16T09:00:00Z', invitedBy: '1' },
-    { userId: '3', name: 'Bob Wilson', email: 'bob@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-01-20T14:00:00Z', invitedBy: '1' },
-    { userId: '4', name: 'Alice Brown', email: 'alice@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-02-01T10:30:00Z', invitedBy: '2' },
-    { userId: '5', name: 'Charlie Davis', email: 'charlie@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-02-15T11:00:00Z', invitedBy: '1' }
-  ],
-  '2': [
-    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-02-20T14:00:00Z', invitedBy: null },
-    { userId: '2', name: 'Jane Smith', email: 'jane@example.com', role: PERMISSIONS.ENTITY_ROLES.ADMIN, joinedAt: '2024-02-20T14:30:00Z', invitedBy: '1' },
-    { userId: '6', name: 'David Lee', email: 'david@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-01T10:00:00Z', invitedBy: '2' }
-  ],
-  '3': [
-    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-03-10T11:30:00Z', invitedBy: null },
-    { userId: '3', name: 'Bob Wilson', email: 'bob@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-15T09:00:00Z', invitedBy: '1' },
-    { userId: '7', name: 'Sarah Johnson', email: 'sarah@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-04-01T14:00:00Z', invitedBy: '1' }
-  ],
-  '4': [
-    { userId: '1', name: 'John Doe', email: 'john@example.com', role: PERMISSIONS.ENTITY_ROLES.OWNER, joinedAt: '2024-03-05T14:00:00Z', invitedBy: null },
-    { userId: '2', name: 'Jane Smith', email: 'jane@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-06T10:00:00Z', invitedBy: '1' },
-    { userId: '8', name: 'Alex Chen', email: 'alex@example.com', role: PERMISSIONS.ENTITY_ROLES.MEMBER, joinedAt: '2024-03-10T15:00:00Z', invitedBy: '1' },
-    { userId: '9', name: 'Maria Rodriguez', email: 'maria@example.com', role: PERMISSIONS.ENTITY_ROLES.VIEWER, joinedAt: '2024-03-20T11:00:00Z', invitedBy: '2' }
-  ]
-};
+// Plan #22 A.5: no mock data. The thunks used to swallow every API failure
+// and fabricate a successful result (a fake team, a fake member), so a create
+// that failed on the backend looked like it worked until the page reloaded —
+// which is how team creation stayed broken unnoticed. Errors now surface.
 
 // Async thunks
 export const fetchTeams = createAsyncThunk(
@@ -138,19 +36,7 @@ export const createTeam = createAsyncThunk(
   'teams/createTeam',
   async (teamData, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.teams.create(teamData).catch(() => {
-        console.log('Using mock create team');
-        const newTeam = {
-          id: Date.now().toString(),
-          ...teamData,
-          userRole: 'owner',
-          memberCount: 1,
-          notebookCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        return { data: newTeam };
-      });
+      const response = await aetherApi.teams.create(teamData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -162,17 +48,7 @@ export const updateTeam = createAsyncThunk(
   'teams/updateTeam',
   async ({ teamId, updates }, { getState, rejectWithValue }) => {
     try {
-      const response = await aetherApi.teams.update(teamId, updates).catch(() => {
-        console.log('Using mock update team');
-        const state = getState();
-        const team = state.teams.teams.find(t => t.id === teamId);
-        const updatedTeam = {
-          ...team,
-          ...updates,
-          updatedAt: new Date().toISOString()
-        };
-        return { data: updatedTeam };
-      });
+      const response = await aetherApi.teams.update(teamId, updates);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -184,10 +60,7 @@ export const deleteTeam = createAsyncThunk(
   'teams/deleteTeam',
   async (teamId, { rejectWithValue }) => {
     try {
-      await aetherApi.teams.delete(teamId).catch(() => {
-        console.log('Using mock delete team');
-        return { data: {} };
-      });
+      await aetherApi.teams.delete(teamId);
       return teamId;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -206,12 +79,6 @@ export const fetchTeamMembers = createAsyncThunk(
       const errorData = error.response?.data || error.message;
       const status = error.response?.status;
       
-      // For development/testing, fall back to mock data for certain errors
-      if (status === 404 || status === 500) {
-        console.log(`API error ${status}, using mock team members data`);
-        return { teamId, members: mockMembers[teamId] || [] };
-      }
-      
       // For permission errors (403) and other critical errors, propagate them
       return rejectWithValue({
         message: errorData,
@@ -224,20 +91,11 @@ export const fetchTeamMembers = createAsyncThunk(
 
 export const inviteTeamMember = createAsyncThunk(
   'teams/inviteTeamMember',
-  async ({ teamId, email, role }, { rejectWithValue }) => {
+  async ({ teamId, email, role, joinedAt }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.teams.inviteMember(teamId, { email, role }).catch(() => {
-        console.log('Using mock invite member');
-        const newMember = {
-          id: Date.now().toString(),
-          userId: Date.now().toString(),
-          name: email.split('@')[0],
-          email,
-          role,
-          joinedAt: new Date().toISOString()
-        };
-        return { data: newMember };
-      });
+      const body = { email, role };
+      if (joinedAt) body.joined_at = joinedAt; // back-dated membership (Plan #22 A.3)
+      const response = await aetherApi.teams.inviteMember(teamId, body);
       return { teamId, member: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -249,10 +107,7 @@ export const updateTeamMemberRole = createAsyncThunk(
   'teams/updateTeamMemberRole',
   async ({ teamId, userId, role }, { rejectWithValue }) => {
     try {
-      const response = await aetherApi.teams.updateMemberRole(teamId, userId, { role }).catch(() => {
-        console.log('Using mock update member role');
-        return { data: { teamId, userId, role } };
-      });
+      const response = await aetherApi.teams.updateMemberRole(teamId, userId, { role });
       return { teamId, userId, role };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -264,16 +119,117 @@ export const removeTeamMember = createAsyncThunk(
   'teams/removeTeamMember',
   async ({ teamId, userId }, { rejectWithValue }) => {
     try {
-      await aetherApi.teams.removeMember(teamId, userId).catch(() => {
-        console.log('Using mock remove member');
-        return { data: {} };
-      });
+      await aetherApi.teams.removeMember(teamId, userId);
       return { teamId, userId };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
+// --- Plan #22 A.5: org teams (tree), joining, requests, moves, "since" ---
+
+export const fetchOrgTeams = createAsyncThunk(
+  'teams/fetchOrgTeams',
+  async (organizationId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.teams.getAll(organizationId);
+      return { organizationId, teams: response.data || [] };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const joinTeam = createAsyncThunk(
+  'teams/joinTeam',
+  async (teamId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.teams.join(teamId);
+      return { teamId, status: response.data?.status }; // 'joined' | 'requested'
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchJoinRequests = createAsyncThunk(
+  'teams/fetchJoinRequests',
+  async (teamId, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.teams.getJoinRequests(teamId);
+      return { teamId, requests: response.data?.requests || [] };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const decideJoinRequest = createAsyncThunk(
+  'teams/decideJoinRequest',
+  async ({ teamId, requestId, approve, joinedAt }, { dispatch, rejectWithValue }) => {
+    try {
+      const body = { approve };
+      if (approve && joinedAt) body.joined_at = joinedAt;
+      await aetherApi.teams.decideJoinRequest(teamId, requestId, body);
+      if (approve) dispatch(fetchTeamMembers(teamId));
+      return { teamId, requestId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const moveTeam = createAsyncThunk(
+  'teams/moveTeam',
+  async ({ teamId, parentTeamId }, { rejectWithValue }) => {
+    try {
+      const response = await aetherApi.teams.move(teamId, { parent_team_id: parentTeamId || '' });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const setMemberJoinedAt = createAsyncThunk(
+  'teams/setMemberJoinedAt',
+  async ({ teamId, userId, joinedAt }, { rejectWithValue }) => {
+    try {
+      await aetherApi.teams.setMemberJoinedAt(teamId, userId, { joined_at: joinedAt });
+      return { teamId, userId, joinedAt };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+/**
+ * buildTeamTree nests teams by parentTeamId. A team whose parent is not in the
+ * list (archived, or not visible to this viewer) is shown at the top level, so
+ * nothing disappears. Children are sorted by name; cycles cannot occur (the
+ * backend refuses them) but are guarded against anyway.
+ */
+export function buildTeamTree(teams) {
+  const byId = new Map((teams || []).map((t) => [t.id, { ...t, children: [] }]));
+  const roots = [];
+  for (const node of byId.values()) {
+    const parent = node.parentTeamId && byId.get(node.parentTeamId);
+    if (parent && parent !== node) parent.children.push(node);
+    else roots.push(node);
+  }
+  const seen = new Set();
+  const sort = (nodes) => {
+    nodes.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    for (const n of nodes) {
+      if (seen.has(n.id)) { n.children = []; continue; }
+      seen.add(n.id);
+      sort(n.children);
+    }
+    return nodes;
+  };
+  return sort(roots);
+}
 
 const teamsSlice = createSlice({
   name: 'teams',
@@ -285,6 +241,10 @@ const teamsSlice = createSlice({
     error: null,
     invitationLoading: false,
     invitationError: null,
+    orgTeams: {}, // { organizationId: [teams] }
+    joinRequests: {}, // { teamId: [requests] }
+    joinStatus: {}, // { teamId: 'joined' | 'requested' }
+    actionError: null, // last failed join / move / request decision, shown inline
   },
   reducers: {
     clearTeamsError: (state) => {
@@ -295,6 +255,9 @@ const teamsSlice = createSlice({
     },
     setCurrentTeam: (state, action) => {
       state.currentTeam = action.payload;
+    },
+    clearActionError: (state) => {
+      state.actionError = null;
     },
   },
   extraReducers: (builder) => {
@@ -441,11 +404,62 @@ const teamsSlice = createSlice({
             m => m.userId !== userId
           );
         }
+      })
+
+      // Plan #22 A.5
+      .addCase(fetchOrgTeams.fulfilled, (state, action) => {
+        state.orgTeams[action.payload.organizationId] = action.payload.teams;
+      })
+      .addCase(joinTeam.pending, (state) => {
+        state.actionError = null;
+      })
+      .addCase(joinTeam.fulfilled, (state, action) => {
+        const { teamId, status } = action.payload;
+        state.joinStatus[teamId] = status;
+        if (state.currentTeam?.id === teamId) {
+          if (status === 'joined') state.currentTeam.userRole = 'member';
+          else state.currentTeam.joinRequest = 'pending';
+        }
+      })
+      .addCase(joinTeam.rejected, (state, action) => {
+        state.actionError = action.payload;
+      })
+      .addCase(fetchJoinRequests.fulfilled, (state, action) => {
+        state.joinRequests[action.payload.teamId] = action.payload.requests;
+      })
+      .addCase(decideJoinRequest.fulfilled, (state, action) => {
+        const { teamId, requestId } = action.payload;
+        state.joinRequests[teamId] = (state.joinRequests[teamId] || []).filter((r) => r.id !== requestId);
+      })
+      .addCase(decideJoinRequest.rejected, (state, action) => {
+        state.actionError = action.payload;
+      })
+      .addCase(moveTeam.fulfilled, (state, action) => {
+        const t = action.payload;
+        if (!t) return;
+        const i = state.teams.findIndex((x) => x.id === t.id);
+        if (i !== -1) state.teams[i] = t;
+        if (state.currentTeam?.id === t.id) state.currentTeam = t;
+        for (const list of Object.values(state.orgTeams)) {
+          const j = list.findIndex((x) => x.id === t.id);
+          if (j !== -1) list[j] = t;
+        }
+      })
+      .addCase(moveTeam.rejected, (state, action) => {
+        state.actionError = action.payload;
+      })
+      .addCase(setMemberJoinedAt.fulfilled, (state, action) => {
+        const { teamId, userId, joinedAt } = action.payload;
+        const m = state.teamMembers[teamId]?.find((x) => x.userId === userId);
+        if (m) m.joinedAt = joinedAt;
+      })
+      .addCase(setMemberJoinedAt.rejected, (state, action) => {
+        state.actionError = action.payload;
       });
   },
 });
 
-export const { clearTeamsError, clearInvitationError, setCurrentTeam } = teamsSlice.actions;
+export const { clearTeamsError, clearInvitationError, setCurrentTeam, clearActionError } = teamsSlice.actions;
 
 // Selectors
 export const selectAllTeams = (state) => state.teams.teams;
@@ -455,6 +469,9 @@ export const selectTeamsLoading = (state) => state.teams.loading;
 export const selectTeamsError = (state) => state.teams.error;
 export const selectInvitationLoading = (state) => state.teams.invitationLoading;
 export const selectInvitationError = (state) => state.teams.invitationError;
+export const selectOrgTeams = (organizationId) => (state) => state.teams.orgTeams[organizationId] || [];
+export const selectJoinRequests = (teamId) => (state) => state.teams.joinRequests[teamId] || [];
+export const selectTeamActionError = (state) => state.teams.actionError;
 
 // Helper selectors
 export const selectUserTeams = (userId) => (state) => {

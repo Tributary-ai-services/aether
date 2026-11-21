@@ -10,11 +10,24 @@ import {
   Calendar,
   Crown,
   Shield,
-  Eye
+  Eye,
+  Archive,
+  Check,
+  X,
+  LogIn,
+  Clock
 } from 'lucide-react';
 import { 
   fetchTeams,
+  fetchTeam,
+  joinTeam,
+  fetchJoinRequests,
+  decideJoinRequest,
+  clearActionError,
   selectAllTeams,
+  selectCurrentTeam,
+  selectJoinRequests,
+  selectTeamActionError,
   selectTeamsLoading,
   selectTeamsError 
 } from '../store/slices/teamsSlice.js';
@@ -27,20 +40,41 @@ const TeamPage = () => {
   const dispatch = useDispatch();
   
   const teams = useSelector(selectAllTeams);
+  const currentTeam = useSelector(selectCurrentTeam);
   const loading = useSelector(selectTeamsLoading);
   const error = useSelector(selectTeamsError);
+  const actionError = useSelector(selectTeamActionError);
+  const joinRequests = useSelector(selectJoinRequests(teamId));
   
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [sinceByRequest, setSinceByRequest] = useState({}); // requestId -> 'YYYY-MM-DD'
   
-  // Find the team by ID
-  const team = teams.find(t => t.id === teamId);
+  // The team by id. A non-member (who may join) is not in "my teams", so the
+  // page also loads it directly: GET /teams/:id returns it to org members and,
+  // for public teams, to anyone (Plan #22 A.3).
+  const team = currentTeam?.id === teamId ? currentTeam : teams.find(t => t.id === teamId);
   
   useEffect(() => {
     if (teams.length === 0) {
       dispatch(fetchTeams());
     }
   }, [dispatch, teams.length]);
+
+  useEffect(() => {
+    dispatch(clearActionError());
+    dispatch(fetchTeam(teamId));
+  }, [dispatch, teamId]);
+
+  const isManager = team?.userRole === 'owner' || team?.userRole === 'admin';
+  useEffect(() => {
+    if (isManager && team?.visibility === 'private') {
+      dispatch(fetchJoinRequests(teamId));
+    }
+  }, [dispatch, teamId, isManager, team?.visibility]);
+
+  const parentName = team?.parentTeamId ? teams.find(t => t.id === team.parentTeamId)?.name : null;
+  const errorText = (e) => (typeof e === 'string' ? e : e?.message || e?.error?.message || 'Something went wrong');
   
   const getRoleBadgeColor = (role) => {
     switch (role) {
@@ -117,8 +151,24 @@ const TeamPage = () => {
   const canManageTeam = team?.userRole === 'owner' || team?.userRole === 'admin';
   const canInviteMembers = team?.userRole === 'owner' || team?.userRole === 'admin';
 
+  const isMember = !!team.userRole;
+  const isArchived = !!team.archivedAt;
+  const requestPending = team.joinRequest === 'pending';
+  const joinLabel = team.visibility === 'private' ? 'Request to join' : 'Join team';
+
   return (
     <div className="max-w-4xl mx-auto">
+      {isArchived && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <Archive size={16} />
+          This team was archived on {new Date(team.archivedAt).toLocaleDateString()}. It is kept for history and can no longer be changed.
+        </div>
+      )}
+      {actionError && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {errorText(actionError)}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
@@ -129,7 +179,9 @@ const TeamPage = () => {
         </button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">{team.name}</h1>
-          <p className="text-gray-600">Team Management</p>
+          <p className="text-gray-600">
+            {parentName ? <>Part of <button className="underline" onClick={() => navigate(`/teams/${team.parentTeamId}`)}>{parentName}</button></> : 'Team Management'}
+          </p>
         </div>
       </div>
 
@@ -143,9 +195,18 @@ const TeamPage = () => {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">{team.name}</h2>
               <div className="flex gap-3 mb-3">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${getRoleBadgeColor(team.userRole || 'member')}`}>
-                  <RoleIcon size={12} />
-                  {team.userRole || 'Member'}
+                {isMember ? (
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${getRoleBadgeColor(team.userRole)}`}>
+                    <RoleIcon size={12} />
+                    {team.userRole}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-700">
+                    Not a member
+                  </span>
+                )}
+                <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-700">
+                  {team.visibility}
                 </span>
                 {team.ownerName && (
                   <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-purple-100 text-purple-800">
@@ -173,7 +234,23 @@ const TeamPage = () => {
           </div>
           
           <div className="flex gap-2">
-            {canInviteMembers && (
+            {!isMember && !isArchived && (
+              requestPending ? (
+                <span className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-500 rounded-lg">
+                  <Clock size={16} />
+                  Request pending
+                </span>
+              ) : (
+                <button
+                  onClick={() => dispatch(joinTeam(team.id))}
+                  className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
+                >
+                  <LogIn size={16} />
+                  {joinLabel}
+                </button>
+              )
+            )}
+            {canInviteMembers && !isArchived && (
               <button
                 onClick={() => setInviteModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-(--color-primary-600) text-(--color-primary-contrast) rounded-lg hover:bg-(--color-primary-700)"
@@ -198,6 +275,51 @@ const TeamPage = () => {
           </div>
         )}
       </div>
+
+      {isManager && team.visibility === 'private' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h3 className="font-medium text-gray-900 mb-3">Join requests</h3>
+          {joinRequests.length === 0 ? (
+            <p className="text-sm text-gray-500">No pending requests.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {joinRequests.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <div className="flex-1 min-w-[12rem]">
+                    <div className="text-sm font-medium text-gray-900">{r.name || r.email}</div>
+                    <div className="text-xs text-gray-500">Asked {new Date(r.requestedAt).toLocaleDateString()}</div>
+                  </div>
+                  <label className="text-xs text-gray-600">
+                    Member since
+                    <input
+                      type="date"
+                      max={new Date().toISOString().slice(0, 10)}
+                      value={sinceByRequest[r.id] || ''}
+                      onChange={(e) => setSinceByRequest({ ...sinceByRequest, [r.id]: e.target.value })}
+                      className="ml-2 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </label>
+                  <button
+                    onClick={() => dispatch(decideJoinRequest({
+                      teamId: team.id, requestId: r.id, approve: true,
+                      joinedAt: sinceByRequest[r.id] ? new Date(`${sinceByRequest[r.id]}T00:00:00Z`).toISOString() : undefined,
+                    }))}
+                    className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+                  >
+                    <Check size={14} /> Approve
+                  </button>
+                  <button
+                    onClick={() => dispatch(decideJoinRequest({ teamId: team.id, requestId: r.id, approve: false }))}
+                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <X size={14} /> Deny
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

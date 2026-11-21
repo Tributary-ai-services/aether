@@ -24,6 +24,7 @@ import {
   updateTeam,
   updateTeamMemberRole,
   removeTeamMember,
+  setMemberJoinedAt,
   selectTeamMembers,
   selectTeamsLoading,
   selectTeamsError
@@ -46,6 +47,8 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
     icon: team?.icon || null
   });
   const [showMemberMenu, setShowMemberMenu] = useState(null);
+  // Back-dating "member since" (Plan #22 A.3/A.5): userId being edited, and the date.
+  const [sinceEdit, setSinceEdit] = useState({ userId: null, value: '' });
   const [showIconPicker, setShowIconPicker] = useState(false);
 
   useEffect(() => {
@@ -210,9 +213,46 @@ const TeamDetailsModal = ({ isOpen, onClose, team }) => {
                                 <RoleIcon size={12} />
                                 {member.role}
                               </span>
-                              {member.joinedAt && (
+                              {sinceEdit.userId === member.userId ? (
+                                <span className="flex items-center gap-1 text-xs">
+                                  <input
+                                    type="date"
+                                    max={new Date().toISOString().slice(0, 10)}
+                                    value={sinceEdit.value}
+                                    onChange={(e) => setSinceEdit({ userId: member.userId, value: e.target.value })}
+                                    className="rounded border border-gray-300 px-1 py-0.5"
+                                    aria-label="Member since"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={!sinceEdit.value}
+                                    onClick={async () => {
+                                      await dispatch(setMemberJoinedAt({
+                                        teamId: team.id, userId: member.userId,
+                                        joinedAt: new Date(`${sinceEdit.value}T00:00:00Z`).toISOString(),
+                                      }));
+                                      setSinceEdit({ userId: null, value: '' });
+                                    }}
+                                    className="text-(--color-primary-600) disabled:text-gray-300"
+                                  >
+                                    Save
+                                  </button>
+                                  <button type="button" onClick={() => setSinceEdit({ userId: null, value: '' })} className="text-gray-500">
+                                    Cancel
+                                  </button>
+                                </span>
+                              ) : member.joinedAt && (
                                 <span className="text-xs text-gray-500">
-                                  Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                  Member since {new Date(member.joinedAt).toLocaleDateString()}
+                                  {canManageMembers && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSinceEdit({ userId: member.userId, value: member.joinedAt.slice(0, 10) })}
+                                      className="ml-2 underline"
+                                    >
+                                      change
+                                    </button>
+                                  )}
                                 </span>
                               )}
                             </div>
